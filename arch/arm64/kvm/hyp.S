@@ -601,6 +601,13 @@ alternative_endif
 1:
 .endm
 
+.macro truly_debug	val
+	mrs	x29, tpidr_el2
+	ldr	x28, [x29, #VCPU_DBG_CNT_CPU]
+	add	x28, x28, \val
+	str	x28, [x29, #VCPU_DBG_CNT_CPU]
+.endm
+
 __save_sysregs:
 	save_sysregs
 	ret
@@ -973,14 +980,24 @@ el1_sync:					// Guest trapped into EL2
 	mrs	x1, esr_el2
 	lsr	x2, x1, #ESR_ELx_EC_SHIFT
 
-	cmp	x2, #ESR_ELx_EC_HVC64
-	b.ne	el1_trap
+	cmp	x2, #ESR_ELx_EC_HVC64		// EC == 10110
+	b.ne	el1_trap_d1
 
 	mrs	x3, vttbr_el2			// If vttbr is valid, the 64bit guest
-	cbnz	x3, el1_trap			// called HVC
+	cbnz	x3, el1_trap_d2			// called HVC
+	
+	b 	cont
+
+el1_trap_d1:
+	truly_debug	x2	// what I see is that x2 = 100000b
+	b el1_trap		// instruction abort
+
+el1_trap_d2:
+	truly_debug	#222
+	b el1_trap
 
 	/* Here, we're pretty sure the host called HVC. */
-	pop	x2, x3
+cont:	pop	x2, x3
 	pop	x0, x1
 
 	/* Check for __hyp_get_vectors */

@@ -601,7 +601,8 @@ int kvm_arch_vcpu_ioctl_run(struct kvm_vcpu *vcpu, struct kvm_run *run)
 		vcpu->mode = IN_GUEST_MODE;
 
 		ret = kvm_call_hyp(__kvm_vcpu_run, vcpu);
-
+// raz
+		printk("RAZ vcpu counter =%d\n", vcpu->debug_counter);
 		vcpu->mode = OUTSIDE_GUEST_MODE;
 		/*
 		 * Back from guest
