@@ -602,10 +602,12 @@ alternative_endif
 .endm
 
 .macro truly_debug	val
+	push x29 , x28
 	mrs	x29, tpidr_el2
 	ldr	x28, [x29, #VCPU_DBG_CNT_CPU]
 	add	x28, x28, \val
 	str	x28, [x29, #VCPU_DBG_CNT_CPU]
+	pop x29, x28
 .endm
 
 __save_sysregs:
