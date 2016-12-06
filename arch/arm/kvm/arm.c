@@ -532,6 +532,7 @@ static int kvm_vcpu_initialized(struct kvm_vcpu *vcpu)
 int kvm_arch_vcpu_ioctl_run(struct kvm_vcpu *vcpu, struct kvm_run *run)
 {
 	int ret;
+	int prev;
 	sigset_t sigsaved;
 
 	if (unlikely(!kvm_vcpu_initialized(vcpu)))
@@ -599,12 +600,15 @@ int kvm_arch_vcpu_ioctl_run(struct kvm_vcpu *vcpu, struct kvm_run *run)
 		trace_kvm_entry(*vcpu_pc(vcpu));
 		__kvm_guest_enter();
 		vcpu->mode = IN_GUEST_MODE;
-
+		prev = vcpu->debug_counter ;
 		vcpu->debug_counter = 0;
 		ret = kvm_call_hyp(__kvm_vcpu_run, vcpu);
-// raz
-		if (vcpu->debug_counter != 0)
-			printk("RAZ vcpu counter =%d\n", vcpu->debug_counter);
+
+		if (vcpu->debug_counter != 0 && prev != vcpu->debug_counter) {
+			printk("RAZ vcpu counter = %d %d\n", 
+				prev,
+				vcpu->debug_counter);
+		}
 		vcpu->mode = OUTSIDE_GUEST_MODE;
 		/*
 		 * Back from guest
