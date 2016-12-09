@@ -494,11 +494,11 @@
 .endm
 
 .macro deactivate_traps
-	mov	x2, #HCR_RW
+	mov	x2, #HCR_RW	// 2^31. turn of all
 	msr	hcr_el2, x2
-	msr	hstr_el2, xzr
+	msr	hstr_el2, xzr // hstr_el2 control trapping to hyp mode of non secured at el1 or lower
 
-	mrs	x2, mdcr_el2
+	mrs	x2, mdcr_el2 // debug configration
 	and	x2, x2, #MDCR_EL2_HPMN_MASK
 	msr	mdcr_el2, x2
 .endm
@@ -511,7 +511,7 @@
 .endm
 
 .macro deactivate_vm
-	msr	vttbr_el2, xzr
+	msr	vttbr_el2, xzr // holds bases address for the stage2  from el0 and el1
 .endm
 
 /*
@@ -991,11 +991,11 @@ el1_sync:					// Guest trapped into EL2
 	b 	cont
 
 el1_trap_d1:
-	truly_debug	x2	// what I see is that x2 = 100000b
+#	truly_debug	x2	// what I see is that x2 = 100000b
 	b el1_trap		// instruction abort
 
 el1_trap_d2:
-	truly_debug	#222
+#	truly_debug	#222
 	b el1_trap
 
 	/* Here, we're pretty sure the host called HVC. */
@@ -1104,7 +1104,58 @@ el1_irq:
 	push	x2, x3
 	mrs	x0, tpidr_el2
 	mov	x1, #ARM_EXCEPTION_IRQ
-	b	__kvm_vcpu_return
+	truly_debug	1
+	b	__kvm_vcpu_return1
+
+__kvm_vcpu_return1:
+	// Assume x0 is the vcpu pointer, x1 the return code
+	// Guest's x0-x3 are on the stack
+
+	// Guest context
+	add	x2, x0, #VCPU_CONTEXT
+
+	save_guest_regs
+	bl __save_fpsimd
+	bl __save_sysregs
+
+	skip_debug_state x3, 1f
+	ldr	x3, [x0, #VCPU_DEBUG_PTR]
+	kern_hyp_va x3
+	bl	__save_debug
+1:
+	save_guest_32bit_state
+
+	save_timer_state
+	save_vgic_state
+
+	deactivate_traps
+	deactivate_vm
+
+	// Host context
+	ldr	x2, [x0, #VCPU_HOST_CONTEXT]
+	kern_hyp_va x2
+
+	bl __restore_sysregs
+	bl __restore_fpsimd
+	/* Clear FPSIMD and Trace trapping */
+	msr     cptr_el2, xzr
+
+	skip_debug_state x3, 1f
+	// Clear the dirty flag for the next run, as all the state has
+	// already been saved. Note that we nuke the whole 64bit word.
+	// If we ever add more flags, we'll have to be more careful...
+	str	xzr, [x0, #VCPU_DEBUG_FLAGS]
+	add	x3, x0, #VCPU_HOST_DEBUG_STATE
+	bl	__restore_debug
+1:
+	restore_host_regs
+
+#	push x0
+#	bl my_dump_stack
+#	pop  x0
+
+	mov	x0, x1
+	ret
 
 	.ltorg
 
