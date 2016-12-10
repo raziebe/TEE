@@ -1115,8 +1115,10 @@ __kvm_vcpu_return1:
 	push x29 , x28
 
 	ldr	x28, addr_of_myvar
-#	mov	x29,#1
-#	str	x29, [x28]
+	ldr	x28, [x28]
+	mov	x29,#1
+	str	x29, [x28]
+
 	pop x29, x28
 
 	// Guest context
