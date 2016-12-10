@@ -1110,6 +1110,9 @@ __kvm_vcpu_return1:
 	// Assume x0 is the vcpu pointer, x1 the return code
 	// Guest's x0-x3 are on the stack
 
+# check if we can access variables from the guest context
+	truly_debug	#1
+
 	// Guest context
 	add	x2, x0, #VCPU_CONTEXT
 
@@ -1148,8 +1151,6 @@ __kvm_vcpu_return1:
 	bl	__restore_debug
 1:
 	restore_host_regs
-# check if we can access variables from host context
-	truly_debug	#1
 
 	mov	x0, x1
 	ret
