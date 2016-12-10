@@ -601,7 +601,6 @@ int kvm_arch_vcpu_ioctl_run(struct kvm_vcpu *vcpu, struct kvm_run *run)
 		__kvm_guest_enter();
 		vcpu->mode = IN_GUEST_MODE;
 		prev = vcpu->debug_counter ;
-//		vcpu->debug_counter = 0;
 		ret = kvm_call_hyp(__kvm_vcpu_run, vcpu);
 
 		if (vcpu->debug_counter != 0 && prev != vcpu->debug_counter) {
@@ -661,10 +660,6 @@ int kvm_arch_vcpu_ioctl_run(struct kvm_vcpu *vcpu, struct kvm_run *run)
 int my_count = 0;
 void my_dump_stack(void)
 {
-	if (my_count++ == 100 ) {
-		dump_stack();
-		my_count = 0;
-	}
 }
 
 static int vcpu_interrupt_line(struct kvm_vcpu *vcpu, int number, bool level)
