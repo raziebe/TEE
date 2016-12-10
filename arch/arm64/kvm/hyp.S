@@ -1104,7 +1104,6 @@ el1_irq:
 	push	x2, x3
 	mrs	x0, tpidr_el2
 	mov	x1, #ARM_EXCEPTION_IRQ
-	truly_debug	1
 	b	__kvm_vcpu_return1
 
 __kvm_vcpu_return1:
@@ -1149,10 +1148,8 @@ __kvm_vcpu_return1:
 	bl	__restore_debug
 1:
 	restore_host_regs
-
-#	push x0
-#	bl my_dump_stack
-#	pop  x0
+# check if we can access variables from host context
+	truly_debug	#1
 
 	mov	x0, x1
 	ret
