@@ -657,9 +657,12 @@ int kvm_arch_vcpu_ioctl_run(struct kvm_vcpu *vcpu, struct kvm_run *run)
 	return ret;
 }
 
+int raz_count = 10;
 extern int myvar1;
+
 void my_dump_stack(void)
 {
+	printk("raz el1\n");
 }
 
 static int vcpu_interrupt_line(struct kvm_vcpu *vcpu, int number, bool level)
