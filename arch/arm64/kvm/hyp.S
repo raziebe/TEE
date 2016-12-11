@@ -1113,11 +1113,11 @@ __kvm_vcpu_return1:
 # raz . check if we can access variables from the guest context
 
 	push x29 , x28
-	
+
 	ldr	x28, addr_of_var
 	ldr	x29, [x28]
-	mov	x29,#1
-	str	x29, [x28]
+	mov	x28, #1
+	str	x28, [x29]
 
 	pop x29, x28
 
