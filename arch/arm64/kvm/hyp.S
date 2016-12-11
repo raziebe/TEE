@@ -1113,12 +1113,11 @@ __kvm_vcpu_return1:
 # raz . check if we can access variables from the guest context
 
 	push x29 , x28
-
-	ldr	x28, addr_of_myvar
-#	kern_hyp_va	x28
+	
+	ldr	x28, addr_of_var
 	ldr	x29, [x28]
-#	mov	x29,#1
-#	str	x29, [x28]
+	mov	x29,#1
+	str	x29, [x28]
 
 	pop x29, x28
 
@@ -1164,7 +1163,7 @@ __kvm_vcpu_return1:
 	mov	x0, x1
 	ret
 
-addr_of_myvar : .dword my_count
+addr_of_var : .dword myvar1
 
 	.ltorg
 
@@ -1197,5 +1196,10 @@ ENTRY(__kvm_get_mdcr_el2)
 	mrs	x0, mdcr_el2
 	ret
 ENDPROC(__kvm_get_mdcr_el2)
+
+.data
+.balign 4
+
+myvar1: .dword 73
 
 	.popsection

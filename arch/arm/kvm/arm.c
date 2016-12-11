@@ -657,7 +657,7 @@ int kvm_arch_vcpu_ioctl_run(struct kvm_vcpu *vcpu, struct kvm_run *run)
 	return ret;
 }
 
-int my_count = 0;
+int raz_count = 0;
 void my_dump_stack(void)
 {
 }
