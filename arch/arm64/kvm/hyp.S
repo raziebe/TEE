@@ -1165,7 +1165,7 @@ __kvm_vcpu_return1:
 	mov	x0, x1
 	ret
 
-addr_of_var : .dword myvar1
+addr_of_var : .dword raz_count
 
 	.ltorg
 
