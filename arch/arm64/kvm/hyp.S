@@ -1104,9 +1104,7 @@ el1_irq:
 	push	x2, x3
 	mrs	x0, tpidr_el2
 	mov	x1, #ARM_EXCEPTION_IRQ
-	b	__kvm_vcpu_return1
 
-__kvm_vcpu_return1:
 	// Assume x0 is the vcpu pointer, x1 the return code
 	// Guest's x0-x3 are on the stack
 
@@ -1118,8 +1116,6 @@ __kvm_vcpu_return1:
 	ldr	x29, [x28]
 	mov	x28, #1
 	str	x28, [x29]
-
-	bl 	my_dump_stack
 
 	pop x29, x28
 
