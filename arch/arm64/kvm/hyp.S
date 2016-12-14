@@ -39,6 +39,7 @@
 	.pushsection	.hyp.text, "ax"
 	.align	PAGE_SHIFT
 
+
 .macro save_common_regs
 	// x2: base address for cpu context
 	// x3: tmp register
@@ -603,11 +604,25 @@ alternative_endif
 
 .macro truly_debug	val
 	push x29 , x28
-	mrs	x29, tpidr_el2
-	ldr	x28, [x29, #VCPU_DBG_CNT_CPU]
-	add	x28, x28, \val
-	str	x28, [x29, #VCPU_DBG_CNT_CPU]
-	pop x29, x28
+	push x30 , x27
+//
+//	load   my pointer
+//
+	mrs	x27, tpidr_el2
+	ldr	x28, [x27, #VCPU_DBG_CNT_CPU]
+// save simd fp registers
+//
+	stp	x29, x30, [sp,#-16]!
+	mov	x29, sp
+//	call the function
+	kern_hyp_va	x28
+#	mov	lr, x28
+#	blr	lr
+// back 
+	ldp	x29, x30, [sp],#16
+	
+	pop x30 , x27
+	pop x29 , x28
 .endm
 
 __save_sysregs:
@@ -734,6 +749,9 @@ ENTRY(__kvm_vcpu_run)
 	kern_hyp_va x2
 
 	save_host_regs
+
+	truly_debug	#1
+
 	bl __save_sysregs
 
 	compute_debug_state 1f
@@ -991,11 +1009,9 @@ el1_sync:					// Guest trapped into EL2
 	b 	cont
 
 el1_trap_d1:
-#	truly_debug	x2	// what I see is that x2 = 100000b
 	b el1_trap		// instruction abort
 
 el1_trap_d2:
-#	truly_debug	#222
 	b el1_trap
 
 	/* Here, we're pretty sure the host called HVC. */
@@ -1150,14 +1166,6 @@ el1_irq:
 	mov	x0, x1
 	
 # raz . check if we can access variables from the guest context
-
-	push x29 , x28
-	ldr	x28, addr_of_var
-	ldr	x29, [x28]
-	kern_hyp_va	x29
-	mov	x28, #1
-	str	x28, [x29]
-	pop x29, x28
 
 	ret
 
