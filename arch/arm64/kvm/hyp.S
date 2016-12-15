@@ -616,8 +616,9 @@ alternative_endif
 	mov	x29, sp
 //	call the function
 	kern_hyp_va	x28
-#	mov	lr, x28
+	mov	lr, x28
 #	blr	lr
+
 // back 
 	ldp	x29, x30, [sp],#16
 	
