@@ -39,7 +39,6 @@
 	.pushsection	.hyp.text, "ax"
 	.align	PAGE_SHIFT
 
-
 .macro save_common_regs
 	// x2: base address for cpu context
 	// x3: tmp register
@@ -495,11 +494,11 @@
 .endm
 
 .macro deactivate_traps
-	mov	x2, #HCR_RW	// 2^31. turn of all
+	mov	x2, #HCR_RW
 	msr	hcr_el2, x2
-	msr	hstr_el2, xzr // hstr_el2 control trapping to hyp mode of non secured at el1 or lower
+	msr	hstr_el2, xzr
 
-	mrs	x2, mdcr_el2 // debug configration
+	mrs	x2, mdcr_el2
 	and	x2, x2, #MDCR_EL2_HPMN_MASK
 	msr	mdcr_el2, x2
 .endm
@@ -512,7 +511,7 @@
 .endm
 
 .macro deactivate_vm
-	msr	vttbr_el2, xzr // holds bases address for the stage2  from el0 and el1
+	msr	vttbr_el2, xzr
 .endm
 
 /*
@@ -600,30 +599,6 @@ alternative_endif
 	and	x2, x2, #3
 	msr	cntv_ctl_el0, x2
 1:
-.endm
-
-.macro truly_debug	val
-	push x29 , x28
-	push x30 , x27
-//
-//	load   my pointer
-//
-	mrs	x27, tpidr_el2
-	ldr	x28, [x27, #VCPU_DBG_CNT_CPU]
-// save simd fp registers
-//
-	stp	x29, x30, [sp,#-16]!
-	mov	x29, sp
-//	call the function
-	kern_hyp_va	x28
-	mov	lr, x28
-#	blr	lr
-
-// back 
-	ldp	x29, x30, [sp],#16
-	
-	pop x30 , x27
-	pop x29 , x28
 .endm
 
 __save_sysregs:
@@ -750,9 +725,6 @@ ENTRY(__kvm_vcpu_run)
 	kern_hyp_va x2
 
 	save_host_regs
-
-	truly_debug	#1
-
 	bl __save_sysregs
 
 	compute_debug_state 1f
@@ -1001,22 +973,14 @@ el1_sync:					// Guest trapped into EL2
 	mrs	x1, esr_el2
 	lsr	x2, x1, #ESR_ELx_EC_SHIFT
 
-	cmp	x2, #ESR_ELx_EC_HVC64		// EC == 10110
-	b.ne	el1_trap_d1
+	cmp	x2, #ESR_ELx_EC_HVC64
+	b.ne	el1_trap
 
 	mrs	x3, vttbr_el2			// If vttbr is valid, the 64bit guest
-	cbnz	x3, el1_trap_d2			// called HVC
-	
-	b 	cont
-
-el1_trap_d1:
-	b el1_trap		// instruction abort
-
-el1_trap_d2:
-	b el1_trap
+	cbnz	x3, el1_trap			// called HVC
 
 	/* Here, we're pretty sure the host called HVC. */
-cont:	pop	x2, x3
+	pop	x2, x3
 	pop	x0, x1
 
 	/* Check for __hyp_get_vectors */
@@ -1121,56 +1085,7 @@ el1_irq:
 	push	x2, x3
 	mrs	x0, tpidr_el2
 	mov	x1, #ARM_EXCEPTION_IRQ
-
-	// Assume x0 is the vcpu pointer, x1 the return code
-	// Guest's x0-x3 are on the stack
-
-	// Guest context
-	add	x2, x0, #VCPU_CONTEXT
-
-	save_guest_regs
-	bl __save_fpsimd
-	bl __save_sysregs
-
-	skip_debug_state x3, 1f
-	ldr	x3, [x0, #VCPU_DEBUG_PTR]
-	kern_hyp_va x3
-	bl	__save_debug
-1:
-	save_guest_32bit_state
-
-	save_timer_state
-	save_vgic_state
-
-	deactivate_traps
-	deactivate_vm
-
-	// Host context
-	ldr	x2, [x0, #VCPU_HOST_CONTEXT]
-	kern_hyp_va x2
-
-	bl __restore_sysregs
-	bl __restore_fpsimd
-	/* Clear FPSIMD and Trace trapping */
-	msr     cptr_el2, xzr
-
-	skip_debug_state x3, 1f
-	// Clear the dirty flag for the next run, as all the state has
-	// already been saved. Note that we nuke the whole 64bit word.
-	// If we ever add more flags, we'll have to be more careful...
-	str	xzr, [x0, #VCPU_DEBUG_FLAGS]
-	add	x3, x0, #VCPU_HOST_DEBUG_STATE
-	bl	__restore_debug
-1:
-	restore_host_regs
-
-	mov	x0, x1
-	
-# raz . check if we can access variables from the guest context
-
-	ret
-
-addr_of_var : .dword raz_count
+	b	__kvm_vcpu_return
 
 	.ltorg
 
@@ -1198,15 +1113,14 @@ ENTRY(__kvm_hyp_vector)
 	ventry	el1_error_invalid		// Error 32-bit EL1
 ENDPROC(__kvm_hyp_vector)
 
-
 ENTRY(__kvm_get_mdcr_el2)
 	mrs	x0, mdcr_el2
 	ret
 ENDPROC(__kvm_get_mdcr_el2)
 
-.data
-.balign 4
-
-myvar1: .dword 73
+ENTRY( __kvm_raz_test)
+	mov x0,#444
+	ret
+ENDPROC(__kvm_raz_test)
 
 	.popsection
