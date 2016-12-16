@@ -23,12 +23,10 @@ ENTRY( truly_enter_S )
  	
 //     call the function
        kern_hyp_va     x0
-       mov     lr, x0
-       blr     lr
+       blr    x0
 
 // back
        ldp    	 x29, x30, [sp],#16
-       mov x0, #773
        ret
 ENDPROC(truly_enter_S)
 
