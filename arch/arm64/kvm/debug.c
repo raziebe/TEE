@@ -215,3 +215,8 @@ void kvm_arm_clear_debug(struct kvm_vcpu *vcpu)
 		}
 	}
 }
+
+int truly_enter_S(void);
+int truly_enter(void);
+EXPORT_SYMBOL_GPL(truly_enter_S);
+EXPORT_SYMBOL_GPL(truly_enter);
