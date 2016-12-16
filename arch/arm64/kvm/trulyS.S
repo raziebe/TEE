@@ -22,8 +22,8 @@ ENTRY( truly_enter_S )
        mov     x29, sp
  	
 //     call the function
-       kern_hyp_va     x1
-       mov     lr, x1
+       kern_hyp_va     x0
+       mov     lr, x0
        blr     lr
 
 // back
