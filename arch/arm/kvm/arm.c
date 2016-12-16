@@ -518,10 +518,6 @@ static int kvm_vcpu_initialized(struct kvm_vcpu *vcpu)
 	return vcpu->arch.target >= 0;
 }
 
-int raz_count =33;
-void my_dump_stack(void)
-{
-}
 /**
  * kvm_arch_vcpu_ioctl_run - the main VCPU run function to execute guest code
  * @vcpu:	The VCPU pointer
@@ -601,7 +597,6 @@ int kvm_arch_vcpu_ioctl_run(struct kvm_vcpu *vcpu, struct kvm_run *run)
 		 * Enter the guest
 		 */
 		trace_kvm_entry(*vcpu_pc(vcpu));
-		vcpu->debug_counter = my_dump_stack;
 		__kvm_guest_enter();
 		vcpu->mode = IN_GUEST_MODE;
 		ret = kvm_call_hyp(__kvm_vcpu_run, vcpu);
