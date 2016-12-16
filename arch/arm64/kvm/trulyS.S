@@ -20,11 +20,11 @@
 ENTRY( truly_enter_S )
        stp     x29, x30, [sp,#-16]!
        mov     x29, sp
- 	
+ 
 //     call the function
+       ldr	x0,=truly_enter
        kern_hyp_va     x0
-       blr    x0
-
+       blr x0
 // back
        ldp    	 x29, x30, [sp],#16
        ret
