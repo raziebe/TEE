@@ -875,8 +875,6 @@ SYSCALL_DEFINE0(getgid)
 
 SYSCALL_DEFINE0(getegid)
 {
-        extern int raz_count;
-        printk("raz_count = %d\n", raz_count);
 	/* Only we change this so SMP safe */
 	return from_kgid_munged(current_user_ns(), current_egid());
 }
@@ -1144,9 +1142,6 @@ SYSCALL_DEFINE1(newuname, struct new_utsname __user *, name)
 {
 	int errno = 0;
 
-        extern int raz_count;
-        printk("raz_count = %d\n", raz_count);
-
 	down_read(&uts_sem);
 	if (copy_to_user(name, utsname(), sizeof *name))
 		errno = -EFAULT;
@@ -1167,9 +1162,6 @@ SYSCALL_DEFINE1(uname, struct old_utsname __user *, name)
 {
 	int error = 0;
 
-        extern int raz_count;
-        printk("raz_count = %d\n", raz_count);
-
 	if (!name)
 		return -EFAULT;
 
@@ -1188,8 +1180,6 @@ SYSCALL_DEFINE1(uname, struct old_utsname __user *, name)
 SYSCALL_DEFINE1(olduname, struct oldold_utsname __user *, name)
 {
 	int error;
-        extern int raz_count;
-        printk("raz_count = %d\n", raz_count);
 
 	if (!name)
 		return -EFAULT;
