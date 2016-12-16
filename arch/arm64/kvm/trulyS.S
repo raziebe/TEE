@@ -18,8 +18,18 @@
  * Do not corrupt x1!!!
  */
 ENTRY( truly_enter_S )
-	mov x0, #777
-	ret
+       stp     x29, x30, [sp,#-16]!
+       mov     x29, sp
+ 	
+//     call the function
+       kern_hyp_va     x1
+       mov     lr, x1
+       blr     lr
+
+// back
+       ldp    	 x29, x30, [sp],#16
+       mov x0, #773
+       ret
 ENDPROC(truly_enter_S)
 
 .popsection
