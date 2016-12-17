@@ -22,12 +22,18 @@ ENTRY( truly_enter_S )
        mov     x29, sp
  
 //     call the function
-       ldr	x0,=truly_enter
+       ldr	x0,=truly_enter_S2
        kern_hyp_va     x0
        blr x0
 // back
        ldp    	 x29, x30, [sp],#16
        ret
 ENDPROC(truly_enter_S)
+
+
+ENTRY( truly_enter_S2 )
+       ret
+ENDPROC(truly_enter_S2)
+
 
 .popsection
