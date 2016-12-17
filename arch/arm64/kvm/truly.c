@@ -24,10 +24,15 @@ static inline int foo1(void)
 
 }
 
-int truly_enter(void) 
+int truly_enter(int _x) 
 {
-	x = 2;
-	return foo1();
+	if (_x > 2)
+		return 0x111;
+	return 0x222;
+
 } 
 
-int truly_enter(void) __attribute__ (( section (".hyp.text") ));
+int truly_enter(int _x) __attribute__ (( section (".hyp.text") ));
+int foo1(void) __attribute__ (( section (".hyp.text") ));
+int foo2(void) __attribute__ (( section (".hyp.text") ));
+int foo3(void) __attribute__ (( section (".hyp.text") ));
