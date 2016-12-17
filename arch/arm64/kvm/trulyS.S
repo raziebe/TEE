@@ -9,8 +9,8 @@
 #include <asm/kvm_arm.h>
 #include <asm/kvm_mmu.h>
 
-//.text
-//.pushsection	.hyp.text, "ax"
+.text
+.pushsection	.hyp.text, "ax"
 
 ENTRY( truly_enter_S )
        stp     x29, x30, [sp,#-16]!
@@ -18,10 +18,10 @@ ENTRY( truly_enter_S )
  
 //     call the function
        kern_hyp_va     x0
-#       blr x0
+       blr x0
 // back
        ldp    	 x29, x30, [sp],#16
        ret
 ENDPROC(truly_enter_S)
 
-//.popsection
+.popsection
