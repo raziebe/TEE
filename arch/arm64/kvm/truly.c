@@ -47,7 +47,7 @@ static inline unsigned long __kern_hyp_va(unsigned long v)
 
 asm(	".align 11;\n");
 
-int x = 3;
+int xx = 3;
 
 int __hyp_text foo2(void)
 {
@@ -59,15 +59,15 @@ static   __hyp_text int foo3(void)
 	return 333;
 }
 
-static __hyp_text int foo1(void)
+static __hyp_text int foo1(int x)
 {
-	if (*kern_hyp_va(&x) == 1)
+	if (x == 1)
 		return kern_hyp_va(foo2());
 	return kern_hyp_va(foo3());
 }
 
 int __hyp_text truly_enter(int _x) 
 {
-	return  kern_hyp_va(foo1());
+	return  kern_hyp_va(foo1(_x));
 
 } 
