@@ -61,9 +61,9 @@ static   __hyp_text int foo3(void)
 
 static __hyp_text int foo1(void)
 {
-//	if (kern_hyp_va(x) == 1)
+	if (*kern_hyp_va(&x) == 1)
 		return kern_hyp_va(foo2());
-//	return kern_hyp_va(foo3());
+	return kern_hyp_va(foo3());
 }
 
 int __hyp_text truly_enter(int _x) 
