@@ -51,24 +51,25 @@ int xx = 3;
 
 int __hyp_text foo2(void)
 {
-	return 222;
+	return 0x222;
 }
 
-static   __hyp_text int foo3(void)
+static   __hyp_text int foo3(int _x)
 {
-	return 333;
+	if ( _x < 3)
+		return 0x333;
+	return 0x444;
 }
 
-static __hyp_text int foo1(int x)
+static __hyp_text int foo1(int _x)
 {
-//	if (x == 1)
-//		return kern_hyp_va(foo2());
-//	return kern_hyp_va(foo3());
-	return 0x1777;
+	if (_x == 1)
+		return kern_hyp_va(foo2());
+	return kern_hyp_va(foo3(_x));
 }
 
 int __hyp_text truly_enter(int _x) 
 {
 	return  kern_hyp_va(foo1(_x));
 
-} 
+}
