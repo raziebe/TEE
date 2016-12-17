@@ -70,6 +70,7 @@ static __hyp_text int foo1(int _x)
 
 int __hyp_text truly_enter(int _x) 
 {
+	xx = _x;
 	return  kern_hyp_va(foo1(_x));
 
 }
