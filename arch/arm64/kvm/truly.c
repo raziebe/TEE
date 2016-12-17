@@ -26,9 +26,7 @@ static inline int foo1(void)
 
 int truly_enter(int _x) 
 {
-	if (_x > 2)
-		return 0x111;
-	return 0x222;
+	return foo2();
 
 } 
 
