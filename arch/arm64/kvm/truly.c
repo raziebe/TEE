@@ -32,5 +32,5 @@ int truly_enter(int _x)
 
 int truly_enter(int _x) __attribute__ (( section (".hyp.text") ));
 int foo1(void) __attribute__ (( section (".hyp.text") ));
-int foo2(void) __attribute__ (( section (".hyp.text") ));
+//int foo2(void) __attribute__ (( section (".hyp.text") ));
 int foo3(void) __attribute__ (( section (".hyp.text") ));
