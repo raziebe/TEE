@@ -54,14 +54,14 @@ int __hyp_text foo2(void)
 	return 0x222;
 }
 
-static   __hyp_text int foo3(int _x)
+int  __hyp_text foo3(int _x)
 {
 	if ( _x < 3)
 		return 0x333;
 	return 0x444;
 }
 
-static __hyp_text int foo1(int _x)
+int __hyp_text foo1(int _x)
 {
 	if (_x == 1)
 		return kern_hyp_va(foo2());
@@ -70,7 +70,7 @@ static __hyp_text int foo1(int _x)
 
 int __hyp_text truly_enter(int _x) 
 {
-	xx = _x;
+//	xx = _x;
 	return  kern_hyp_va(foo1(_x));
 
 }
