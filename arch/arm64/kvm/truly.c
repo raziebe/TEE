@@ -44,10 +44,7 @@ static inline unsigned long __kern_hyp_va(unsigned long v)
 
 #define kern_hyp_va(v)  ((typeof(v))(__kern_hyp_va((unsigned long)(v))))
 
-
 asm(	".align 11;\n");
-
-int xx = 3;
 
 int __hyp_text foo2(void)
 {
@@ -70,7 +67,6 @@ int __hyp_text foo1(int _x)
 
 int __hyp_text truly_enter(int _x) 
 {
-//	xx = _x;
 	return  kern_hyp_va(foo1(_x));
 
 }
