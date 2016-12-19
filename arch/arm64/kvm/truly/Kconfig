@@ -1,0 +1,8 @@
+#
+#  Truly Protect 
+#
+
+config TRULY_PROTECT
+	bool "TrulyProtect"
+	---help---
+	todo

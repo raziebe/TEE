@@ -49,5 +49,6 @@ config KVM_ARM_HOST
 	  Provides host support for ARM processors.
 
 source drivers/vhost/Kconfig
+source arch/arm64/kvm/truly/Kconfig
 
 endif # VIRTUALIZATION
