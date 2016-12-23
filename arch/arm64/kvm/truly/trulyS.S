@@ -24,4 +24,8 @@ ENTRY( truly_enter_S )
        ret
 ENDPROC(truly_enter_S)
 
+ENTRY( truly_irq_S )
+       ret
+ENDPROC(truly_irq_S)
+
 .popsection

@@ -479,7 +479,7 @@
 	mov	x3, #(1 << 30)
 	msr	fpexc32_el2, x3
 	isb
-99:
+99: //raz
 	msr     hcr_el2, x2
 	mov	x2, #CPTR_EL2_TTA
 	orr     x2, x2, #CPTR_EL2_TFP
@@ -1089,6 +1089,24 @@ el1_irq:
 
 	.ltorg
 
+el1_irq_raz:
+#	push	x0, x1
+#	push	x2, x3
+#	mrs	x0, tpidr_el2
+#	mov	x1, #ARM_EXCEPTION_IRQ
+#	push	lr, xzr
+	/*
+	 * Compute the function address in EL2, and shuffle the parameters.
+	 */
+#	kern_hyp_va	x0
+#	mov	lr, x0
+#	blr	lr
+	
+#	pop	lr, xzr
+#	mov x0,#444
+	ret
+	.ltorg
+
 	.align 11
 
 ENTRY(__kvm_hyp_vector)
@@ -1103,7 +1121,7 @@ ENTRY(__kvm_hyp_vector)
 	ventry	el2h_error_invalid		// Error EL2h
 
 	ventry	el1_sync			// Synchronous 64-bit EL1
-	ventry	el1_irq				// IRQ 64-bit EL1
+	ventry	el1_irq_raz			// IRQ 64-bit EL1
 	ventry	el1_fiq_invalid			// FIQ 64-bit EL1
 	ventry	el1_error_invalid		// Error 64-bit EL1
 
@@ -1118,9 +1136,11 @@ ENTRY(__kvm_get_mdcr_el2)
 	ret
 ENDPROC(__kvm_get_mdcr_el2)
 
-ENTRY( __kvm_raz_test)
-	mov x0,#444
+// just try to acticate the vm
+ENTRY( __kvm_test_active_vm)
+	mov	x2,#1
+	msr     hcr_el2, x2
 	ret
-ENDPROC(__kvm_raz_test)
+ENDPROC(__kvm_test_active_vm)
 
 	.popsection

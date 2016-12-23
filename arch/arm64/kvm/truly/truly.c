@@ -70,3 +70,5 @@ int __hyp_text truly_enter(int _x)
 	return  kern_hyp_va(foo1(_x));
 
 }
+int __kvm_test_active_vm(void);
+EXPORT_SYMBOL_GPL(__kvm_test_active_vm);
