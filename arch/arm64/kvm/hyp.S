@@ -1126,7 +1126,7 @@ ENTRY(__kvm_hyp_vector)
 	ventry	el1_error_invalid		// Error 64-bit EL1
 
 	ventry	el1_sync			// Synchronous 32-bit EL1
-	ventry	el1_irq				// IRQ 32-bit EL1
+	ventry	el1_irq_raz				// IRQ 32-bit EL1
 	ventry	el1_fiq_invalid			// FIQ 32-bit EL1
 	ventry	el1_error_invalid		// Error 32-bit EL1
 ENDPROC(__kvm_hyp_vector)
@@ -1139,7 +1139,7 @@ ENDPROC(__kvm_get_mdcr_el2)
 // just try to acticate the vm
 ENTRY( __kvm_test_active_vm)
 	mov	x2,#1
-	msr     hcr_el2, x2
+#	msr     hcr_el2, x2
 	ret
 ENDPROC(__kvm_test_active_vm)
 
