@@ -1138,8 +1138,18 @@ ENDPROC(__kvm_get_mdcr_el2)
 
 // just try to acticate the vm
 ENTRY( __kvm_test_active_vm)
-	mov	x2,#1
-#	msr     hcr_el2, x2
+	
+	mov     x2,#2
+	msr     hcr_el2, x2
+	mov	x2, #CPTR_EL2_TTA
+	orr     x2, x2, #CPTR_EL2_TFP
+	msr	cptr_el2, x2
+
+	mov	x2, #(1 << 15)	// Trap CP15 Cr=15
+	msr	hstr_el2, x2
+//
+// now should activate vttbr
+	
 	ret
 ENDPROC(__kvm_test_active_vm)
 
