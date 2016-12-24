@@ -2362,6 +2362,12 @@ static long kvm_vcpu_ioctl(struct file *filp,
 	if (r)
 		return r;
 	switch (ioctl) {
+	case KVM_TRULY:
+		{
+		int truly_arch_vcpu_ioctl(struct kvm_vcpu*);
+		r = truly_arch_vcpu_ioctl(vcpu);
+		return r;
+		}
 	case KVM_RUN:
 		r = -EINVAL;
 		if (arg)

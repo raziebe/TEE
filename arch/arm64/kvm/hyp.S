@@ -1139,18 +1139,43 @@ ENDPROC(__kvm_get_mdcr_el2)
 // just try to acticate the vm
 ENTRY( __kvm_test_active_vm)
 	
-	mov     x2,#2
-	msr     hcr_el2, x2
-	mov	x2, #CPTR_EL2_TTA
-	orr     x2, x2, #CPTR_EL2_TFP
-	msr	cptr_el2, x2
+	kern_hyp_va	x0
+	msr	tpidr_el2, x0	// Save the vcpu register
 
-	mov	x2, #(1 << 15)	// Trap CP15 Cr=15
-	msr	hstr_el2, x2
-//
-// now should activate vttbr
-	
-	ret
+	// Host context
+	ldr	x2, [x0, #VCPU_HOST_CONTEXT]
+	kern_hyp_va x2
+
+	save_host_regs
+	bl __save_sysregs
+
+	compute_debug_state 1f
+	add	x3, x0, #VCPU_HOST_DEBUG_STATE
+	bl	__save_debug
+1:
+	activate_traps
+	activate_vm
+
+	restore_vgic_state
+	restore_timer_state
+
+	// Guest context
+	add	x2, x0, #VCPU_CONTEXT
+
+	// We must restore the 32-bit state before the sysregs, thanks
+	// to Cortex-A57 erratum #852523.
+	restore_guest_32bit_state
+	bl __restore_sysregs
+
+	skip_debug_state x3, 1f
+	ldr	x3, [x0, #VCPU_DEBUG_PTR]
+	kern_hyp_va x3
+	bl	__restore_debug
+1:
+	restore_guest_regs
+
+	// That's it, no more messing around.
+	eret
 ENDPROC(__kvm_test_active_vm)
 
 	.popsection

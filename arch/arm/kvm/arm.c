@@ -518,6 +518,26 @@ static int kvm_vcpu_initialized(struct kvm_vcpu *vcpu)
 	return vcpu->arch.target >= 0;
 }
 
+int truly_arch_vcpu_ioctl(struct kvm_vcpu* vcpu)
+{
+	int __kvm_test_active_vm(void);
+	int ret;
+
+	printk("truly kvm :%s %d\n",__func__,__LINE__);
+	update_vttbr(vcpu->kvm);
+
+	preempt_disable();
+	kvm_timer_flush_hwstate(vcpu);
+	kvm_vgic_flush_hwstate(vcpu);
+
+	local_irq_disable();
+	printk("truly kvm :%s %d\n",__func__,__LINE__);
+	ret = kvm_call_hyp( __kvm_test_active_vm , vcpu);
+	printk("truly kvm :%s %d\n",__func__,__LINE__);
+	local_irq_enable();
+	return ret;
+}
+
 /**
  * kvm_arch_vcpu_ioctl_run - the main VCPU run function to execute guest code
  * @vcpu:	The VCPU pointer
