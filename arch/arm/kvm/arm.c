@@ -532,9 +532,11 @@ int truly_arch_vcpu_ioctl(struct kvm_vcpu* vcpu)
 
 	local_irq_disable();
 	printk("truly kvm :%s %d\n",__func__,__LINE__);
-	ret = kvm_call_hyp( __kvm_test_active_vm , vcpu);
+//	ret = kvm_call_hyp( __kvm_test_active_vm , vcpu);
+	ret = kvm_call_hyp(__kvm_vcpu_run, vcpu);
 	printk("truly kvm :%s %d\n",__func__,__LINE__);
 	local_irq_enable();
+	preempt_enable();
 	return ret;
 }
 
@@ -554,13 +556,16 @@ int kvm_arch_vcpu_ioctl_run(struct kvm_vcpu *vcpu, struct kvm_run *run)
 	int ret;
 	sigset_t sigsaved;
 
+	printk("kvm :%s %d\n",__func__,__LINE__);
 	if (unlikely(!kvm_vcpu_initialized(vcpu)))
 		return -ENOEXEC;
-
+		
+	printk("kvm :%s %d\n",__func__,__LINE__);
 	ret = kvm_vcpu_first_run_init(vcpu);
 	if (ret)
 		return ret;
 
+	printk("kvm :%s %d\n",__func__,__LINE__);
 	if (run->exit_reason == KVM_EXIT_MMIO) {
 		ret = kvm_handle_mmio_return(vcpu, vcpu->run);
 		if (ret)
@@ -604,6 +609,8 @@ int kvm_arch_vcpu_ioctl_run(struct kvm_vcpu *vcpu, struct kvm_run *run)
 
 		if (ret <= 0 || need_new_vmid_gen(vcpu->kvm) ||
 			vcpu->arch.power_off || vcpu->arch.pause) {
+			
+			printk("kvm :%s %d\n",__func__,__LINE__);
 			local_irq_enable();
 			kvm_timer_sync_hwstate(vcpu);
 			kvm_vgic_sync_hwstate(vcpu);
@@ -619,6 +626,7 @@ int kvm_arch_vcpu_ioctl_run(struct kvm_vcpu *vcpu, struct kvm_run *run)
 		trace_kvm_entry(*vcpu_pc(vcpu));
 		__kvm_guest_enter();
 		vcpu->mode = IN_GUEST_MODE;
+		printk("kvm :%s %d\n",__func__,__LINE__);
 		ret = kvm_call_hyp(__kvm_vcpu_run, vcpu);
 		vcpu->mode = OUTSIDE_GUEST_MODE;
 		/*
@@ -840,6 +848,7 @@ long kvm_arch_vcpu_ioctl(struct file *filp,
 	void __user *argp = (void __user *)arg;
 
 	switch (ioctl) {
+
 	case KVM_ARM_VCPU_INIT: {
 		struct kvm_vcpu_init init;
 
