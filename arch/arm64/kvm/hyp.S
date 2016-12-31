@@ -1154,7 +1154,7 @@ ENTRY( __kvm_test_active_vm)
 #	bl	__save_debug
 #1:
 #	activate_traps
-#	activate_vm
+	activate_vm
 
 //	restore_vgic_state
 //	restore_timer_state
