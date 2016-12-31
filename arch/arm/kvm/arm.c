@@ -396,9 +396,11 @@ static void update_vttbr(struct kvm *kvm)
 	phys_addr_t pgd_phys;
 	u64 vmid;
 
+	printk("%s %d\n",__func__,__LINE__);
 	if (!need_new_vmid_gen(kvm))
 		return;
 
+	printk("%s %d\n",__func__,__LINE__);
 	spin_lock(&kvm_vmid_lock);
 
 	/*
@@ -411,6 +413,7 @@ static void update_vttbr(struct kvm *kvm)
 		return;
 	}
 
+	printk("%s %d\n",__func__,__LINE__);
 	/* First user of a new VMID generation? */
 	if (unlikely(kvm_next_vmid == 0)) {
 		atomic64_inc(&kvm_vmid_gen);
@@ -427,8 +430,10 @@ static void update_vttbr(struct kvm *kvm)
 		 * shareable domain to make sure all data structures are
 		 * clean.
 		 */
+		printk("%s %d\n",__func__,__LINE__);
 		kvm_call_hyp(__kvm_flush_vm_context);
 	}
+	printk("%s %d\n",__func__,__LINE__);
 
 	kvm->arch.vmid_gen = atomic64_read(&kvm_vmid_gen);
 	kvm->arch.vmid = kvm_next_vmid;
@@ -436,6 +441,7 @@ static void update_vttbr(struct kvm *kvm)
 
 	/* update vttbr to be used with the new vmid */
 	pgd_phys = virt_to_phys(kvm_get_hwpgd(kvm));
+	printk("%s %d %p\n",__func__,__LINE__, kvm_get_hwpgd(kvm));
 	BUG_ON(pgd_phys & ~VTTBR_BADDR_MASK);
 	vmid = ((u64)(kvm->arch.vmid) << VTTBR_VMID_SHIFT) & VTTBR_VMID_MASK;
 	kvm->arch.vttbr = pgd_phys | vmid;
@@ -523,7 +529,8 @@ int truly_arch_vcpu_ioctl(struct kvm_vcpu* vcpu)
 	int __kvm_test_active_vm(void);
 	int ret;
 
-	printk("truly kvm :%s %d\n",__func__,__LINE__);
+	vcpu->kvm->arch.vmid = 23;
+
 	update_vttbr(vcpu->kvm);
 
 	preempt_disable();
@@ -532,8 +539,8 @@ int truly_arch_vcpu_ioctl(struct kvm_vcpu* vcpu)
 
 	local_irq_disable();
 	printk("truly kvm :%s %d\n",__func__,__LINE__);
-//	ret = kvm_call_hyp( __kvm_test_active_vm , vcpu);
-	ret = kvm_call_hyp(__kvm_vcpu_run, vcpu);
+	ret = kvm_call_hyp( __kvm_test_active_vm , vcpu);
+//	ret = kvm_call_hyp(__kvm_vcpu_run, vcpu);
 	printk("truly kvm :%s %d\n",__func__,__LINE__);
 	local_irq_enable();
 	preempt_enable();
@@ -556,16 +563,13 @@ int kvm_arch_vcpu_ioctl_run(struct kvm_vcpu *vcpu, struct kvm_run *run)
 	int ret;
 	sigset_t sigsaved;
 
-	printk("kvm :%s %d\n",__func__,__LINE__);
 	if (unlikely(!kvm_vcpu_initialized(vcpu)))
 		return -ENOEXEC;
 		
-	printk("kvm :%s %d\n",__func__,__LINE__);
 	ret = kvm_vcpu_first_run_init(vcpu);
 	if (ret)
 		return ret;
 
-	printk("kvm :%s %d\n",__func__,__LINE__);
 	if (run->exit_reason == KVM_EXIT_MMIO) {
 		ret = kvm_handle_mmio_return(vcpu, vcpu->run);
 		if (ret)
@@ -626,7 +630,6 @@ int kvm_arch_vcpu_ioctl_run(struct kvm_vcpu *vcpu, struct kvm_run *run)
 		trace_kvm_entry(*vcpu_pc(vcpu));
 		__kvm_guest_enter();
 		vcpu->mode = IN_GUEST_MODE;
-		printk("kvm :%s %d\n",__func__,__LINE__);
 		ret = kvm_call_hyp(__kvm_vcpu_run, vcpu);
 		vcpu->mode = OUTSIDE_GUEST_MODE;
 		/*

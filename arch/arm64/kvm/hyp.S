@@ -1104,7 +1104,7 @@ el1_irq_raz:
 	
 #	pop	lr, xzr
 #	mov x0,#444
-	ret
+	b __kvm_vcpu_return_raz
 	.ltorg
 
 	.align 11
@@ -1121,7 +1121,7 @@ ENTRY(__kvm_hyp_vector)
 	ventry	el2h_error_invalid		// Error EL2h
 
 	ventry	el1_sync			// Synchronous 64-bit EL1
-	ventry	el1_irq_raz			// IRQ 64-bit EL1
+	ventry	el1_irq_raz				// IRQ 64-bit EL1
 	ventry	el1_fiq_invalid			// FIQ 64-bit EL1
 	ventry	el1_error_invalid		// Error 64-bit EL1
 
@@ -1146,36 +1146,83 @@ ENTRY( __kvm_test_active_vm)
 	ldr	x2, [x0, #VCPU_HOST_CONTEXT]
 	kern_hyp_va x2
 
-	save_host_regs
-	bl __save_sysregs
+#	save_host_regs
+#	bl __save_sysregs
 
-	compute_debug_state 1f
-	add	x3, x0, #VCPU_HOST_DEBUG_STATE
-	bl	__save_debug
-1:
-	activate_traps
-	activate_vm
+#	compute_debug_state 1f
+#	add	x3, x0, #VCPU_HOST_DEBUG_STATE
+#	bl	__save_debug
+#1:
+#	activate_traps
+#	activate_vm
 
-	restore_vgic_state
-	restore_timer_state
+//	restore_vgic_state
+//	restore_timer_state
 
-	// Guest context
-	add	x2, x0, #VCPU_CONTEXT
+//	 Guest context
+//	add	x2, x0, #VCPU_CONTEXT
 
 	// We must restore the 32-bit state before the sysregs, thanks
 	// to Cortex-A57 erratum #852523.
-	restore_guest_32bit_state
-	bl __restore_sysregs
+//	restore_guest_32bit_state
+//	bl __restore_sysregs
 
-	skip_debug_state x3, 1f
-	ldr	x3, [x0, #VCPU_DEBUG_PTR]
-	kern_hyp_va x3
-	bl	__restore_debug
-1:
-	restore_guest_regs
+//	skip_debug_state x3, 1f
+//	ldr	x3, [x0, #VCPU_DEBUG_PTR]
+//	kern_hyp_va x3
+//	bl	__restore_debug
+#1:
+//	restore_guest_regs
 
 	// That's it, no more messing around.
-	eret
+	ret
+#	eret
+
+__kvm_vcpu_return_raz:
+	// Assume x0 is the vcpu pointer, x1 the return code
+	// Guest's x0-x3 are on the stack
+
+	// Guest context
+#	add	x2, x0, #VCPU_CONTEXT
+
+#	save_guest_regs
+#	bl __save_fpsimd
+#	bl __save_sysregs
+
+#	skip_debug_state x3, 1f
+#	ldr	x3, [x0, #VCPU_DEBUG_PTR]
+#	kern_hyp_va x3
+#	bl	__save_debug
+#1:
+#	save_guest_32bit_state
+
+#	save_timer_state
+#	save_vgic_state
+
+#	deactivate_traps
+#	deactivate_vm
+
+	// Host context
+#	ldr	x2, [x0, #VCPU_HOST_CONTEXT]
+#	kern_hyp_va x2
+
+#	bl __restore_sysregs
+#	bl __restore_fpsimd
+	/* Clear FPSIMD and Trace trapping */
+#	msr     cptr_el2, xzr
+
+#	skip_debug_state x3, 1f
+	// Clear the dirty flag for the next run, as all the state has
+	// already been saved. Note that we nuke the whole 64bit word.
+	// If we ever add more flags, we'll have to be more careful...
+#	str	xzr, [x0, #VCPU_DEBUG_FLAGS]
+#	add	x3, x0, #VCPU_HOST_DEBUG_STATE
+#	bl	__restore_debug
+#1:
+#	restore_host_regs
+
+#	mov	x0, x1
+	ret
 ENDPROC(__kvm_test_active_vm)
 
 	.popsection
