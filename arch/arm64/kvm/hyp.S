@@ -1154,6 +1154,17 @@ ENTRY( __kvm_test_active_vm)
 #	bl	__save_debug
 #1:
 #	activate_traps
+##################################
+	ldr     x2, [x0, #VCPU_HCR_EL2]
+
+	msr     hcr_el2, x2
+#	mov	x2, #CPTR_EL2_TTA
+#	orr     x2, x2, #CPTR_EL2_TFP
+#	msr	cptr_el2, x2
+
+#	mov	x2, #(1 << 15)	// Trap CP15 Cr=15
+#	msr	hstr_el2, x2
+
 	activate_vm
 
 //	restore_vgic_state
