@@ -539,6 +539,8 @@ int truly_arch_vcpu_ioctl(struct kvm_vcpu* vcpu)
 
 	local_irq_disable();
 	printk("truly kvm :%s %d\n",__func__,__LINE__);
+	printk("truly kvm :%s hcr_el2=0x%llx\n",
+		__func__,vcpu->arch.hcr_el2);
 	ret = kvm_call_hyp( __kvm_test_active_vm , vcpu);
 //	ret = kvm_call_hyp(__kvm_vcpu_run, vcpu);
 	printk("truly kvm :%s %d\n",__func__,__LINE__);

@@ -1165,7 +1165,7 @@ ENTRY( __kvm_test_active_vm)
 #	mov	x2, #(1 << 15)	// Trap CP15 Cr=15
 #	msr	hstr_el2, x2
 
-	activate_vm
+//	activate_vm
 
 //	restore_vgic_state
 //	restore_timer_state
