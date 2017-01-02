@@ -527,6 +527,7 @@ static int kvm_vcpu_initialized(struct kvm_vcpu *vcpu)
 int truly_arch_vcpu_ioctl(struct kvm_vcpu* vcpu)
 {
 	int __kvm_test_active_vm(void);
+	int __kvm_get_hcr_el2(void);
 	int ret;
 
 	vcpu->kvm->arch.vmid = 23;
@@ -536,17 +537,19 @@ int truly_arch_vcpu_ioctl(struct kvm_vcpu* vcpu)
 	preempt_disable();
 	kvm_timer_flush_hwstate(vcpu);
 	kvm_vgic_flush_hwstate(vcpu);
-
+// raz
 	local_irq_disable();
 	printk("truly kvm :%s %d\n",__func__,__LINE__);
 	printk("truly kvm :%s hcr_el2=0x%llx\n",
 		__func__,vcpu->arch.hcr_el2);
 	vcpu->arch.hcr_el2 = HCR_GUEST_FLAGS ;
 	ret = kvm_call_hyp( __kvm_test_active_vm , vcpu);
-//	ret = kvm_call_hyp(__kvm_vcpu_run, vcpu);
-	printk("truly kvm :%s %d\n",__func__,__LINE__);
 	local_irq_enable();
 	preempt_enable();
+
+	ret = kvm_call_hyp( __kvm_get_hcr_el2 , vcpu);
+	printk("truly kvm :%s hcr_el2=0x%lx ret=0x%lx\n",
+		__func__, (long)HCR_GUEST_FLAGS  ,(long)ret);
 	return ret;
 }
 

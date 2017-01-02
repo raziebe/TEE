@@ -1131,6 +1131,11 @@ ENTRY(__kvm_hyp_vector)
 	ventry	el1_error_invalid		// Error 32-bit EL1
 ENDPROC(__kvm_hyp_vector)
 
+ENTRY(__kvm_get_hcr_el2)
+	mrs	x0, hcr_el2
+	ret
+ENDPROC(__kvm_get_hcr_el2)
+
 ENTRY(__kvm_get_mdcr_el2)
 	mrs	x0, mdcr_el2
 	ret
