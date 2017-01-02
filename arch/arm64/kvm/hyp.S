@@ -1146,8 +1146,8 @@ ENTRY( __kvm_test_active_vm)
 	ldr	x2, [x0, #VCPU_HOST_CONTEXT]
 	kern_hyp_va x2
 
-#	save_host_regs
-#	bl __save_sysregs
+	save_host_regs
+	bl __save_sysregs
 
 #	compute_debug_state 1f
 #	add	x3, x0, #VCPU_HOST_DEBUG_STATE
