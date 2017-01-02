@@ -546,7 +546,7 @@ int truly_arch_vcpu_ioctl(struct kvm_vcpu* vcpu)
 	preempt_enable();
 
 	ret = kvm_call_hyp( __kvm_get_hcr_el2 , vcpu);
-	printk("truly kvm : count=%d\n",vcpu->debug_counter  );
+	printk("truly kvm : hcr_el2=%x count=%x\n",(int)HCR_GUEST_FLAGS, vcpu->debug_counter  );
 	return ret;
 }
 

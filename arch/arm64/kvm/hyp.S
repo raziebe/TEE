@@ -1131,6 +1131,12 @@ ENTRY(__kvm_hyp_vector)
 	ventry	el1_error_invalid		// Error 32-bit EL1
 ENDPROC(__kvm_hyp_vector)
 
+.macro truly_debug_hcr_el2
+       mrs     x29, tpidr_el2
+       mrs     x28,hcr_el2
+       str     x28, [x29, #VCPU_DBG_CNT_CPU]
+.endm
+
 .macro truly_debug
        mrs     x29, tpidr_el2
        ldr     x28, [x29, #VCPU_DBG_CNT_CPU]
@@ -1188,7 +1194,7 @@ ENTRY( __kvm_test_active_vm)
 #1:
 //	restore_guest_regs
 	push x28,x29
-	truly_debug
+	truly_debug_hcr_el2
 	pop  x28,x29
 	// That's it, no more messing around.
 	eret
