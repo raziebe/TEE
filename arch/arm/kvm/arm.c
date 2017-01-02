@@ -539,17 +539,14 @@ int truly_arch_vcpu_ioctl(struct kvm_vcpu* vcpu)
 	kvm_vgic_flush_hwstate(vcpu);
 // raz
 	local_irq_disable();
-	printk("truly kvm :%s %d\n",__func__,__LINE__);
-	printk("truly kvm :%s hcr_el2=0x%llx\n",
-		__func__,vcpu->arch.hcr_el2);
 	vcpu->arch.hcr_el2 = HCR_GUEST_FLAGS ;
+	vcpu->debug_counter = 776;
 	ret = kvm_call_hyp( __kvm_test_active_vm , vcpu);
 	local_irq_enable();
 	preempt_enable();
 
 	ret = kvm_call_hyp( __kvm_get_hcr_el2 , vcpu);
-	printk("truly kvm :%s hcr_el2=0x%lx ret=0x%lx\n",
-		__func__, (long)HCR_GUEST_FLAGS  ,(long)ret);
+	printk("truly kvm : count=%d\n",vcpu->debug_counter  );
 	return ret;
 }
 

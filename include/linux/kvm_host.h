@@ -284,7 +284,7 @@ struct kvm_vcpu {
 	struct kvm_vcpu_arch arch;
 
 	/* deuug counter */
-	void (*debug_counter)(void);
+	int debug_counter;
 };
 
 static inline int kvm_vcpu_exiting_guest_mode(struct kvm_vcpu *vcpu)

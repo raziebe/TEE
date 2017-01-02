@@ -21,8 +21,6 @@
 #define ARM64_HYP_OFFSET_LOW                    14
 #define ARM64_MISMATCHED_CACHE_LINE_SIZE        15
 
-
-
 #define HYP_PAGE_OFFSET_HIGH_MASK       ((UL(1) << VA_BITS) - 1)
 #define HYP_PAGE_OFFSET_LOW_MASK        ((UL(1) << (VA_BITS - 1)) - 1)
 #define __hyp_text __section(.hyp.text) notrace
@@ -46,29 +44,12 @@ static inline unsigned long __kern_hyp_va(unsigned long v)
 
 asm(	".align 11;\n");
 
-int __hyp_text foo2(void)
+
+int __hyp_text truly_enter(struct kvm_vcpu* vcpu) 
 {
-	return 0x222;
+	//vcpu->debug_count++;  
+	return 9999;
 }
 
-int  __hyp_text foo3(int _x)
-{
-	if ( _x < 3)
-		return 0x333;
-	return 0x444;
-}
-
-int __hyp_text foo1(int _x)
-{
-	if (_x == 1)
-		return kern_hyp_va(foo2());
-	return kern_hyp_va(foo3(_x));
-}
-
-int __hyp_text truly_enter(int _x) 
-{
-	return  kern_hyp_va(foo1(_x));
-
-}
 int __kvm_test_active_vm(void);
 EXPORT_SYMBOL_GPL(__kvm_test_active_vm);
