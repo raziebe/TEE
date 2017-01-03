@@ -52,4 +52,6 @@ int __hyp_text truly_enter(struct kvm_vcpu* vcpu)
 }
 
 int __kvm_test_active_vm(void);
+int __raz_get_counter(void);
+EXPORT_SYMBOL_GPL(__raz_get_counter);
 EXPORT_SYMBOL_GPL(__kvm_test_active_vm);

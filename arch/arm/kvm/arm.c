@@ -524,14 +524,18 @@ static int kvm_vcpu_initialized(struct kvm_vcpu *vcpu)
 	return vcpu->arch.target >= 0;
 }
 
+EXPORT_SYMBOL_GPL(__kvm_get_mdcr_el2);
+
 int truly_arch_vcpu_ioctl(struct kvm_vcpu* vcpu)
 {
 	int __kvm_test_active_vm(void);
 	int __kvm_get_hcr_el2(void);
 	int ret;
 
-	vcpu->kvm->arch.vmid = 23;
+	ret = kvm_call_hyp(  __kvm_get_mdcr_el2 , vcpu);
+	printk("truly: mdcr %d\n",ret);	
 
+	vcpu->kvm->arch.vmid = 0;
 	update_vttbr(vcpu->kvm);
 
 	preempt_disable();
@@ -540,13 +544,14 @@ int truly_arch_vcpu_ioctl(struct kvm_vcpu* vcpu)
 // raz
 	local_irq_disable();
 	vcpu->arch.hcr_el2 = HCR_GUEST_FLAGS ;
-	vcpu->debug_counter = 776;
+
 	ret = kvm_call_hyp( __kvm_test_active_vm , vcpu);
 	local_irq_enable();
 	preempt_enable();
 
 	ret = kvm_call_hyp( __kvm_get_hcr_el2 , vcpu);
-	printk("truly kvm : hcr_el2=%x count=%x\n",(int)HCR_GUEST_FLAGS, vcpu->debug_counter  );
+	
+	printk("truly kvm : debug count=%d in Exiting\n", vcpu->debug_counter  );
 	return ret;
 }
 

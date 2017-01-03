@@ -63,11 +63,13 @@ static bool memslot_is_logging(struct kvm_memory_slot *memslot)
  */
 void kvm_flush_remote_tlbs(struct kvm *kvm)
 {
+	printk("RAZ %s\n",__func__);
 	kvm_call_hyp(__kvm_tlb_flush_vmid, kvm);
 }
 
 static void kvm_tlb_flush_vmid_ipa(struct kvm *kvm, phys_addr_t ipa)
 {
+	printk("RAZ %s\n",__func__);
 	/*
 	 * This function also gets called when dealing with HYP page
 	 * tables. As HYP doesn't have an associated struct kvm (and

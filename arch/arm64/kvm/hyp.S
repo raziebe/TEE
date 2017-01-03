@@ -39,6 +39,14 @@
 	.pushsection	.hyp.text, "ax"
 	.align	PAGE_SHIFT
 
+
+.macro truly_debug
+       mrs     x29, tpidr_el2
+       ldr     x28, [x29, #VCPU_DBG_CNT_CPU]
+       add     x28, x28, #1
+       str     x28, [x29, #VCPU_DBG_CNT_CPU]
+.endm
+
 .macro save_common_regs
 	// x2: base address for cpu context
 	// x3: tmp register
@@ -945,6 +953,24 @@ ENTRY(kvm_call_hyp)
 	ret
 ENDPROC(kvm_call_hyp)
 
+.macro __kvm_raz_debug
+
+	push	x0, x1
+	push	x2, x3
+
+        ldr     x3,__intr_cnt
+        mov     x2, #0xFFFFFFC000000000         
+        sub     x3, x3, x2      // strip real address
+        ldr     x0,[x3]
+        mov     x1,#1
+        add     x0,x0,x1
+        str     x0,[x3]
+
+	pop	x2, x3
+	pop	x0, x1
+.endm
+
+
 .macro invalid_vector	label, target
 	.align	2
 \label:
@@ -973,11 +999,11 @@ el1_sync:					// Guest trapped into EL2
 	mrs	x1, esr_el2
 	lsr	x2, x1, #ESR_ELx_EC_SHIFT
 
-	cmp	x2, #ESR_ELx_EC_HVC64
-	b.ne	el1_trap
+	cmp	x2, #ESR_ELx_EC_HVC64		// 10110 --> after defining a vm someone calls el1_sync
+	b.ne	el1_trap_1
 
 	mrs	x3, vttbr_el2			// If vttbr is valid, the 64bit guest
-	cbnz	x3, el1_trap			// called HVC
+	cbnz	x3, el1_trap			// called HVC, --> does not happen
 
 	/* Here, we're pretty sure the host called HVC. */
 	pop	x2, x3
@@ -1002,6 +1028,9 @@ el1_sync:					// Guest trapped into EL2
 
 	pop	lr, xzr
 2:	eret
+
+el1_trap_1:
+	__kvm_raz_debug
 
 el1_trap:
 	/*
@@ -1089,24 +1118,6 @@ el1_irq:
 
 	.ltorg
 
-el1_irq_raz:
-#	push	x0, x1
-#	push	x2, x3
-#	mrs	x0, tpidr_el2
-#	mov	x1, #ARM_EXCEPTION_IRQ
-#	push	lr, xzr
-	/*
-	 * Compute the function address in EL2, and shuffle the parameters.
-	 */
-#	kern_hyp_va	x0
-#	mov	lr, x0
-#	blr	lr
-	
-#	pop	lr, xzr
-#	mov x0,#444
-	b __kvm_vcpu_return_raz
-	.ltorg
-
 	.align 11
 
 ENTRY(__kvm_hyp_vector)
@@ -1121,34 +1132,33 @@ ENTRY(__kvm_hyp_vector)
 	ventry	el2h_error_invalid		// Error EL2h
 
 	ventry	el1_sync			// Synchronous 64-bit EL1
-	ventry	el1_irq_raz				// IRQ 64-bit EL1
+	ventry	el1_irq				// IRQ 64-bit EL1
 	ventry	el1_fiq_invalid			// FIQ 64-bit EL1
 	ventry	el1_error_invalid		// Error 64-bit EL1
 
 	ventry	el1_sync			// Synchronous 32-bit EL1
-	ventry	el1_irq_raz				// IRQ 32-bit EL1
+	ventry	el1_irq				// IRQ 32-bit EL1
 	ventry	el1_fiq_invalid			// FIQ 32-bit EL1
 	ventry	el1_error_invalid		// Error 32-bit EL1
 ENDPROC(__kvm_hyp_vector)
 
-.macro truly_debug_hcr_el2
-       mrs     x29, tpidr_el2
-       mrs     x28,hcr_el2
-       str     x28, [x29, #VCPU_DBG_CNT_CPU]
-.endm
 
-.macro truly_debug
-       mrs     x29, tpidr_el2
-       ldr     x28, [x29, #VCPU_DBG_CNT_CPU]
-       add     x28, x28, #1
-       str     x28, [x29, #VCPU_DBG_CNT_CPU]
-.endm
-
+ENTRY(__raz_get_counter)
+        ldr     x3,__intr_cnt
+        mov     x2, #0xFFFFFFC000000000         
+        sub     x3, x3, x2      // strip real address
+        ldr     x0,[x3]
+ENDPROC(__raz_get_counter)
 
 ENTRY(__kvm_get_hcr_el2)
 	mrs	x0, hcr_el2
 	ret
 ENDPROC(__kvm_get_hcr_el2)
+
+ENTRY(__kvm_set_mdcr_el2)
+	mrs	x0, mdcr_el2
+	ret
+ENDPROC(__kvm_set_mdcr_el2)
 
 ENTRY(__kvm_get_mdcr_el2)
 	mrs	x0, mdcr_el2
@@ -1193,9 +1203,6 @@ ENTRY( __kvm_test_active_vm)
 //	bl	__restore_debug
 #1:
 //	restore_guest_regs
-	push x28,x29
-	truly_debug_hcr_el2
-	pop  x28,x29
 	// That's it, no more messing around.
 	eret
 
@@ -1245,5 +1252,18 @@ __kvm_vcpu_return_raz:
 #	mov	x0, x1
 	ret
 ENDPROC(__kvm_test_active_vm)
+
+/*
+ * Globals must be down here. the vector must be aligned
+*/
+__intr_cnt: .dword intr_cnt
+
+
+.data
+.balign 4
+
+.global intr_cnt
+intr_cnt:
+        .dword 1
 
 	.popsection
