@@ -1142,12 +1142,10 @@ ENTRY(__kvm_hyp_vector)
 	ventry	el1_error_invalid		// Error 32-bit EL1
 ENDPROC(__kvm_hyp_vector)
 
-
 ENTRY(__raz_get_counter)
         ldr     x3,__intr_cnt
-        mov     x2, #0xFFFFFFC000000000         
-        sub     x3, x3, x2      // strip real address
-        ldr     x0,[x3]
+        kern_hyp_va x3
+	ldr	x0,[x3]
 ENDPROC(__raz_get_counter)
 
 ENTRY(__kvm_get_hcr_el2)
@@ -1156,7 +1154,7 @@ ENTRY(__kvm_get_hcr_el2)
 ENDPROC(__kvm_get_hcr_el2)
 
 ENTRY(__kvm_set_mdcr_el2)
-	mrs	x0, mdcr_el2
+	msr	mdcr_el2,x0
 	ret
 ENDPROC(__kvm_set_mdcr_el2)
 
