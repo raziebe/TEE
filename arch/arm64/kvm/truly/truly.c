@@ -51,13 +51,12 @@ int __hyp_text truly_test(struct kvm_vcpu* vcpu)
 	return 9999;
 }
 
-int __kvm_set_mdcr_el2(int mask);
 int __kvm_test_active_vm(void);
-int __raz_get_counter(void);
-
-EXPORT_SYMBOL_GPL(__raz_get_counter);
 EXPORT_SYMBOL_GPL(__kvm_test_active_vm);
-EXPORT_SYMBOL_GPL(__kvm_set_mdcr_el2);
+
+// debug
+int truly_set_mdcr_el2(int mask);
+EXPORT_SYMBOL_GPL(truly_set_mdcr_el2);
 
 int truly_set_vectors(void)
 {
@@ -67,4 +66,3 @@ int truly_set_vectors(void)
 }
 
 EXPORT_SYMBOL_GPL(truly_set_vectors);
-
