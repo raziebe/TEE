@@ -58,11 +58,12 @@ EXPORT_SYMBOL_GPL(__kvm_test_active_vm);
 int truly_set_mdcr_el2(int mask);
 EXPORT_SYMBOL_GPL(truly_set_mdcr_el2);
 
-int truly_set_vectors(void)
+int truly_set_vectors(unsigned long vecs)
 {
-	extern void* __truly_vectors;
-	extern void* truly_set_vbar;
-	return kvm_call_hyp(truly_set_vbar, __truly_vectors);
+	unsigned long kvm_set_vbar(unsigned long);
+	return kvm_call_hyp(kvm_set_vbar, vecs);
 }
 
+extern void *__truly_vectors;
+EXPORT_SYMBOL_GPL(__truly_vectors);
 EXPORT_SYMBOL_GPL(truly_set_vectors);

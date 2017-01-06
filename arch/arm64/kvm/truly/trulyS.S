@@ -12,6 +12,8 @@
 .text
 .pushsection	.hyp.text, "ax" // borrow  hyp.text
 
+.align 11
+
 
 EL1_sync:
 	push	x0, x1
@@ -65,8 +67,6 @@ EL1_irq:
 ENDPROC(EL1_irq)
 
 
-.align 11
-
 .macro invalid_vector   label
 \label:
         b \label
@@ -81,7 +81,7 @@ ENDPROC(\label)
         invalid_vector  EL1_irq_invalid
         invalid_vector  EL1_fiq_invalid
         invalid_vector  EL1_error_invalid
-.align 11
+
 
 ENTRY(__truly_vectors)
         ventry  EL2_sync_invalid                        // raz test
@@ -122,6 +122,7 @@ ENDPROC(truly_set_mdcr_el2)
 ENTRY(truly_set_vbar)
        msr	vbar_el2, x0
        mov	x0,#432	// be sure
+       ret
 ENDPROC(truly_set_vbar)
 
 

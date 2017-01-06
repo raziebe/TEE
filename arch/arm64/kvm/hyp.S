@@ -1147,6 +1147,12 @@ ENTRY(__kvm_get_mdcr_el2)
 	ret
 ENDPROC(__kvm_get_mdcr_el2)
 
+ENTRY(kvm_set_vbar)
+       msr	vbar_el2, x0
+       mov	x0,#432	// be sure
+       ret
+ENDPROC(kvm_set_vbar)
+
 // just try to acticate the vm
 ENTRY( __kvm_test_active_vm)
 	
