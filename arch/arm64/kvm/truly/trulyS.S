@@ -10,9 +10,31 @@
 #include <asm/kvm_mmu.h>
 
 .text
-.pushsection	.hyp.text, "ax" // borrow  hyp.text
+.pushsection	.truly.text, "ax" // borrow  hyp.text
 
 .align 11
+ENTRY(__truly_vectors)
+        ventry  EL2_sync_invalid                        // raz test
+        ventry  EL2_irq_invalid                 // IRQ EL2t
+        ventry  EL2_fiq_invalid                 // FIQ EL2t
+        ventry  EL2_error_invalid               // Error EL2t
+
+        ventry  EL2_sync_invalid                // Synchronous EL2h
+        ventry  EL2_irq_invalid                 // IRQ EL2h
+        ventry  EL2_fiq_invalid                 // FIQ EL2h
+        ventry  EL2_error_invalid               // Error EL2h
+
+        ventry  EL1_sync                        // Synchronous 64-bit EL1
+
+        ventry  EL1_irq                       // IRQ 64-bit EL1
+        ventry  EL1_fiq_invalid                 // FIQ 64-bit EL1
+        ventry  EL1_error_invalid               // Error 64-bit EL1
+
+        ventry  EL1_irq                // Synchronous 32-bit EL1
+        ventry  EL1_irq_invalid                 // IRQ 32-bit EL1
+        ventry  EL1_fiq_invalid                 // FIQ 32-bit EL1
+        ventry  EL1_error_invalid               // Error 32-bit EL1
+ENDPROC(__truly_vectors)
 
 
 EL1_sync:
@@ -81,30 +103,6 @@ ENDPROC(\label)
         invalid_vector  EL1_irq_invalid
         invalid_vector  EL1_fiq_invalid
         invalid_vector  EL1_error_invalid
-
-
-ENTRY(__truly_vectors)
-        ventry  EL2_sync_invalid                        // raz test
-        ventry  EL2_irq_invalid                 // IRQ EL2t
-        ventry  EL2_fiq_invalid                 // FIQ EL2t
-        ventry  EL2_error_invalid               // Error EL2t
-
-        ventry  EL2_sync_invalid                // Synchronous EL2h
-        ventry  EL2_irq_invalid                 // IRQ EL2h
-        ventry  EL2_fiq_invalid                 // FIQ EL2h
-        ventry  EL2_error_invalid               // Error EL2h
-
-        ventry  EL1_sync                        // Synchronous 64-bit EL1
-
-        ventry  EL1_irq                       // IRQ 64-bit EL1
-        ventry  EL1_fiq_invalid                 // FIQ 64-bit EL1
-        ventry  EL1_error_invalid               // Error 64-bit EL1
-
-        ventry  EL1_irq                // Synchronous 32-bit EL1
-        ventry  EL1_irq_invalid                 // IRQ 32-bit EL1
-        ventry  EL1_fiq_invalid                 // FIQ 32-bit EL1
-        ventry  EL1_error_invalid               // Error 32-bit EL1
-ENDPROC(__truly_vectors)
 
 ENTRY(truly_get_hcr_el2)
 	mrs	x0, hcr_el2
