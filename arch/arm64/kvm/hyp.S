@@ -1030,7 +1030,7 @@ el1_sync:					// Guest trapped into EL2
 2:	eret
 
 el1_trap_1:
-	__kvm_raz_debug
+//	__kvm_raz_debug
 
 el1_trap:
 	/*

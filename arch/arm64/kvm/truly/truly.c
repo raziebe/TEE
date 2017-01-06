@@ -54,7 +54,17 @@ int __hyp_text truly_enter(struct kvm_vcpu* vcpu)
 int __kvm_set_mdcr_el2(int mask);
 int __kvm_test_active_vm(void);
 int __raz_get_counter(void);
+
 EXPORT_SYMBOL_GPL(__raz_get_counter);
 EXPORT_SYMBOL_GPL(__kvm_test_active_vm);
 EXPORT_SYMBOL_GPL(__kvm_set_mdcr_el2);
+
+int truly_set_vectors(void)
+{
+	extern void* __truly_vectors;
+	extern void* truly_set_vbar;
+	return kvm_call_hyp(truly_set_vbar, __truly_vectors);
+}
+
+EXPORT_SYMBOL_GPL(truly_set_vectors);
 
