@@ -12,28 +12,6 @@
 .text
 .pushsection	.hyp.text, "ax" // borrow  hyp.text
 
-ENTRY(__truly_vectors)
-        ventry  EL2_sync_invalid                        // raz test
-        ventry  EL2_irq_invalid                 // IRQ EL2t
-        ventry  EL2_fiq_invalid                 // FIQ EL2t
-        ventry  EL2_error_invalid               // Error EL2t
-
-        ventry  EL2_sync_invalid                // Synchronous EL2h
-        ventry  EL2_irq_invalid                 // IRQ EL2h
-        ventry  EL2_fiq_invalid                 // FIQ EL2h
-        ventry  EL2_error_invalid               // Error EL2h
-
-        ventry  EL1_sync                        // Synchronous 64-bit EL1
-
-        ventry  EL1_irq                       // IRQ 64-bit EL1
-        ventry  EL1_fiq_invalid                 // FIQ 64-bit EL1
-        ventry  EL1_error_invalid               // Error 64-bit EL1
-
-        ventry  EL1_irq                // Synchronous 32-bit EL1
-        ventry  EL1_irq_invalid                 // IRQ 32-bit EL1
-        ventry  EL1_fiq_invalid                 // FIQ 32-bit EL1
-        ventry  EL1_error_invalid               // Error 32-bit EL1
-ENDPROC(__truly_vectors)
 
 EL1_sync:
 	push	x0, x1
@@ -43,7 +21,7 @@ EL1_sync:
 	lsr	x2, x1, #ESR_ELx_EC_SHIFT	// Syndrom shift 26 bits
 
 	cmp	x2, #ESR_ELx_EC_HVC64		// not 10110 then we have a trap
-	b.ne	el1_trap
+	b.ne	EL1_trap
 
 #	mrs	x3, vttbr_el2			// If vttbr is valid, the 64bit guest, 
 //vttbr  = virtualization translation table base register 
@@ -73,10 +51,18 @@ EL1_sync:
 	pop	lr, xzr
 2:	eret
 
-EL1_trap_1:
+//
+//	here I need to check for various syndroms
+//
+EL1_trap:
   //      mov x23, #888
         eret
-ENDPROC(EL1_sync)
+
+//
+//	EL1 irq --> never saw this happens
+EL1_irq:
+	ret
+ENDPROC(EL1_irq)
 
 
 .align 11
@@ -97,26 +83,42 @@ ENDPROC(\label)
         invalid_vector  EL1_error_invalid
 .align 11
 
+ENTRY(__truly_vectors)
+        ventry  EL2_sync_invalid                        // raz test
+        ventry  EL2_irq_invalid                 // IRQ EL2t
+        ventry  EL2_fiq_invalid                 // FIQ EL2t
+        ventry  EL2_error_invalid               // Error EL2t
 
-ENTRY( truly_enter_S )
-       stp     x29, x30, [sp,#-16]!
-       mov     x29, sp
- 
-//     call the function
-       kern_hyp_va     x0
-       blr x0
-// back
-       ldp    	 x29, x30, [sp],#16
-       ret
-ENDPROC(truly_enter_S)
+        ventry  EL2_sync_invalid                // Synchronous EL2h
+        ventry  EL2_irq_invalid                 // IRQ EL2h
+        ventry  EL2_fiq_invalid                 // FIQ EL2h
+        ventry  EL2_error_invalid               // Error EL2h
 
-ENTRY( truly_irq_S )
-       ret
-ENDPROC(truly_irq_S)
+        ventry  EL1_sync                        // Synchronous 64-bit EL1
+
+        ventry  EL1_irq                       // IRQ 64-bit EL1
+        ventry  EL1_fiq_invalid                 // FIQ 64-bit EL1
+        ventry  EL1_error_invalid               // Error 64-bit EL1
+
+        ventry  EL1_irq                // Synchronous 32-bit EL1
+        ventry  EL1_irq_invalid                 // IRQ 32-bit EL1
+        ventry  EL1_fiq_invalid                 // FIQ 32-bit EL1
+        ventry  EL1_error_invalid               // Error 32-bit EL1
+ENDPROC(__truly_vectors)
+
+ENTRY(truly_get_hcr_el2)
+	mrs	x0, hcr_el2
+	ret
+ENDPROC(truly_get_hcr_el2)
+
+ENTRY(truly_set_mdcr_el2)
+	msr	mdcr_el2,x0
+	ret
+ENDPROC(truly_set_mdcr_el2)
 
 //
-// we stll the vbar from kvm. we use kvm allocated stack.
-//
+// still the vbar from kvm. But use kvm allocated stack.
+//  Still needs to set the vttbr_el2
 ENTRY(truly_set_vbar)
        msr	vbar_el2, x0
        mov	x0,#432	// be sure
