@@ -45,7 +45,7 @@ static inline unsigned long __kern_hyp_va(unsigned long v)
 asm(	".align 11;\n");
 
 
-int __hyp_text truly_enter(struct kvm_vcpu* vcpu) 
+int __hyp_text truly_test(struct kvm_vcpu* vcpu) 
 {
 	//vcpu->debug_count++;  
 	return 9999;

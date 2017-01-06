@@ -10,7 +10,7 @@
 #include <asm/kvm_mmu.h>
 
 .text
-.pushsection	.hyp.text, "axw" // borrow  hyp.text
+.pushsection	.hyp.text, "ax" // borrow  hyp.text
 
 ENTRY(__truly_vectors)
         ventry  EL2_sync_invalid                        // raz test
@@ -36,15 +36,48 @@ ENTRY(__truly_vectors)
 ENDPROC(__truly_vectors)
 
 EL1_sync:
-        mov x23, #888
+	push	x0, x1
+	push	x2, x3
+
+	mrs	x1, esr_el2
+	lsr	x2, x1, #ESR_ELx_EC_SHIFT	// Syndrom shift 26 bits
+
+	cmp	x2, #ESR_ELx_EC_HVC64		// not 10110 then we have a trap
+	b.ne	el1_trap
+
+#	mrs	x3, vttbr_el2			// If vttbr is valid, the 64bit guest, 
+//vttbr  = virtualization translation table base register 
+#	cbnz	x3, el1_trap			// called HVC, --> does not happen
+
+	/* Here, we're pretty sure the host called HVC. */
+	pop	x2, x3
+	pop	x0, x1
+
+	/* Check for __hyp_get_vectors */
+	cbnz	x0, 1f
+	mrs	x0, vbar_el2
+	b	2f
+
+1:	push	lr, xzr
+
+	/*
+	 * Compute the function address in EL2, and shuffle the parameters.
+	 */
+	kern_hyp_va	x0
+	mov	lr, x0
+	mov	x0, x1
+	mov	x1, x2
+	mov	x2, x3
+	blr	lr
+
+	pop	lr, xzr
+2:	eret
+
+EL1_trap_1:
+  //      mov x23, #888
         eret
 ENDPROC(EL1_sync)
 
-
-EL1_irq:
-        mov x23, #888
-        eret
-ENDPROC(EL1_irq)
 
 .align 11
 
@@ -81,9 +114,11 @@ ENTRY( truly_irq_S )
        ret
 ENDPROC(truly_irq_S)
 
+//
 // we stll the vbar from kvm. we use kvm allocated stack.
+//
 ENTRY(truly_set_vbar)
-       msr	vbar_el2,x0
+       msr	vbar_el2, x0
        mov	x0,#432	// be sure
 ENDPROC(truly_set_vbar)
 
