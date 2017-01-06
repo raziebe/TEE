@@ -529,7 +529,7 @@ EXPORT_SYMBOL_GPL(__kvm_get_mdcr_el2);
 int truly_arch_vcpu_ioctl(struct kvm_vcpu* vcpu)
 {
 	int __kvm_test_active_vm(void);
-	int __kvm_get_hcr_el2(void);
+	int truly_get_hcr_el2(void);
 	int ret;
 
 	ret = kvm_call_hyp(  __kvm_get_mdcr_el2 , vcpu);
@@ -549,7 +549,7 @@ int truly_arch_vcpu_ioctl(struct kvm_vcpu* vcpu)
 	local_irq_enable();
 	preempt_enable();
 
-	ret = kvm_call_hyp( __kvm_get_hcr_el2 , vcpu);
+	ret = kvm_call_hyp( truly_get_hcr_el2 , vcpu);
 	
 	printk("truly kvm : debug count=%d in Exiting\n", vcpu->debug_counter  );
 	return ret;
