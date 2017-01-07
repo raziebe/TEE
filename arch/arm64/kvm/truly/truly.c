@@ -64,6 +64,15 @@ int truly_set_vectors(unsigned long vecs)
 	return kvm_call_hyp(kvm_set_vbar, vecs);
 }
 
+extern char __hyp_stub_vectors[];
+EXPORT_SYMBOL_GPL(__hyp_stub_vectors);
+
+unsigned long truly_get_vector(void)
+{
+	return (unsigned long)__hyp_stub_vectors;
+}
+
+
 extern void *__truly_vectors;
 EXPORT_SYMBOL_GPL(__truly_vectors);
 EXPORT_SYMBOL_GPL(truly_set_vectors);
