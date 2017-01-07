@@ -3,6 +3,7 @@
 #include <asm/kvm_mmu.h> 
 
 #include <linux/module.h>
+#include <linux/truly.h>
 
 #define ARM64_WORKAROUND_CLEAN_CACHE            0
 #define ARM64_WORKAROUND_DEVICE_LOAD_ACQUIRE    1
@@ -45,9 +46,8 @@ static inline unsigned long __kern_hyp_va(unsigned long v)
 asm(	".align 11;\n");
 
 
-int __hyp_text truly_test(struct kvm_vcpu* vcpu) 
+int __hyp_text truly_test(tp_cpu_context_t* cxt) 
 {
-	//vcpu->debug_count++;  
 	return 9999;
 }
 
@@ -58,21 +58,46 @@ EXPORT_SYMBOL_GPL(__kvm_test_active_vm);
 int truly_set_mdcr_el2(int mask);
 EXPORT_SYMBOL_GPL(truly_set_mdcr_el2);
 
-int truly_set_vectors(unsigned long vecs)
+int truly_test_mem(unsigned long);
+EXPORT_SYMBOL_GPL(truly_test_mem);
+
+void truly_set_tpidr(unsigned long tpidr);
+EXPORT_SYMBOL_GPL(truly_set_tpidr);
+
+unsigned long truly_get_tpidr(void);
+EXPORT_SYMBOL_GPL(truly_get_tpidr);
+
+extern int truly_test_vec(void);
+EXPORT_SYMBOL_GPL(truly_test_vec);
+
+tp_cpu_context_t __percpu *tp_host_state;
+EXPORT_SYMBOL_GPL(tp_host_state);
+
+int truly_init(void)
 {
-	unsigned long kvm_set_vbar(unsigned long);
-	return kvm_call_hyp(kvm_set_vbar, vecs);
+	int cpu;
+
+	tp_info("init start\n");
+	tp_host_state = alloc_percpu(tp_cpu_context_t);
+	if (!tp_host_state) {
+		tp_info("Cannot allocate host CPU state\n");
+		return -1;
+	}
+
+	for_each_possible_cpu(cpu) {
+		int err;
+
+		tp_cpu_context_t *cpu_ctxt;
+
+		cpu_ctxt = per_cpu_ptr(tp_host_state, cpu);
+		err = create_hyp_mappings(cpu_ctxt, cpu_ctxt + 1);
+
+		if (err) {
+			tp_info("Cannot map host CPU state: %d\n", err);
+			return -1;
+		}
+	}
+
+	tp_info("init sucessfully\n");
+	return 0;
 }
-
-extern char __hyp_stub_vectors[];
-EXPORT_SYMBOL_GPL(__hyp_stub_vectors);
-
-unsigned long truly_get_vector(void)
-{
-	return (unsigned long)__hyp_stub_vectors;
-}
-
-
-extern void *__truly_vectors;
-EXPORT_SYMBOL_GPL(__truly_vectors);
-EXPORT_SYMBOL_GPL(truly_set_vectors);

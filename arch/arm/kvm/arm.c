@@ -1000,6 +1000,7 @@ static void cpu_init_hyp_mode(void *dummy)
 	unsigned long hyp_stack_ptr;
 	unsigned long stack_page;
 	unsigned long vector_ptr;
+	extern char __truly_vectors[];
 
 	/* Switch from the HYP stub to our own HYP init vector */
 	__hyp_set_vectors(kvm_get_idmap_vector());
@@ -1007,7 +1008,7 @@ static void cpu_init_hyp_mode(void *dummy)
 	pgd_ptr = kvm_mmu_get_httbr();
 	stack_page = __this_cpu_read(kvm_arm_hyp_stack_page);
 	hyp_stack_ptr = stack_page + PAGE_SIZE;
-	vector_ptr = (unsigned long)__kvm_hyp_vector;
+	vector_ptr = (unsigned long) __truly_vectors;
 
 	__cpu_init_hyp_mode(boot_pgd_ptr, pgd_ptr, hyp_stack_ptr, vector_ptr);
 
@@ -1067,7 +1068,7 @@ static int init_hyp_mode(void)
 {
 	int cpu;
 	int err = 0;
-
+	int truly_init(void);
 	/*
 	 * Allocate Hyp PGD and setup Hyp identity mapping
 	 */
@@ -1140,6 +1141,7 @@ static int init_hyp_mode(void)
 		}
 	}
 
+	truly_init();
 	/*
 	 * Execute the init code on each CPU.
 	 */

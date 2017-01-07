@@ -29,6 +29,7 @@
 #include <asm/vdso_datapage.h>
 #include <linux/kbuild.h>
 #include <linux/arm-smccc.h>
+#include <linux/truly.h>
 
 int main(void)
 {
@@ -165,5 +166,8 @@ int main(void)
 #endif
   DEFINE(ARM_SMCCC_RES_X0_OFFS,	offsetof(struct arm_smccc_res, a0));
   DEFINE(ARM_SMCCC_RES_X2_OFFS,	offsetof(struct arm_smccc_res, a2));
+
+  DEFINE(TP_CPU_OFFSET_D1, offsetof(tp_cpu_context_t, d1));
+  DEFINE(TP_CPU_OFFSET_D2, offsetof(tp_cpu_context_t, d2));
   return 0;
 }

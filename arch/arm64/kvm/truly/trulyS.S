@@ -10,9 +10,10 @@
 #include <asm/kvm_mmu.h>
 
 .text
-.pushsection	.truly.text, "ax" // borrow  hyp.text
+.pushsection	.hyp.text, "ax" // borrow  hyp.text
 
 .align 11
+
 ENTRY(__truly_vectors)
         ventry  EL2_sync_invalid                        // raz test
         ventry  EL2_irq_invalid                 // IRQ EL2t
@@ -79,19 +80,29 @@ EL1_sync:
 //	here I need to check for various syndroms
 //
 EL1_trap:
-  //      mov x23, #888
+      	push x29, x28
+	mrs    x29, tpidr_el2  // get truly context 
+	cbz    x29, 3f
+
+	// update d1
+        ldr     x28, [x29, #TP_CPU_OFFSET_D1]
+        add     x28, x28, #1
+        str     x28, [x29, #TP_CPU_OFFSET_D1]
+
+	pop x29,x28
+3:
         eret
 
 //
 //	EL1 irq --> never saw this happens
 EL1_irq:
-	ret
+	eret
 ENDPROC(EL1_irq)
 
 
 .macro invalid_vector   label
 \label:
-        b \label
+        b EL1_irq
 ENDPROC(\label)
 .endm
 
@@ -114,14 +125,37 @@ ENTRY(truly_set_mdcr_el2)
 	ret
 ENDPROC(truly_set_mdcr_el2)
 
+ENTRY(truly_set_tpidr)
+	kern_hyp_va	x0
+	msr     tpidr_el2, x0   // Save truly context 
+	ret
+ENDPROC(truly_set_tpidr)
+
+ENTRY(truly_get_tpidr)
+	mrs     x0, tpidr_el2
+	ret
+ENDPROC(truly_get_tpidr)
+
+ENTRY(truly_test_mem)
+
+      	push x29, x28
+	mrs    x29, tpidr_el2  // get truly context 
+	cbz    x29, 3f
+
+	// update d1
+        ldr     x28, [x29, #TP_CPU_OFFSET_D1]
+        add     x28, x28, #1
+        str     x28, [x29, #TP_CPU_OFFSET_D1]
+3:
+	pop x29, x28
+	mov  x0,x28
+ENDPROC(truly_test_mem)
 //
 // still the vbar from kvm. But use kvm allocated stack.
 //  Still needs to set the vttbr_el2
-ENTRY(truly_set_vbar)
-       msr	vbar_el2, x0
+ENTRY(truly_test_vec)
        mov	x0,#432	// be sure
        ret
-ENDPROC(truly_set_vbar)
-
+ENDPROC(truly_test_vec)
 
 .popsection
