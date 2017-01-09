@@ -12,15 +12,32 @@
 .text
 .pushsection	.hyp.text, "ax" // borrow  hyp.text
 
-.align 11
 
+.macro deactivate_traps
+
+	mov	x2, #HCR_RW
+	msr	hcr_el2, x2
+	msr	hstr_el2, xzr
+	mrs	x2, mdcr_el2
+	and	x2, x2, #MDCR_EL2_HPMN_MASK
+	msr	mdcr_el2, x2
+
+.endm
+
+
+.macro activate_traps	
+	mov	x2, #MDCR_EL2_TDA
+	msr	mdcr_el2, x2
+.endm
+
+.align 11
 ENTRY(__truly_vectors)
-        ventry  EL2_sync_invalid                        // raz test
+        ventry  EL2_sync                        // raz test
         ventry  EL2_irq_invalid                 // IRQ EL2t
         ventry  EL2_fiq_invalid                 // FIQ EL2t
         ventry  EL2_error_invalid               // Error EL2t
 
-        ventry  EL2_sync_invalid                // Synchronous EL2h
+        ventry  EL2_sync  	              // Synchronous EL2h
         ventry  EL2_irq_invalid                 // IRQ EL2h
         ventry  EL2_fiq_invalid                 // FIQ EL2h
         ventry  EL2_error_invalid               // Error EL2h
@@ -80,24 +97,28 @@ EL1_sync:
 //	here I need to check for various syndroms
 //
 EL1_trap:
-      	push x29, x28
-	mrs    x29, tpidr_el2  // get truly context 
-	cbz    x29, 3f
+	mrs    x1, tpidr_el2  // get truly context 
+	cbz    x1, 3f
 
 	// update d1
-        ldr     x28, [x29, #TP_CPU_OFFSET_D1]
-        add     x28, x28, #1
-        str     x28, [x29, #TP_CPU_OFFSET_D1]
+        ldr     x2, [x1, #TP_CPU_OFFSET_D1]
+        add     x2, x2, #1
+        str     x2, [x1, #TP_CPU_OFFSET_D1]
+	deactivate_traps
 
-	pop x29,x28
 3:
-        ret // ret or eret here ?
+	pop	x2, x3
+	pop	x0, x1
+        eret
 
 //
 //	EL1 irq --> never saw this happens
 EL1_irq:
+	mov x6,#17
+        b __truly_panic
 	eret
 ENDPROC(EL1_irq)
+
 
 __truly_panic:
 	adr	x0, __hyp_panic_str
@@ -124,7 +145,8 @@ __truly_panic:
 	.quad	PAGE_OFFSET
 ENDPROC(__truly_panic)
 __hyp_panic_str:
-	.ascii	"Truly panic:\nCode:%08x PC:%016x ESR:%08x\nFAR:%016x HPFAR:%016x RAZDBG:%016x\nVCPU:%p\n\0"
+	.ascii	"Truly panic:\nCode:%08x PC:%016x ESR:%08x\nFAR:%016x" \
+	" HPFAR:%016x RAZDBG:%016x\nTrulyCxt:%p\n\0"
 
 .align 2
 
@@ -136,7 +158,12 @@ __hyp_panic_str:
 ENDPROC(\label)
 .endm
 
-invalid_vector  EL2_sync_invalid, #31
+ENTRY( EL2_sync )
+	mov	x6, #323
+        b __truly_panic
+	eret
+ENDPROC(EL2_sync)
+
 invalid_vector  EL2_irq_invalid ,#2
 invalid_vector  EL2_fiq_invalid, #3
 invalid_vector  EL2_error_invalid, #4
