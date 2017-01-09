@@ -48,9 +48,9 @@ EL1_sync:
 	cmp	x2, #ESR_ELx_EC_HVC64		// not 10110 then we have a trap
 	b.ne	EL1_trap
 
-#	mrs	x3, vttbr_el2			// If vttbr is valid, the 64bit guest, 
-//vttbr  = virtualization translation table base register stage 2 
-#	cbnz	x3, el1_trap			// called HVC, --> does not happen
+#  vttbr  = virtualization translation table base register stage 2 
+	mrs	x3, vttbr_el2			// If vttbr is valid, the 64bit guest, 
+	cbnz	x3, EL1_trap			// called HVC, 
 
 	/* Here, we're pretty sure the host called HVC. */
 	pop	x2, x3
@@ -99,21 +99,51 @@ EL1_irq:
 	eret
 ENDPROC(EL1_irq)
 
+__truly_panic:
+	adr	x0, __hyp_panic_str
+	adr	x1, 2f // adr generates a register-relative address in the destination register
+	ldp	x2, x3, [x1] // Load to Pair of Registers from two dwords starting from memory at [x1] 
+	sub	x0, x0, x2
+	add	x0, x0, x3
+	mrs	x1, spsr_el2
+	mrs	x2, elr_el2
+	mrs	x3, esr_el2
+	mrs	x4, far_el2
+	mrs	x5, hpfar_el2
+	mrs	x7, tpidr_el2
 
-.macro invalid_vector   label
+	mov	lr, #(PSR_F_BIT | PSR_I_BIT | PSR_A_BIT | PSR_D_BIT |\
+		      PSR_MODE_EL1h)
+	msr	spsr_el2, lr
+	ldr	lr, =panic
+	msr	elr_el2, lr
+	eret
+
+	.align	3
+2:	.quad	HYP_PAGE_OFFSET
+	.quad	PAGE_OFFSET
+ENDPROC(__truly_panic)
+__hyp_panic_str:
+	.ascii	"Truly panic:\nCode:%08x PC:%016x ESR:%08x\nFAR:%016x HPFAR:%016x RAZDBG:%016x\nVCPU:%p\n\0"
+
+.align 2
+
+.macro invalid_vector   label,num
+.align 2
 \label:
-        b EL1_irq
+	mov	x6, \num
+        b __truly_panic
 ENDPROC(\label)
 .endm
 
-        invalid_vector  EL2_sync_invalid
-        invalid_vector  EL2_irq_invalid
-        invalid_vector  EL2_fiq_invalid
-        invalid_vector  EL2_error_invalid
-        invalid_vector  EL1_sync_invalid
-        invalid_vector  EL1_irq_invalid
-        invalid_vector  EL1_fiq_invalid
-        invalid_vector  EL1_error_invalid
+invalid_vector  EL2_sync_invalid, #31
+invalid_vector  EL2_irq_invalid ,#2
+invalid_vector  EL2_fiq_invalid, #3
+invalid_vector  EL2_error_invalid, #4
+invalid_vector  EL1_sync_invalid,#5
+invalid_vector  EL1_irq_invalid,#6
+invalid_vector  EL1_fiq_invalid,#7
+invalid_vector  EL1_error_invalid,#8
 
 ENTRY(truly_get_hcr_el2)
 	mrs	x0, hcr_el2
@@ -125,6 +155,11 @@ ENTRY(truly_set_mdcr_el2)
 	ret
 ENDPROC(truly_set_mdcr_el2)
 
+ENTRY(truly_get_mdcr_el2)
+	mrs	x0, mdcr_el2
+	ret
+ENDPROC(truly_get_mdcr_el2)
+
 ENTRY(truly_set_tpidr)
 	kern_hyp_va	x0
 	msr     tpidr_el2, x0   // Save truly context 
@@ -135,6 +170,12 @@ ENTRY(truly_get_tpidr)
 	mrs     x0, tpidr_el2
 	ret
 ENDPROC(truly_get_tpidr)
+
+// the virtualization translation base register for stage 2
+ENTRY(truly_get_vttbr_el2)
+	mrs	x0, vttbr_el2
+	ret
+ENDPROC(truly_get_vttbr_el2)
 
 ENTRY(truly_test_mem)
 

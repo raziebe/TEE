@@ -54,7 +54,14 @@ int __hyp_text truly_test(tp_cpu_context_t* cxt)
 int __kvm_test_active_vm(void);
 EXPORT_SYMBOL_GPL(__kvm_test_active_vm);
 
+
+unsigned long truly_get_vttbr_el2(void);
+EXPORT_SYMBOL_GPL(truly_get_vttbr_el2);
+
 // debug
+unsigned long truly_get_mdcr_el2(void);
+EXPORT_SYMBOL_GPL(truly_get_mdcr_el2);
+
 int truly_set_mdcr_el2(int mask);
 EXPORT_SYMBOL_GPL(truly_set_mdcr_el2);
 

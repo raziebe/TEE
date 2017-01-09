@@ -901,8 +901,8 @@ __kvm_hyp_panic:
 	mov	x29, xzr
 
 1:	adr	x0, __hyp_panic_str
-	adr	x1, 2f
-	ldp	x2, x3, [x1]
+	adr	x1, 2f // adr generates a register-relative address in the destination register
+	ldp	x2, x3, [x1] // Load to Pair of Registers from two dwords starting from memory at [x1] 
 	sub	x0, x0, x2
 	add	x0, x0, x3
 	mrs	x1, spsr_el2
