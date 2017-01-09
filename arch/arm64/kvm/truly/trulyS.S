@@ -49,7 +49,7 @@ EL1_sync:
 	b.ne	EL1_trap
 
 #	mrs	x3, vttbr_el2			// If vttbr is valid, the 64bit guest, 
-//vttbr  = virtualization translation table base register 
+//vttbr  = virtualization translation table base register stage 2 
 #	cbnz	x3, el1_trap			// called HVC, --> does not happen
 
 	/* Here, we're pretty sure the host called HVC. */
@@ -91,7 +91,7 @@ EL1_trap:
 
 	pop x29,x28
 3:
-        eret
+        ret // ret or eret here ?
 
 //
 //	EL1 irq --> never saw this happens
