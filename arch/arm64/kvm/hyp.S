@@ -1000,7 +1000,7 @@ el1_sync:					// Guest trapped into EL2
 	lsr	x2, x1, #ESR_ELx_EC_SHIFT
 
 	cmp	x2, #ESR_ELx_EC_HVC64		// 10110 --> after defining a vm someone calls el1_sync
-	b.ne	el1_trap_1
+	b.ne	el1_trap
 
 	mrs	x3, vttbr_el2			// If vttbr is valid, the 64bit guest
 	cbnz	x3, el1_trap			// called HVC, --> does not happen
@@ -1028,9 +1028,6 @@ el1_sync:					// Guest trapped into EL2
 
 	pop	lr, xzr
 2:	eret
-
-el1_trap_1:
-//	__kvm_raz_debug
 
 el1_trap:
 	/*
