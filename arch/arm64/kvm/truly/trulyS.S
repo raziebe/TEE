@@ -104,8 +104,13 @@ EL1_trap:
         ldr     x2, [x1, #TP_CPU_OFFSET_D1]
         add     x2, x2, #1
         str     x2, [x1, #TP_CPU_OFFSET_D1]
-	deactivate_traps
-
+//	deactivate_traps
+//
+//	Jump over the next address to return to el1
+//
+	mrs x2, elr_el2
+	add x2, x2 , #4
+	msr elr_el2, x2
 3:
 	pop	x2, x3
 	pop	x0, x1
