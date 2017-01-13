@@ -1,9 +1,10 @@
 #ifndef __TRULY_H__
 #define __TRULY_H__
 
-struct tp_cpu_context{
-	int d1;
-	int d2;
+struct tp_cpu_context {
+	unsigned long d1;
+	unsigned long d2;
+	unsigned long d3;
 };
 
 typedef struct tp_cpu_context tp_cpu_context_t;
