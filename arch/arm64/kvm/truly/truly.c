@@ -84,7 +84,9 @@ int truly_init(void)
 {
 	int cpu;
 
-	tp_info("init start\n");
+	tp_info("init start  sizeof(tp_cpu_context_t) %ld \n", 
+			sizeof(tp_cpu_context_t) );
+
 	tp_host_state = alloc_percpu(tp_cpu_context_t);
 	if (!tp_host_state) {
 		tp_info("Cannot allocate host CPU state\n");
@@ -93,11 +95,12 @@ int truly_init(void)
 
 	for_each_possible_cpu(cpu) {
 		int err;
+		void *t2,*t1;
+		tp_cpu_context_t *cpuctxt;
 
-		tp_cpu_context_t *cpu_ctxt;
+		cpuctxt = per_cpu_ptr(tp_host_state, cpu);
 
-		cpu_ctxt = per_cpu_ptr(tp_host_state, cpu);
-		err = create_hyp_mappings(cpu_ctxt, cpu_ctxt + 1);
+		err = create_hyp_mappings(cpuctxt, cpuctxt + 1);
 
 		if (err) {
 			tp_info("Cannot map host CPU state: %d\n", err);
