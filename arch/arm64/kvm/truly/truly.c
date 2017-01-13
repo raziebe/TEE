@@ -95,7 +95,7 @@ int truly_init(void)
 
 	for_each_possible_cpu(cpu) {
 		int err;
-		void *t2,*t1;
+	
 		tp_cpu_context_t *cpuctxt;
 
 		cpuctxt = per_cpu_ptr(tp_host_state, cpu);
