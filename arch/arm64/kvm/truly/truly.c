@@ -51,8 +51,7 @@ int __hyp_text truly_test(tp_cpu_context_t* cxt)
 	return 9999;
 }
 
-int __kvm_test_active_vm(void);
-EXPORT_SYMBOL_GPL(__kvm_test_active_vm);
+int __kvm_test_active_vm(void); EXPORT_SYMBOL_GPL(__kvm_test_active_vm);
 
 
 unsigned long truly_get_vttbr_el2(void);
@@ -76,6 +75,13 @@ EXPORT_SYMBOL_GPL(truly_get_tpidr);
 
 extern int truly_test_vec(void);
 EXPORT_SYMBOL_GPL(truly_test_vec);
+
+unsigned long truly_get_hcr_el2(void);
+EXPORT_SYMBOL_GPL(truly_get_hcr_el2);
+
+void truly_set_hcr_el2(unsigned long tpidr);
+EXPORT_SYMBOL_GPL(truly_set_hcr_el2);
+
 
 tp_cpu_context_t __percpu *tp_host_state;
 EXPORT_SYMBOL_GPL(tp_host_state);
