@@ -167,8 +167,8 @@ int main(void)
   DEFINE(ARM_SMCCC_RES_X0_OFFS,	offsetof(struct arm_smccc_res, a0));
   DEFINE(ARM_SMCCC_RES_X2_OFFS,	offsetof(struct arm_smccc_res, a2));
 
-  DEFINE(TP_CPU_OFFSET_D1, offsetof(tp_cpu_context_t, d1));
-  DEFINE(TP_CPU_OFFSET_D2, offsetof(tp_cpu_context_t, d2));
-  DEFINE(TP_CPU_OFFSET_D3, offsetof(tp_cpu_context_t, d3));
+  DEFINE(TP_CPU_OFFSET_COUNT, offsetof(tp_cpu_context_t, count ));
+  DEFINE(TP_CPU_OFFSET_DEBUG, offsetof(tp_cpu_context_t, debug));
+  DEFINE(TP_CPU_OFFSET_ESR_EL2, offsetof(tp_cpu_context_t, esr_el2));
   return 0;
 }

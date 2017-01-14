@@ -91,44 +91,44 @@ EL1_sync:
 	pop	lr, xzr
 2:	eret
 
-//
-//	here I need to check for various syndroms
-//
+/*
+*	here I need to check for various syndroms
+*/
 EL1_trap:
 	mrs    x1, tpidr_el2  // get truly context 
 	cbz    x1, 3f
-//	cmp    x2, #24		// debug exception
-//	b.ne   4f
-//
-//	Check debug exception
 
-debugger:
-	// update d1
-        ldr     x3, [x1, #TP_CPU_OFFSET_D1]
-        add     x3, x3, #1
-        str     x3, [x1, #TP_CPU_OFFSET_D1]
 //
 //	store the exception code stored in x2
 //	D.7-1933
-	mrs	x3, esr_el2
-        str     x3, [x1, #TP_CPU_OFFSET_D2]
-	lsr	x3,x3,#(26)	
-        str     x3, [x1, #TP_CPU_OFFSET_D3]
+//
+	mrs	x3, esr_el1
+        str     x3, [x1, #TP_CPU_OFFSET_DEBUG]
+	cmp	x2,#0x18 // ISS encoded D7-1950
+	b.eq	3f
+
+        str     x2, [x1, #TP_CPU_OFFSET_ESR_EL2]
+
+	// update  counter
+
+        ldr     x3, [x1, #TP_CPU_OFFSET_COUNT]
+        add     x3, x3, #1
+        str     x3, [x1, #TP_CPU_OFFSET_COUNT]
 //
 //	Jump over the next address to return to el1
-//
+3:
 	mrs x2, elr_el2
 	add x2, x2 , #4
 	msr elr_el2, x2
-	deactivate_traps
-3:
+// exit out
+4:
 	pop	x2, x3
 	pop	x0, x1
 	eret
 
 //	EL1 irq --> never saw this happens
 EL1_irq:
-	mov x6,#17
+	mov x6, #17
         b __truly_panic
 	eret
 ENDPROC(EL1_irq)
@@ -231,10 +231,10 @@ ENTRY(truly_test_mem)
 	mrs    x29, tpidr_el2  // get truly context 
 	cbz    x29, 3f
 
-	// update d1
-        ldr     x28, [x29, #TP_CPU_OFFSET_D1]
+	// update count
+        ldr     x28, [x29, #TP_CPU_OFFSET_COUNT]
         add     x28, x28, #1
-        str     x28, [x29, #TP_CPU_OFFSET_D1]
+        str     x28, [x29, #TP_CPU_OFFSET_COUNT]
 3:
 	pop x29, x28
 	mov  x0,x28

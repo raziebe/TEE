@@ -2,9 +2,9 @@
 #define __TRULY_H__
 
 struct tp_cpu_context {
-	unsigned long d1;
-	unsigned long d2;
-	unsigned long d3;
+	unsigned long count;
+	unsigned long debug;
+	unsigned long esr_el2; //syndrom;
 };
 
 typedef struct tp_cpu_context tp_cpu_context_t;
