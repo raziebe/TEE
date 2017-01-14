@@ -14,16 +14,14 @@
 
 
 .macro deactivate_traps
-
-	mov	x2, #HCR_RW
+	mov     x2, #HCR_RW 
+	orr	x2, x2, #HCR_SWIO
 	msr	hcr_el2, x2
 	msr	hstr_el2, xzr
 	mrs	x2, mdcr_el2
 	and	x2, x2, #MDCR_EL2_HPMN_MASK
 	msr	mdcr_el2, x2
-
 .endm
-
 
 .macro activate_traps	
 	mov	x2, #MDCR_EL2_TDA
@@ -122,16 +120,12 @@ debugger:
 	mrs x2, elr_el2
 	add x2, x2 , #4
 	msr elr_el2, x2
+	deactivate_traps
 3:
 	pop	x2, x3
 	pop	x0, x1
 	eret
-//4:
- //       str     x2, [x1, #TP_CPU_OFFSET_D3]
-//	pop	x2, x3
-//	pop	x0, x1
- //       eret
-//
+
 //	EL1 irq --> never saw this happens
 EL1_irq:
 	mov x6,#17
