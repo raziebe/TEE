@@ -169,5 +169,6 @@ int main(void)
 
   DEFINE(TP_CPU_OFFSET_D1, offsetof(tp_cpu_context_t, d1));
   DEFINE(TP_CPU_OFFSET_D2, offsetof(tp_cpu_context_t, d2));
+  DEFINE(TP_CPU_OFFSET_D3, offsetof(tp_cpu_context_t, d3));
   return 0;
 }

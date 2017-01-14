@@ -99,12 +99,23 @@ EL1_sync:
 EL1_trap:
 	mrs    x1, tpidr_el2  // get truly context 
 	cbz    x1, 3f
+//	cmp    x2, #24		// debug exception
+//	b.ne   4f
+//
+//	Check debug exception
 
+debugger:
 	// update d1
-        ldr     x2, [x1, #TP_CPU_OFFSET_D1]
-        add     x2, x2, #1
-        str     x2, [x1, #TP_CPU_OFFSET_D1]
-//	deactivate_traps
+        ldr     x3, [x1, #TP_CPU_OFFSET_D1]
+        add     x3, x3, #1
+        str     x3, [x1, #TP_CPU_OFFSET_D1]
+//
+//	store the exception code stored in x2
+//	D.7-1933
+	mrs	x3, esr_el2
+        str     x3, [x1, #TP_CPU_OFFSET_D2]
+	lsr	x3,x3,#(26)	
+        str     x3, [x1, #TP_CPU_OFFSET_D3]
 //
 //	Jump over the next address to return to el1
 //
@@ -114,8 +125,12 @@ EL1_trap:
 3:
 	pop	x2, x3
 	pop	x0, x1
-        eret
-
+	eret
+//4:
+ //       str     x2, [x1, #TP_CPU_OFFSET_D3]
+//	pop	x2, x3
+//	pop	x0, x1
+ //       eret
 //
 //	EL1 irq --> never saw this happens
 EL1_irq:
@@ -176,6 +191,13 @@ invalid_vector  EL1_sync_invalid,#5
 invalid_vector  EL1_irq_invalid,#6
 invalid_vector  EL1_fiq_invalid,#7
 invalid_vector  EL1_error_invalid,#8
+
+
+ENTRY(truly_set_hcr_el2)
+	msr	 hcr_el2,x0
+	ret
+ENDPROC(truly_get_hcr_el2)
+
 
 ENTRY(truly_get_hcr_el2)
 	mrs	x0, hcr_el2
