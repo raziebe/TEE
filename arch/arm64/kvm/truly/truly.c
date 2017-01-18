@@ -1,9 +1,14 @@
 #include <linux/compiler.h>
 #include <linux/kvm_host.h>
 #include <asm/kvm_mmu.h> 
-
+#include <asm/memory.h>
 #include <linux/module.h>
 #include <linux/truly.h>
+#include <linux/compiler.h>
+#include <linux/linkage.h>
+#include <linux/init.h>
+#include <linux/irqchip/arm-gic-v3.h>
+#include <asm/sections.h>
 
 #define ARM64_WORKAROUND_CLEAN_CACHE            0
 #define ARM64_WORKAROUND_DEVICE_LOAD_ACQUIRE    1
@@ -86,6 +91,15 @@ EXPORT_SYMBOL_GPL(truly_set_hcr_el2);
 tp_cpu_context_t __percpu *tp_host_state;
 EXPORT_SYMBOL_GPL(tp_host_state);
 
+#define KERNEL_START _text
+#define KERNEL_END	_end
+/*
+	kernel_code.start   = virt_to_phys(_text);
+	kernel_code.end     = virt_to_phys(_etext - 1);
+	kernel_data.start   = virt_to_phys(_sdata);
+	kernel_data.end     = virt_to_phys(_end - 1);
+*/
+
 int truly_init(void)
 {
 	int cpu;
@@ -93,10 +107,19 @@ int truly_init(void)
 	tp_info("init start  sizeof(tp_cpu_context_t) %ld \n", 
 			sizeof(tp_cpu_context_t) );
 
-	tp_info("init start  KENREL_START=%llx "
-			"KERNEL_END=%llx "
-			"PAGE_OFFSET=%llx\n"
-			 KERNEL_START, KERNEL_END, PAGE_OFFSET);
+	tp_info("Memory Layout code start=%p,%p\n "
+			"code end =%p,%p\n"
+			" sizeofcode=%d\n"
+			"data start = %p,%p\n"
+			" end = %p,%p,\n" "sizeofdata=%d\n",
+			(void *)_text, (void*)virt_to_phys(_text),
+			(void *)_end, (void *)virt_to_phys(_etext),
+			(int)(virt_to_phys(_end) - virt_to_phys(_text)),
+			(void*)_sdata, (void *)virt_to_phys(_sdata),
+			(void*)_end, (void *)virt_to_phys(_end-1),
+			(int)(virt_to_phys(_end-1) - virt_to_phys(_sdata) ) );
+
+			 
 
 	tp_host_state = alloc_percpu(tp_cpu_context_t);
 	if (!tp_host_state) {
