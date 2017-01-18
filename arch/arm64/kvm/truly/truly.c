@@ -56,6 +56,13 @@ int __hyp_text truly_test(tp_cpu_context_t* cxt)
 	return 9999;
 }
 
+int truly_test_code_map(tp_cpu_context_t* cxt) 
+{
+	return 2222;
+}
+
+EXPORT_SYMBOL_GPL(truly_test_code_map);
+
 int __kvm_test_active_vm(void); EXPORT_SYMBOL_GPL(__kvm_test_active_vm);
 
 
@@ -103,6 +110,7 @@ EXPORT_SYMBOL_GPL(tp_host_state);
 int truly_init(void)
 {
 	int cpu;
+	int err;
 
 	tp_info("init start  sizeof(tp_cpu_context_t) %ld \n", 
 			sizeof(tp_cpu_context_t) );
@@ -127,8 +135,8 @@ int truly_init(void)
 		return -1;
 	}
 
+
 	for_each_possible_cpu(cpu) {
-		int err;
 	
 		tp_cpu_context_t *cpuctxt;
 
@@ -140,6 +148,13 @@ int truly_init(void)
 			tp_info("Cannot map host CPU state: %d\n", err);
 			return -1;
 		}
+	}
+
+	err = create_hyp_mappings(_text, _etext);
+	if (err){
+		tp_info("Failed to map kernel code %d\n", err);
+	}else{
+		tp_info("Kernel Code mapped \n");
 	}
 
 	tp_info("init sucessfully\n");
