@@ -93,6 +93,11 @@ int truly_init(void)
 	tp_info("init start  sizeof(tp_cpu_context_t) %ld \n", 
 			sizeof(tp_cpu_context_t) );
 
+	tp_info("init start  KENREL_START=%llx "
+			"KERNEL_END=%llx "
+			"PAGE_OFFSET=%llx\n"
+			 KERNEL_START, KERNEL_END, PAGE_OFFSET);
+
 	tp_host_state = alloc_percpu(tp_cpu_context_t);
 	if (!tp_host_state) {
 		tp_info("Cannot allocate host CPU state\n");
