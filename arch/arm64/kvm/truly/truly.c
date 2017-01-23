@@ -60,6 +60,7 @@ int func2(void);
 
 int truly_test_code_map(tp_cpu_context_t* cxt) 
 {
+	printk("%s\n",__FUNCTION__);
 	return 2244;
 }
 
@@ -168,6 +169,9 @@ int truly_init(void)
 }
 
 
+
+void truly_set_mmu(void);
+EXPORT_SYMBOL_GPL(truly_set_mmu);
 
 unsigned long truly_get_ttbr0_el2(void);
 EXPORT_SYMBOL_GPL(truly_get_ttbr0_el2);

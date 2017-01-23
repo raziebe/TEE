@@ -251,6 +251,13 @@ ENTRY(truly_set_ttbr0_el2)
 	ret
 ENDPROC(truly_set_ttbr0_el2)
 
+ENTRY(truly_set_mmu)
+	mrs	x0, sctlr_el2
+	orr	x0, x0, #1
+	msr	sctlr_el2,x0
+	ret
+ENDPROC(truly_set_mmu)
+
 //
 // still the vbar from kvm. But use kvm allocated stack.
 //  Still needs to set the vttbr_el2
