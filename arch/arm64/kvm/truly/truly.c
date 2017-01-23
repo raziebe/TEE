@@ -56,15 +56,17 @@ int __hyp_text truly_test(tp_cpu_context_t* cxt)
 	return 9999;
 }
 
+int func2(void);
+
 int truly_test_code_map(tp_cpu_context_t* cxt) 
 {
-	return 2222;
+	return 2244;
 }
 
 EXPORT_SYMBOL_GPL(truly_test_code_map);
 
-int __kvm_test_active_vm(void); EXPORT_SYMBOL_GPL(__kvm_test_active_vm);
-
+int __kvm_test_active_vm(void); 
+EXPORT_SYMBOL_GPL(__kvm_test_active_vm);
 
 unsigned long truly_get_vttbr_el2(void);
 EXPORT_SYMBOL_GPL(truly_get_vttbr_el2);
@@ -75,9 +77,6 @@ EXPORT_SYMBOL_GPL(truly_get_mdcr_el2);
 
 int truly_set_mdcr_el2(int mask);
 EXPORT_SYMBOL_GPL(truly_set_mdcr_el2);
-
-int truly_test_mem(unsigned long);
-EXPORT_SYMBOL_GPL(truly_test_mem);
 
 void truly_set_tpidr(unsigned long tpidr);
 EXPORT_SYMBOL_GPL(truly_set_tpidr);
@@ -149,14 +148,36 @@ int truly_init(void)
 			return -1;
 		}
 	}
+/*
+	err = create_hyp_mappings( _sdata,  _end -1);
+	if (err){
+		tp_info("Failed to global kernel data %d\n", err);
+	}else{
+		tp_info("Kernel data mapped SUCCESSFULLY\n");
+	}
 
 	err = create_hyp_mappings(_text, _etext);
 	if (err){
 		tp_info("Failed to map kernel code %d\n", err);
 	}else{
-		tp_info("Kernel Code mapped \n");
+		tp_info("Kernel Code mapped SUCCESSFULLY\n");
 	}
-
+*/
 	tp_info("init sucessfully\n");
 	return 0;
 }
+
+
+
+unsigned long truly_get_ttbr0_el2(void);
+EXPORT_SYMBOL_GPL(truly_get_ttbr0_el2);
+
+unsigned long truly_get_ttbr1_el2(void);
+EXPORT_SYMBOL_GPL(truly_get_ttbr1_el2);
+
+void truly_set_ttbr1_el2(unsigned long t);
+EXPORT_SYMBOL_GPL(truly_set_ttbr1_el2);
+
+void truly_set_ttbr0_el2(unsigned long t);
+EXPORT_SYMBOL_GPL(truly_set_ttbr0_el2);
+

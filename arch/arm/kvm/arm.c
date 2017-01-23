@@ -1244,6 +1244,11 @@ out_err:
 	return err;
 }
 
+int func2(void)
+{
+	return 777;
+}
+
 /* NOP: Compiling as a module not supported */
 void kvm_arch_exit(void)
 {

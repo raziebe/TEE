@@ -187,6 +187,12 @@ invalid_vector  EL1_fiq_invalid,#7
 invalid_vector  EL1_error_invalid,#8
 
 
+ENTRY(truly_has_vhe)
+        mrs     x2, id_aa64mmfr1_el1
+        ubfx    x2, x2, #8, #4
+	mov	x0,x2 // if zero then no vhe
+ENDPROC(truly_has_vhe)
+
 ENTRY(truly_set_hcr_el2)
 	msr	 hcr_el2,x0
 	ret
@@ -225,20 +231,26 @@ ENTRY(truly_get_vttbr_el2)
 	ret
 ENDPROC(truly_get_vttbr_el2)
 
-ENTRY(truly_test_mem)
+ENTRY(truly_get_ttbr0_el2)
+	mrs	x0, ttbr0_el2
+	ret
+ENDPROC(truly_get_ttbr0_el2)
 
-      	push x29, x28
-	mrs    x29, tpidr_el2  // get truly context 
-	cbz    x29, 3f
+ENTRY(truly_get_ttbr1_el2)
+	mrs	x0, ttbr1_el2
+	ret
+ENDPROC(truly_get_ttbr1_el2)
 
-	// update count
-        ldr     x28, [x29, #TP_CPU_OFFSET_COUNT]
-        add     x28, x28, #1
-        str     x28, [x29, #TP_CPU_OFFSET_COUNT]
-3:
-	pop x29, x28
-	mov  x0,x28
-ENDPROC(truly_test_mem)
+ENTRY(truly_set_ttbr1_el2)
+	msr	ttbr1_el2,x0
+	ret
+ENDPROC(truly_set_ttbr1_el2)
+
+ENTRY(truly_set_ttbr0_el2)
+	msr	ttbr0_el2,x0
+	ret
+ENDPROC(truly_set_ttbr0_el2)
+
 //
 // still the vbar from kvm. But use kvm allocated stack.
 //  Still needs to set the vttbr_el2
