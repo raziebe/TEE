@@ -3,35 +3,40 @@
 
 struct truly_vm {
 
-	long count; 
-	long debug;
-        long hcr_el2;
-        long hstr_el2;
-        long ttbr0_el2;
-        long ttbr1_el2;
-        long tpidr_el2;
-        long tcr_el2;
-        long sp_el2;
-        long elr_el2;
-        long esr_el2;
-        long sp_el0;
-        long spsr_el2;
-        long vttbr_el2;
-        long vbar_el2;
- 
-        long tcr_el1;
-        long sp_el1;
-        long elr_el1;
-        long spsr_el1;
-        long ttbr0_el1;
-        long ttbr1_el1;
-        long vttbr_el1;
-        long vbar_el1;
+	unsigned long count; 
+	unsigned long debug;
+       	unsigned long hcr_el2;
+ 	unsigned long hstr_el2;
+ 	unsigned long ttbr0_el2;
+ 	unsigned long ttbr1_el2;
+ 	unsigned long tpidr_el2;
+ 	unsigned long tcr_el2;
+ 	unsigned long sp_el2;
+    	unsigned long elr_el2;
+  	unsigned long esr_el2;
+    	unsigned long sp_el0;
+ 	unsigned long spsr_el2;
+  	unsigned long vttbr_el2;
+    	unsigned long vbar_el2;
+ 	unsigned long sctlr_el2;
+
+ 	unsigned long tcr_el1;
+ 	unsigned long sp_el1;
+ 	unsigned long elr_el1;
+ 	unsigned long spsr_el1;
+ 	unsigned long ttbr0_el1;
+ 	unsigned long ttbr1_el1;
+ 	unsigned long vttbr_el1;
+ 	unsigned long vbar_el1;
+ 	unsigned long sctlr_el1;
 };
 
 
+unsigned long truly_test_code_map(void* cxt);
 unsigned long truly_get_sctlr_el2(void);
+unsigned long truly_get_sctlr_el1(void);
 unsigned long truly_get_tcr_el2(void);
+unsigned long truly_get_tcr_el1(void);
 unsigned long truly_get_ttbr0_el2(void);
 unsigned long truly_get_ttbr1_el2(void);
 

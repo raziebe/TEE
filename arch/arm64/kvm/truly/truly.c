@@ -59,7 +59,7 @@ int __hyp_text truly_test(struct truly_vm* cxt)
 
 int func2(void);
 
-int truly_test_code_map(void* cxt) 
+unsigned long truly_test_code_map(void* cxt) 
 {
 	printk("%s\n",__FUNCTION__);
 	return 2244;
@@ -134,9 +134,10 @@ int truly_init(void)
 	return 0;
 }
 
-
+EXPORT_SYMBOL_GPL(truly_get_sctlr_el1);
 EXPORT_SYMBOL_GPL(truly_get_sctlr_el2);
 EXPORT_SYMBOL_GPL(truly_get_tcr_el2);
+EXPORT_SYMBOL_GPL(truly_get_tcr_el1);
 EXPORT_SYMBOL_GPL(truly_set_tcr_el2);
 EXPORT_SYMBOL_GPL(truly_set_mmu);
 
