@@ -9,6 +9,7 @@
 #include <linux/init.h>
 #include <linux/irqchip/arm-gic-v3.h>
 #include <asm/sections.h>
+#include <linux/truly.h>
 
 #define ARM64_WORKAROUND_CLEAN_CACHE            0
 #define ARM64_WORKAROUND_DEVICE_LOAD_ACQUIRE    1
@@ -51,14 +52,14 @@ static inline unsigned long __kern_hyp_va(unsigned long v)
 asm(	".align 11;\n");
 
 
-int __hyp_text truly_test(tp_cpu_context_t* cxt) 
+int __hyp_text truly_test(struct truly_vm* cxt) 
 {
 	return 9999;
 }
 
 int func2(void);
 
-int truly_test_code_map(tp_cpu_context_t* cxt) 
+int truly_test_code_map(void* cxt) 
 {
 	printk("%s\n",__FUNCTION__);
 	return 2244;
@@ -66,37 +67,8 @@ int truly_test_code_map(tp_cpu_context_t* cxt)
 
 EXPORT_SYMBOL_GPL(truly_test_code_map);
 
-int __kvm_test_active_vm(void); 
-EXPORT_SYMBOL_GPL(__kvm_test_active_vm);
-
-unsigned long truly_get_vttbr_el2(void);
-EXPORT_SYMBOL_GPL(truly_get_vttbr_el2);
-
-// debug
-unsigned long truly_get_mdcr_el2(void);
-EXPORT_SYMBOL_GPL(truly_get_mdcr_el2);
-
-int truly_set_mdcr_el2(int mask);
-EXPORT_SYMBOL_GPL(truly_set_mdcr_el2);
-
-void truly_set_tpidr(unsigned long tpidr);
-EXPORT_SYMBOL_GPL(truly_set_tpidr);
-
-unsigned long truly_get_tpidr(void);
-EXPORT_SYMBOL_GPL(truly_get_tpidr);
-
-extern int truly_test_vec(void);
-EXPORT_SYMBOL_GPL(truly_test_vec);
-
-unsigned long truly_get_hcr_el2(void);
-EXPORT_SYMBOL_GPL(truly_get_hcr_el2);
-
-void truly_set_hcr_el2(unsigned long tpidr);
-EXPORT_SYMBOL_GPL(truly_set_hcr_el2);
-
-
-tp_cpu_context_t __percpu *tp_host_state;
-EXPORT_SYMBOL_GPL(tp_host_state);
+struct truly_vm  __percpu *tpvm;
+EXPORT_SYMBOL_GPL(tpvm);
 
 #define KERNEL_START _text
 #define KERNEL_END	_end
@@ -109,12 +81,6 @@ EXPORT_SYMBOL_GPL(tp_host_state);
 
 int truly_init(void)
 {
-	int cpu;
-	int err;
-
-	tp_info("init start  sizeof(tp_cpu_context_t) %ld \n", 
-			sizeof(tp_cpu_context_t) );
-
 	tp_info("Memory Layout code start=%p,%p\n "
 			"code end =%p,%p\n"
 			" sizeofcode=%d\n"
@@ -127,7 +93,7 @@ int truly_init(void)
 			(void*)_end, (void *)virt_to_phys(_end-1),
 			(int)(virt_to_phys(_end-1) - virt_to_phys(_sdata) ) );
 
-			 
+/*			 
 
 	tp_host_state = alloc_percpu(tp_cpu_context_t);
 	if (!tp_host_state) {
@@ -149,7 +115,7 @@ int truly_init(void)
 			return -1;
 		}
 	}
-/*
+
 	err = create_hyp_mappings( _sdata,  _end -1);
 	if (err){
 		tp_info("Failed to global kernel data %d\n", err);
@@ -169,19 +135,25 @@ int truly_init(void)
 }
 
 
-
-void truly_set_mmu(void);
+EXPORT_SYMBOL_GPL(truly_get_sctlr_el2);
+EXPORT_SYMBOL_GPL(truly_get_tcr_el2);
+EXPORT_SYMBOL_GPL(truly_set_tcr_el2);
 EXPORT_SYMBOL_GPL(truly_set_mmu);
 
-unsigned long truly_get_ttbr0_el2(void);
 EXPORT_SYMBOL_GPL(truly_get_ttbr0_el2);
-
-unsigned long truly_get_ttbr1_el2(void);
 EXPORT_SYMBOL_GPL(truly_get_ttbr1_el2);
-
-void truly_set_ttbr1_el2(unsigned long t);
 EXPORT_SYMBOL_GPL(truly_set_ttbr1_el2);
-
-void truly_set_ttbr0_el2(unsigned long t);
 EXPORT_SYMBOL_GPL(truly_set_ttbr0_el2);
+
+EXPORT_SYMBOL_GPL(truly_set_hcr_el2);
+EXPORT_SYMBOL_GPL(truly_has_vhe);
+EXPORT_SYMBOL_GPL(truly_get_hcr_el2);
+EXPORT_SYMBOL_GPL(truly_get_mdcr_el2);
+EXPORT_SYMBOL_GPL(truly_get_vttbr_el2);
+EXPORT_SYMBOL_GPL(truly_get_tpidr);
+EXPORT_SYMBOL_GPL(truly_set_mdcr_el2);
+EXPORT_SYMBOL_GPL(truly_set_tpidr);
+
+EXPORT_SYMBOL_GPL(truly_test_vec);
+
 

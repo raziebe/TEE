@@ -198,7 +198,6 @@ ENTRY(truly_set_hcr_el2)
 	ret
 ENDPROC(truly_get_hcr_el2)
 
-
 ENTRY(truly_get_hcr_el2)
 	mrs	x0, hcr_el2
 	ret
@@ -250,6 +249,21 @@ ENTRY(truly_set_ttbr0_el2)
 	msr	ttbr0_el2,x0
 	ret
 ENDPROC(truly_set_ttbr0_el2)
+
+ENTRY(truly_get_tcr_el2)
+	mrs	x0, tcr_el2
+	ret
+ENDPROC(truly_get_tcr_el2)
+
+ENTRY(truly_set_tcr_el2)
+	msr	tcr_el2,x0
+	ret
+ENDPROC(truly_set_tcr_el2)
+
+ENTRY(truly_get_sctlr_el2)
+	mrs	x0, sctlr_el2
+	ret
+ENDPROC( truly_get_sctlr_el2)
 
 ENTRY(truly_set_mmu)
 	mrs	x0, sctlr_el2
