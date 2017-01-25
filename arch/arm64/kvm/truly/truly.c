@@ -56,12 +56,12 @@ int __hyp_text truly_test(struct truly_vm* cxt)
 {
 	return 9999;
 }
+EXPORT_SYMBOL_GPL(truly_test);
 
 int func2(void);
 
 unsigned long truly_test_code_map(void* cxt) 
 {
-	printk("%s\n",__FUNCTION__);
 	return 2244;
 }
 

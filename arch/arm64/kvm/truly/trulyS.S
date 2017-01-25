@@ -285,34 +285,48 @@ ENDPROC(truly_set_sctlr_el2)
 
 ENTRY(truly_exec_el1)
 	
+	push	lr, xzr
+
+	mov	lr, x0
+	mov	x0, x1
+
+	mrs	x3, tcr_el1
+	msr	tcr_el2, x3
+
 	mrs	x3, ttbr1_el1
-	msr	ttbr1_el2,x3
+	msr	ttbr1_el2, x3
 	isb
 
 	mrs	x3, hcr_el2
-
-	push 	x2,x3
 	orr	x3, x3, #(1 << 34) //  E2H = 1
 	orr	x3, x3, #(1 << 27) // TGE = 1
 	msr	hcr_el2, x3
 	isb
+
 //	turn on mmu
 	mrs	x3, sctlr_el2
-	orr	x3,x3, #(1<<0)	// mmu enable
+	orr	x3, x3, #(1<<0)	// mmu enable
 	msr	sctlr_el2, x3
 	isb
+
 // Prepare to launch
-#	ldr	lr, =truly_test_code_map
-#	mov	x0, x1
-#	mov	x1, x2
-	push    lr, xzr
-#	blr	lr
-// turn of E2H
+	blr	lr
 	pop	lr, xzr
-	pop	x2, x3
+
+// turn off the mmu
+	mrs	x3, sctlr_el2
+	eor	x3, x3, #1
+	msr	sctlr_el2, x3
+	isb
+
+// turn 
+	mrs	x3, hcr_el2
+	eor	x3, x3, #(1 << 34) //  E2H = 1
+	eor	x3, x3, #(1 << 27) // TGE = 1
 	msr	hcr_el2, x3
+	isb
+
 	ret
 ENDPROC(truly_exec_el1)
-
 
 .popsection

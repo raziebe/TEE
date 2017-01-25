@@ -58,6 +58,9 @@ void truly_set_hcr_el2(unsigned long);
 void truly_set_mdcr_el2(unsigned long);
 void truly_set_tpidr(unsigned long);
 
+int truly_test(struct truly_vm* cxt);
+
+
 #define tp_info(fmt, ...) \
 	pr_info("truly [%i]: " fmt, task_pid_nr(current), ## __VA_ARGS__)
 
