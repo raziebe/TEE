@@ -297,9 +297,10 @@ ENTRY(truly_exec_el1)
 	msr	hcr_el2, x3
 	isb
 //	turn on mmu
-	mrs	x3, sctlr_el1
-	msr	sctlr_el2, x3	
-	isb
+#	mrs	x3, sctlr_el2
+#	orr	x3,x3, #(1<<0)	// mmu enable
+#	msr	sctlr_el2, x3
+#	isb
 // Prepare to launch
 	ldr	lr, =truly_test_code_map
 #	mov	x0, x1
