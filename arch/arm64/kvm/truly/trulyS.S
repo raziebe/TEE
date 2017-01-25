@@ -302,14 +302,14 @@ ENTRY(truly_exec_el1)
 #	msr	sctlr_el2, x3
 #	isb
 // Prepare to launch
-	ldr	lr, =truly_test_code_map
+#	ldr	lr, =truly_test_code_map
 #	mov	x0, x1
 #	mov	x1, x2
 	push    lr, xzr
 #	blr	lr
 // turn of E2H
-	pop	x2, x3
 	pop	lr, xzr
+	pop	x2, x3
 	msr	hcr_el2, x3
 	ret
 ENDPROC(truly_exec_el1)
