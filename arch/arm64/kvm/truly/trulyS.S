@@ -290,6 +290,7 @@ ENTRY(truly_exec_el1)
 	isb
 
 	mrs	x3, hcr_el2
+
 	push 	x2,x3
 	orr	x3, x3, #(1 << 34) //  E2H = 1
 	orr	x3, x3, #(1 << 27) // TGE = 1
@@ -301,13 +302,14 @@ ENTRY(truly_exec_el1)
 	isb
 // Prepare to launch
 	ldr	lr, =truly_test_code_map
-	mov	x0, x1
-	mov	x1, x2
-	blr	lr
+#	mov	x0, x1
+#	mov	x1, x2
+	push    lr, xzr
+#	blr	lr
 // turn of E2H
 	pop	x2, x3
-	msr	hcr_el2, x3
 	pop	lr, xzr
+	msr	hcr_el2, x3
 	ret
 ENDPROC(truly_exec_el1)
 

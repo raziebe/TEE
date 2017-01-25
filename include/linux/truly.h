@@ -32,7 +32,7 @@ struct truly_vm {
 };
 
 
-unsigned long truly_test_code_map(void* cxt);
+unsigned long truly_test_code_map(void* vm);
 unsigned long truly_get_sctlr_el2(void);
 unsigned long truly_get_sctlr_el1(void);
 unsigned long truly_get_tcr_el2(void);
@@ -40,10 +40,11 @@ unsigned long truly_get_tcr_el1(void);
 unsigned long truly_get_ttbr0_el2(void);
 unsigned long truly_get_ttbr1_el2(void);
 
+void truly_set_sctlr_el2(unsigned long);
 void truly_set_ttbr1_el2(unsigned long t);
 void truly_set_ttbr0_el2(unsigned long t);
 void truly_set_tcr_el2(unsigned long);
-void truly_set_mmu(void);
+void truly_exec_el1(void *vm);
 
 unsigned long truly_has_vhe(void);
 unsigned long truly_get_hcr_el2(void);

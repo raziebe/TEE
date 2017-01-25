@@ -139,7 +139,7 @@ EXPORT_SYMBOL_GPL(truly_get_sctlr_el2);
 EXPORT_SYMBOL_GPL(truly_get_tcr_el2);
 EXPORT_SYMBOL_GPL(truly_get_tcr_el1);
 EXPORT_SYMBOL_GPL(truly_set_tcr_el2);
-EXPORT_SYMBOL_GPL(truly_set_mmu);
+EXPORT_SYMBOL_GPL(truly_exec_el1);
 
 EXPORT_SYMBOL_GPL(truly_get_ttbr0_el2);
 EXPORT_SYMBOL_GPL(truly_get_ttbr1_el2);
@@ -154,7 +154,6 @@ EXPORT_SYMBOL_GPL(truly_get_vttbr_el2);
 EXPORT_SYMBOL_GPL(truly_get_tpidr);
 EXPORT_SYMBOL_GPL(truly_set_mdcr_el2);
 EXPORT_SYMBOL_GPL(truly_set_tpidr);
-
-EXPORT_SYMBOL_GPL(truly_test_vec);
+EXPORT_SYMBOL_GPL(truly_set_sctlr_el2);
 
 
