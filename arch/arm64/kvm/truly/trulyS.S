@@ -242,6 +242,7 @@ ENDPROC(truly_get_ttbr1_el2)
 
 ENTRY(truly_set_ttbr1_el2)
 	msr	ttbr1_el2,x0
+	isb
 	ret
 ENDPROC(truly_set_ttbr1_el2)
 
@@ -252,6 +253,7 @@ ENDPROC(truly_set_ttbr0_el2)
 
 ENTRY(truly_get_tcr_el1)
 	mrs	x0, tcr_el1
+	isb
 	ret
 ENDPROC(truly_get_tcr_el1)
 
@@ -275,19 +277,39 @@ ENTRY(truly_get_sctlr_el2)
 	ret
 ENDPROC(truly_get_sctlr_el2)
 
-ENTRY(truly_set_mmu)
-	mrs	x0, sctlr_el2
-	orr	x0, x0, #1
-	msr	sctlr_el2,x0
+ENTRY(truly_set_sctlr_el2)
+	msr 	sctlr_el2, x0 
+	isb
 	ret
-ENDPROC(truly_set_mmu)
+ENDPROC(truly_set_sctlr_el2)
 
-//
-// still the vbar from kvm. But use kvm allocated stack.
-//  Still needs to set the vttbr_el2
-ENTRY(truly_test_vec)
-       mov	x0,#432	// be sure
-       ret
-ENDPROC(truly_test_vec)
+ENTRY(truly_exec_el1)
+	
+	mrs	x3, ttbr1_el1
+	msr	ttbr1_el2,x3
+	isb
+
+	mrs	x3, hcr_el2
+	push 	x2,x3
+	orr	x3, x3, #(1 << 34) //  E2H = 1
+	orr	x3, x3, #(1 << 27) // TGE = 1
+	msr	hcr_el2, x3
+	isb
+//	turn on mmu
+	mrs	x3, sctlr_el1
+	msr	sctlr_el2, x3	
+	isb
+// Prepare to launch
+	ldr	lr, =truly_test_code_map
+	mov	x0, x1
+	mov	x1, x2
+	blr	lr
+// turn of E2H
+	pop	x2, x3
+	msr	hcr_el2, x3
+	pop	lr, xzr
+	ret
+ENDPROC(truly_exec_el1)
+
 
 .popsection
