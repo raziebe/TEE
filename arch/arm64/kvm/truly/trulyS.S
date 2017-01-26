@@ -283,18 +283,73 @@ ENTRY(truly_set_sctlr_el2)
 	ret
 ENDPROC(truly_set_sctlr_el2)
 
-#
-#	according to table B8-5  
-#	the ttbr(s) and many other are redirected
-#	when EH2 is set to 1
-#
 ENTRY(truly_exec_el1)
 	
 	push	lr, xzr
 
 	mov	lr, x0
 	mov	x0, x1
+
+#
+#	according to table B8-5  
+#	the ttbr(s) and many other are redirected
+#	when EH2 is set to 1
+#	so copy them
+//	
+	mrs	x3, sctlr_el1
+	msr	sctlr_el2,x3
+
+	mrs	x3, cpacr_el1
+	msr	cpacr_el1,x3
 	
+	mrs	x3,ttbr0_el1
+	msr	ttbr0_el2,x3
+
+	mrs	x3,ttbr1_el1
+	msr	ttbr1_el2,x3
+
+	mrs	x3,tcr_el1
+	msr	tcr_el2,x3
+	
+	mrs	x3, afsr0_el1
+	msr	afsr0_el2,x3
+
+	mrs	x3, afsr1_el1
+	msr	afsr1_el2,x3
+	
+	mrs	x3, esr_el1
+	msr	esr_el2,x3
+	
+	mrs 	x3, far_el1
+	msr 	far_el2,x3
+	
+	mrs	x3, mair_el1
+	msr	mair_el2,x3
+	
+	mrs 	x3,amair_el1
+	msr	amair_el2,x3
+
+	mrs	x3,vbar_el1
+	msr	vbar_el2,x3
+
+	mrs 	x3,contextidr_el1
+	msr 	contextidr_el1,x3
+
+	mrs	x3, cntkctl_el1
+	msr	cntkctl_el1,x3
+	
+	mrs	x3, spsr_el1	
+	msr	spsr_el2,x3
+
+	mrs	x3,elr_el1
+	msr	elr_el2, x3	
+		
+// turn on the mmu
+//	mrs	x3, sctlr_el2
+//	orr	x3, x3, #1
+//	msr	sctlr_el2, x3
+//	isb
+
 	mrs	x3, hcr_el2
 #	mov	x3,#0
 	orr	x3, x3, #(1 << 34) //  E2H = 1
@@ -315,12 +370,6 @@ ENTRY(truly_exec_el1)
 	msr	hcr_el2, x3
 	isb
 		
-// turn off the mmu
-	mrs	x3, sctlr_el2
-	eor	x3, x3, #1
-	msr	sctlr_el2, x3
-	isb
-
 	ret
 ENDPROC(truly_exec_el1)
 
