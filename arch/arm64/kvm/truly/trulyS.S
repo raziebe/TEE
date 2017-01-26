@@ -283,6 +283,11 @@ ENTRY(truly_set_sctlr_el2)
 	ret
 ENDPROC(truly_set_sctlr_el2)
 
+#
+#	according to table B8-5  
+#	the ttbr(s) and many other are redirected
+#	when EH2 is set to 1
+#
 ENTRY(truly_exec_el1)
 	
 	push	lr, xzr
@@ -290,46 +295,30 @@ ENTRY(truly_exec_el1)
 	mov	lr, x0
 	mov	x0, x1
 	
-	mrs	x3,contextidr_el1
-	msr	contextidr_el2,x3
-
-	mrs	x3,ttbr0_el1
-	msr	ttbr0_el2,x3
-
-	mrs	x3, tcr_el1
-	msr	tcr_el2, x3
-
-	mrs	x3, ttbr1_el1
-	msr	ttbr1_el2, x3
-	isb
-	
 	mrs	x3, hcr_el2
+#	mov	x3,#0
 	orr	x3, x3, #(1 << 34) //  E2H = 1
 #	orr	x3, x3, #(1 << 27) // TGE = 1
 	msr	hcr_el2, x3
 	isb
 
-//	turn on mmu
-	mrs	x3, sctlr_el2
-	orr	x3, x3, #(1<<0)	// mmu enable
-	msr	sctlr_el2, x3
-	isb
 
 // Prepare to launch
 	blr	lr
 	pop	lr, xzr
 
-// turn off the mmu
-	mrs	x3, sctlr_el2
-	eor	x3, x3, #1
-	msr	sctlr_el2, x3
-	isb
 
-// turn 
+// turn off E2H
 	mrs	x3, hcr_el2
 	eor	x3, x3, #(1 << 34) //  E2H = 1
 	eor	x3, x3, #(1 << 27) // TGE = 1
 	msr	hcr_el2, x3
+	isb
+		
+// turn off the mmu
+	mrs	x3, sctlr_el2
+	eor	x3, x3, #1
+	msr	sctlr_el2, x3
 	isb
 
 	ret
