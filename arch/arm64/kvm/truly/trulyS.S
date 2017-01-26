@@ -303,7 +303,7 @@ ENTRY(truly_exec_el1)
 	msr	ttbr1_el2, x3
 	isb
 	
-	mov	x3, #0
+#	mov	x3, #0
 	orr	x3, x3, #(1 << 34) //  E2H = 1
 	orr	x3, x3, #(1 << 27) // TGE = 1
 	msr	hcr_el2, x3
