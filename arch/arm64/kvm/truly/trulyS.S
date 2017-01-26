@@ -286,27 +286,53 @@ ENDPROC(truly_set_sctlr_el2)
 ENTRY(truly_exec_el1)
 	
 	push	lr, xzr
-
-#	kern_hyp_va	x0
 	mov	lr, x0
-#	mov	x0, x1
+
+        mov     x0, #HCR_RW                     // 64-bit EL1
+#        orr     x0, x0, #HCR_TGE                // Enable Host Extensions
+        orr     x0, x0, #((UL(1) << 34))
+	msr     hcr_el2, x0
+        isb
+
 
 // turn on the mmu
-	mrs     x3, sctlr_el2
+	mrs     x3, sctlr_el1
 	orr     x3, x3, #1
 	msr     sctlr_el2, x3
-	isb
+// 
+	mrs	x3,ttbr1_el1
+	msr	ttbr1_el2,x3
 
-       mov     x3, #0
-       orr     x3, x3, #(1 << 34) //  E2H = 1
-#      orr     x3, x3, #(1 << 27) // TGE = 1
-       orr     x3, x3, #(1 << 31) // RW = 1
-       msr     hcr_el2, x3
-       isb
+	msr     vttbr_el2, xzr
 
+       /* Populate ID registers. */
+        mrs     x0, midr_el1
+        mrs     x1, mpidr_el1
+        msr     vpidr_el2, x0
+        msr     vmpidr_el2, x1
+
+        /* Coprocessor traps. */
+        mov     x0, #0x33ff
+        msr     cptr_el2, x0                    // Disable copro. traps to EL2
+
+#ifdef CONFIG_COMPAT
+        msr     hstr_el2, xzr                   // Disable CP15 traps to EL2
+#endif
+
+	mov	x6,#29
+	b __truly_panic
 
 // Prepare to launch
+
 	blr	lr
+
+
+	mrs	x0, hcr_el2
+	eor	x0,x0,#HCR_TGE
+	eor	x0,x0,#((UL(1) << 34))
+	msr	hcr_el2, x0	
+	isb
+
 	pop	lr, xzr
 
 	ret
