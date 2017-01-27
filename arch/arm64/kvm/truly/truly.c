@@ -1,23 +1,18 @@
-#include <linux/compiler.h>
-#include <linux/kvm_host.h>
-#include <asm/kvm_mmu.h> 
-#include <asm/memory.h>
 #include <linux/module.h>
 #include <linux/truly.h>
-#include <linux/compiler.h>
 #include <linux/linkage.h>
 #include <linux/init.h>
-#include <linux/irqchip/arm-gic-v3.h>
-#include <asm/sections.h>
-#include <linux/truly.h>
+#include <linux/gfp.h>
 
 void *v;
 int global1=0x43;
 static int global2=0x4;
 unsigned long truly_test_code_map(void* cxt) 
 {
-	v = kmalloc(100, GFP_ATOMIC);
-
+	//v = kmalloc(100, GFP_ATOMIC);
+	struct page  *p = alloc_page(GFP_ATOMIC);
+	//v = kmap_atomic(p);
+	
 	return global1 + global2;
 }
 
