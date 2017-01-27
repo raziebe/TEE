@@ -315,15 +315,15 @@ ENTRY(truly_exec_el1)
 	isb
 
         mov     x0, #HCR_RW                     // 64-bit EL1
-        orr     x0, x0, #((UL(1) << 34))  // Enable Host Extensions
+        orr     x0, x0, #((UL(1) << 34))  // Enable Host Extensions. But Not TGE
 	msr     hcr_el2, x0
         isb
-// Prepare to launch
+// Call the procedure
 	blr	lr
-
-	mrs	x0, hcr_el2
-	eor	x0,x0,#((UL(1) << 34))
-	msr	hcr_el2, x0	
+// revert from VHE
+	mrs	x1, hcr_el2
+	eor	x1,x1,#((UL(1) << 34))
+	msr	hcr_el2, x1	
 	isb
 
 	pop	lr, xzr
