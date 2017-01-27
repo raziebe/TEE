@@ -173,8 +173,8 @@ ENDPROC(\label)
 .endm
 
 ENTRY( EL2_sync )
-#	mov	x6, #323
- #       b __truly_panic
+	mov	x6, #9
+        b __truly_panic
 	eret
 ENDPROC(EL2_sync)
 
@@ -311,18 +311,15 @@ ENTRY(truly_exec_el1)
         msr     hstr_el2, xzr                   // Disable CP15 traps to EL2
 
 	mrs     x0,tcr_el1
-	msr	tcr_el1,x0
+	msr	tcr_el2,x0
+	isb
 
         mov     x0, #HCR_RW                     // 64-bit EL1
         orr     x0, x0, #((UL(1) << 34))  // Enable Host Extensions
 	msr     hcr_el2, x0
         isb
 // Prepare to launch
-
 	blr	lr
-
-#	mov	x6,lr
-#	b __truly_panic
 
 	mrs	x0, hcr_el2
 	eor	x0,x0,#((UL(1) << 34))
