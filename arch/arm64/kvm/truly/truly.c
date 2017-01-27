@@ -58,11 +58,12 @@ int __hyp_text truly_test(struct truly_vm* cxt)
 }
 EXPORT_SYMBOL_GPL(truly_test);
 
-int func2(void);
-
+int global1=0x43;
+static int global2=0x1;
 unsigned long truly_test_code_map(void* cxt) 
 {
-	return 2244;
+//	printk("Hello World from EL2=%d\n",2);
+	return global1 + global2;
 }
 
 EXPORT_SYMBOL_GPL(truly_test_code_map);
