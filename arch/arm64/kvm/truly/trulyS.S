@@ -160,7 +160,7 @@ __truly_panic:
 ENDPROC(__truly_panic)
 __hyp_panic_str:
 	.ascii	"Truly panic:\nCode:%08x PC:%016x ESR:%08x\nFAR:%016x" \
-	" HPFAR:%016x RAZDBG:%016x\nTrulyCxt:%p\n\0"
+	" HPFAR:%016x RAZDBG:%p\nTrulyCxt:%p\n\0"
 
 .align 2
 
@@ -173,8 +173,8 @@ ENDPROC(\label)
 .endm
 
 ENTRY( EL2_sync )
-	mov	x6, #323
-        b __truly_panic
+#	mov	x6, #323
+ #       b __truly_panic
 	eret
 ENDPROC(EL2_sync)
 
@@ -284,16 +284,9 @@ ENTRY(truly_set_sctlr_el2)
 ENDPROC(truly_set_sctlr_el2)
 
 ENTRY(truly_exec_el1)
-	
+
 	push	lr, xzr
 	mov	lr, x0
-
-        mov     x0, #HCR_RW                     // 64-bit EL1
-#        orr     x0, x0, #HCR_TGE                // Enable Host Extensions
-        orr     x0, x0, #((UL(1) << 34))
-	msr     hcr_el2, x0
-        isb
-
 
 // turn on the mmu
 	mrs     x3, sctlr_el1
@@ -315,20 +308,23 @@ ENTRY(truly_exec_el1)
         mov     x0, #0x33ff
         msr     cptr_el2, x0                    // Disable copro. traps to EL2
 
-#ifdef CONFIG_COMPAT
         msr     hstr_el2, xzr                   // Disable CP15 traps to EL2
-#endif
 
-	mov	x6,#29
-	b __truly_panic
+	mrs     x0,tcr_el1
+	msr	tcr_el1,x0
 
+        mov     x0, #HCR_RW                     // 64-bit EL1
+        orr     x0, x0, #((UL(1) << 34))  // Enable Host Extensions
+	msr     hcr_el2, x0
+        isb
 // Prepare to launch
 
 	blr	lr
 
+#	mov	x6,lr
+#	b __truly_panic
 
 	mrs	x0, hcr_el2
-	eor	x0,x0,#HCR_TGE
 	eor	x0,x0,#((UL(1) << 34))
 	msr	hcr_el2, x0	
 	isb
