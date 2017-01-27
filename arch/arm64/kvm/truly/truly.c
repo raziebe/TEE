@@ -10,11 +10,13 @@ int global1=0x43;
 static int global2=0x4;
 unsigned long truly_test_code_map(void* cxt) 
 {
-	//v = kmalloc(100, GFP_ATOMIC);
+	unsigned long flags;
+
 	struct page  *p = alloc_page(GFP_ATOMIC);
+	local_irq_save(flags);
 	v = kmap_atomic(p);
-	
-//	kunmap_atomic(v);
+	local_irq_restore(flags);
+
 	return global1 + global2;
 }
 
