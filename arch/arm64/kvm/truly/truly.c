@@ -3,6 +3,7 @@
 #include <linux/linkage.h>
 #include <linux/init.h>
 #include <linux/gfp.h>
+#include <linux/highmem.h>
 
 void *v;
 int global1=0x43;
@@ -11,8 +12,9 @@ unsigned long truly_test_code_map(void* cxt)
 {
 	//v = kmalloc(100, GFP_ATOMIC);
 	struct page  *p = alloc_page(GFP_ATOMIC);
-	//v = kmap_atomic(p);
+	v = kmap_atomic(p);
 	
+//	kunmap_atomic(v);
 	return global1 + global2;
 }
 
