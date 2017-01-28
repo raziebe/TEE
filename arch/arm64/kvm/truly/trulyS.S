@@ -287,45 +287,59 @@ ENTRY(truly_exec_el1)
 
 	push	lr, xzr
 	mov	lr, x0
+	mov	x0,x1
 
 // turn on the mmu
-	mrs     x3, sctlr_el1
+	mov	x3,#0
 	orr     x3, x3, #1
 	msr     sctlr_el2, x3
+	isb
 // 
 	mrs	x3,ttbr1_el1
 	msr	ttbr1_el2,x3
+	isb
 
 	msr     vttbr_el2, xzr
 
        /* Populate ID registers. */
-        mrs     x0, midr_el1
-        mrs     x1, mpidr_el1
-        msr     vpidr_el2, x0
-        msr     vmpidr_el2, x1
+        mrs     x2, midr_el1
+        mrs     x3, mpidr_el1
+        msr     vpidr_el2, x2
+        msr     vmpidr_el2, x3
 
         /* Coprocessor traps. */
-        mov     x0, #0x33ff
-        msr     cptr_el2, x0                    // Disable copro. traps to EL2
+        mov     x2, #0x33ff
+        msr     cptr_el2, x2                    // Disable copro. traps to EL2
 
         msr     hstr_el2, xzr                   // Disable CP15 traps to EL2
 
-	mrs     x0,tcr_el1
-	msr	tcr_el2,x0
+	mrs     x2,tcr_el1
+	msr	tcr_el2,x2
 	isb
 
-        mov     x0, #HCR_RW                     // 64-bit EL1
-        orr     x0, x0, #((UL(1) << 34))  // Enable Host Extensions. But Not TGE
-	msr     hcr_el2, x0
+	mrs	x2,mair_el1
+	msr	mair_el2,x2
+
+	mrs	x2,amair_el1
+	msr	amair_el2,x2
+	
+	mrs	x2,contextidr_el1
+	msr	contextidr_el2,x2	
+
+
+        mov     x2, #HCR_RW                     // 64-bit EL1
+        orr     x2, x2, #((UL(1) << 34))  // Enable Host Extensions. But Not TGE
+	msr     hcr_el2, x2
         isb
+
 // Call the procedure
 	blr	lr
 // revert from VHE
-	mrs	x1, hcr_el2
-	eor	x1,x1,#((UL(1) << 34))
-	msr	hcr_el2, x1	
+	mrs	x2, hcr_el2
+	eor	x2,x2,#((UL(1) << 34))
+	msr	hcr_el2, x2	
 	isb
-
+	
 	pop	lr, xzr
 
 	ret
