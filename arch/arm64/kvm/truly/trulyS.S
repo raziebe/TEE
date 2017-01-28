@@ -290,7 +290,7 @@ ENTRY(truly_exec_el1)
 	mov	x0,x1
 
 // turn on the mmu
-	mov	x3,#0
+	mov	x3,xzr
 	orr     x3, x3, #1
 	msr     sctlr_el2, x3
 	isb
