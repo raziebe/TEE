@@ -396,13 +396,10 @@ static void update_vttbr(struct kvm *kvm)
 	phys_addr_t pgd_phys;
 	u64 vmid;
 
-	printk("%s %d\n",__func__,__LINE__);
 	if (!need_new_vmid_gen(kvm))
 		return;
 
-	printk("%s %d\n",__func__,__LINE__);
 	spin_lock(&kvm_vmid_lock);
-
 	/*
 	 * We need to re-check the vmid_gen here to ensure that if another vcpu
 	 * already allocated a valid vmid for this vm, then this vcpu should
@@ -413,7 +410,6 @@ static void update_vttbr(struct kvm *kvm)
 		return;
 	}
 
-	printk("%s %d\n",__func__,__LINE__);
 	/* First user of a new VMID generation? */
 	if (unlikely(kvm_next_vmid == 0)) {
 		atomic64_inc(&kvm_vmid_gen);
@@ -430,10 +426,8 @@ static void update_vttbr(struct kvm *kvm)
 		 * shareable domain to make sure all data structures are
 		 * clean.
 		 */
-		printk("%s %d\n",__func__,__LINE__);
 		kvm_call_hyp(__kvm_flush_vm_context);
 	}
-	printk("%s %d\n",__func__,__LINE__);
 
 	kvm->arch.vmid_gen = atomic64_read(&kvm_vmid_gen);
 	kvm->arch.vmid = kvm_next_vmid;
@@ -441,7 +435,7 @@ static void update_vttbr(struct kvm *kvm)
 
 	/* update vttbr to be used with the new vmid */
 	pgd_phys = virt_to_phys(kvm_get_hwpgd(kvm));
-	printk("%s %d %p\n",__func__,__LINE__, kvm_get_hwpgd(kvm));
+	
 	BUG_ON(pgd_phys & ~VTTBR_BADDR_MASK);
 	vmid = ((u64)(kvm->arch.vmid) << VTTBR_VMID_SHIFT) & VTTBR_VMID_MASK;
 	kvm->arch.vttbr = pgd_phys | vmid;
