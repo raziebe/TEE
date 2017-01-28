@@ -299,7 +299,7 @@ ENTRY(truly_exec_el1)
 	msr	ttbr1_el2,x3
 	isb
 
-	msr     vttbr_el2, xzr
+#	msr     vttbr_el2, xzr	...  hamm.. need to of stage 2  here ?
 
        /* Populate ID registers. */
         mrs     x2, midr_el1
@@ -308,15 +308,15 @@ ENTRY(truly_exec_el1)
         msr     vmpidr_el2, x3
 
         /* Coprocessor traps. */
-        mov     x2, #0x33ff
-        msr     cptr_el2, x2                    // Disable copro. traps to EL2
+   //     mov     x2, #0x33ff
+ //       msr     cptr_el2, x2            // Disable copro. traps to EL2
 
-        msr     hstr_el2, xzr                   // Disable CP15 traps to EL2
+  //      msr     hstr_el2, xzr           // Disable CP15 traps to EL2
 
 	mrs     x2,tcr_el1
-	msr	tcr_el2,x2
+	msr	tcr_el2,x2		// tcr_el2 is 32bit. need to copy only t0sz. This is a bug
 	isb
-
+/*
 	mrs	x2,mair_el1
 	msr	mair_el2,x2
 
@@ -325,7 +325,7 @@ ENTRY(truly_exec_el1)
 	
 	mrs	x2,contextidr_el1
 	msr	contextidr_el2,x2	
-
+*/
 
         mov     x2, #HCR_RW                     // 64-bit EL1
         orr     x2, x2, #((UL(1) << 34))  // Enable Host Extensions. But Not TGE
