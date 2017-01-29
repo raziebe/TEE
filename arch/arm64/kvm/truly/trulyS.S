@@ -298,11 +298,11 @@ ENTRY(truly_exec_el1)
 	mrs	x3,ttbr1_el1
 	msr	ttbr1_el2,x3
 	isb
-
-	// tcr_el2 is 32bit. need to copy only t0sz. This is a bug
-
+	// copy t0sz 
 	mrs     x2,tcr_el1
-	msr	tcr_el2,x2
+	mov	x3,#0
+	orr	x3,x2,#31
+	msr	tcr_el2,x3
 	isb
 
         mov     x2, #HCR_RW                     // 64-bit EL1
