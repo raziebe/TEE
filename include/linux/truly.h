@@ -29,6 +29,8 @@ struct truly_vm {
  	unsigned long vttbr_el1;
  	unsigned long vbar_el1;
  	unsigned long sctlr_el1;
+
+	unsigned long id_aa64mmfr0_el1;
 };
 
 
@@ -59,7 +61,7 @@ void truly_set_mdcr_el2(unsigned long);
 void truly_set_tpidr(unsigned long);
 
 int truly_test(struct truly_vm* cxt);
-
+long truly_get_mem_regs(void *cxt);
 
 #define tp_info(fmt, ...) \
 	pr_info("truly [%i]: " fmt, task_pid_nr(current), ## __VA_ARGS__)

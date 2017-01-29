@@ -10,15 +10,37 @@ int global1=0x43;
 static int global2=0x4;
 unsigned long truly_test_code_map(void* cxt) 
 {
-	
 	struct truly_vm* vm = (struct truly_vm *)cxt;
 	// We can allocate pages, we cannot map them
-	struct page  *p = alloc_page(GFP_ATOMIC);
+//	struct page  *p = alloc_page(GFP_ATOMIC);
 	vm->debug = 0x8888; // make a signature
 //	printk("xxxxx\n");
 	return global1 + global2;
 }
 EXPORT_SYMBOL_GPL(truly_test_code_map);
+
+long truly_get_mem_regs(void *cxt)
+{
+	struct truly_vm* vm = (struct truly_vm *)cxt;
+	
+	long tp_read_tcr_el1(void)
+	{	
+		long e = 0;
+		asm("mrs %0,tcr_el1\n" : "=r"  (e));
+		return e;
+	}
+
+	long tp_read_mfr(void)
+	{	
+		long e = 0;
+		asm("mrs %0,id_aa64mmfr0_el1\n" : "=r"  (e));
+		return e;
+	}
+	vm->id_aa64mmfr0_el1 = tp_read_mfr();
+	vm->tcr_el1 = tp_read_tcr_el1();
+	return 0;
+}
+EXPORT_SYMBOL_GPL(truly_get_mem_regs);
 
 int truly_init(void)
 {
