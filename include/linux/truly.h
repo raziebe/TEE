@@ -1,6 +1,16 @@
 #ifndef _TRULY_H_
 #define _TRULY_H_
 
+// page 1775
+#define DESC_TABLE_BIT 			( UL(1) << 1 )
+#define DESC_VALID_BIT 			( UL(1) << 0 )
+#define DESC_XN	       			( UL(1) << 54 )
+#define DESC_CONTG_BIT		 	( UL(1) << 52 )
+#define DESC_AF	        		( UL(1) << 10 )
+#define DESC_SHREABILITY_SHIFT		(8)
+#define DESC_S2AP_SHIFT			(6)
+#define DESC_MEMATTR_SHIFT		(2)
+
 struct truly_vm {
 
 	unsigned long count; 
@@ -9,6 +19,9 @@ struct truly_vm {
  	unsigned long hstr_el2;
  	unsigned long ttbr0_el2;
  	unsigned long ttbr1_el2;
+ 	unsigned long vttbr_el2;
+ 	unsigned long vtcr_el2;
+
  	unsigned long tpidr_el2;
  	unsigned long tcr_el2;
  	unsigned long sp_el2;
@@ -16,7 +29,7 @@ struct truly_vm {
   	unsigned long esr_el2;
     	unsigned long sp_el0;
  	unsigned long spsr_el2;
-  	unsigned long vttbr_el2;
+  	
     	unsigned long vbar_el2;
  	unsigned long sctlr_el2;
 
@@ -47,7 +60,7 @@ void truly_set_ttbr1_el2(unsigned long t);
 void truly_set_ttbr0_el2(unsigned long t);
 void truly_set_tcr_el2(unsigned long);
 void truly_exec_el1(void *vm);
-
+int truly_test_vttbr(void *cxt);
 unsigned long truly_has_vhe(void);
 unsigned long truly_get_hcr_el2(void);
 unsigned long truly_get_mdcr_el2(void);
