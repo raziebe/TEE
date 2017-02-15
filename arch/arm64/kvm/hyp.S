@@ -39,14 +39,6 @@
 	.pushsection	.hyp.text, "ax"
 	.align	PAGE_SHIFT
 
-
-.macro truly_debug
-       mrs     x29, tpidr_el2
-       ldr     x28, [x29, #VCPU_DBG_CNT_CPU]
-       add     x28, x28, #1
-       str     x28, [x29, #VCPU_DBG_CNT_CPU]
-.endm
-
 .macro save_common_regs
 	// x2: base address for cpu context
 	// x3: tmp register
@@ -487,7 +479,7 @@
 	mov	x3, #(1 << 30)
 	msr	fpexc32_el2, x3
 	isb
-99: //raz
+99:
 	msr     hcr_el2, x2
 	mov	x2, #CPTR_EL2_TTA
 	orr     x2, x2, #CPTR_EL2_TFP
@@ -901,8 +893,8 @@ __kvm_hyp_panic:
 	mov	x29, xzr
 
 1:	adr	x0, __hyp_panic_str
-	adr	x1, 2f // adr generates a register-relative address in the destination register
-	ldp	x2, x3, [x1] // Load to Pair of Registers from two dwords starting from memory at [x1] 
+	adr	x1, 2f
+	ldp	x2, x3, [x1]
 	sub	x0, x0, x2
 	add	x0, x0, x3
 	mrs	x1, spsr_el2
@@ -953,24 +945,6 @@ ENTRY(kvm_call_hyp)
 	ret
 ENDPROC(kvm_call_hyp)
 
-.macro __kvm_raz_debug
-
-	push	x0, x1
-	push	x2, x3
-
-        ldr     x3,__intr_cnt
-        mov     x2, #0xFFFFFFC000000000         
-        sub     x3, x3, x2      // strip real address
-        ldr     x0,[x3]
-        mov     x1,#1
-        add     x0,x0,x1
-        str     x0,[x3]
-
-	pop	x2, x3
-	pop	x0, x1
-.endm
-
-
 .macro invalid_vector	label, target
 	.align	2
 \label:
@@ -999,11 +973,11 @@ el1_sync:					// Guest trapped into EL2
 	mrs	x1, esr_el2
 	lsr	x2, x1, #ESR_ELx_EC_SHIFT
 
-	cmp	x2, #ESR_ELx_EC_HVC64		// 10110 --> after defining a vm someone calls el1_sync
+	cmp	x2, #ESR_ELx_EC_HVC64
 	b.ne	el1_trap
 
 	mrs	x3, vttbr_el2			// If vttbr is valid, the 64bit guest
-	cbnz	x3, el1_trap			// called HVC, --> does not happen
+	cbnz	x3, el1_trap			// called HVC
 
 	/* Here, we're pretty sure the host called HVC. */
 	pop	x2, x3
@@ -1140,114 +1114,9 @@ ENTRY(__kvm_hyp_vector)
 ENDPROC(__kvm_hyp_vector)
 
 ENTRY(__kvm_get_mdcr_el2)
-	mrs	x0, mdcr_el2
-	ret
+        mrs     x0, mdcr_el2
+        ret
 ENDPROC(__kvm_get_mdcr_el2)
 
-ENTRY(kvm_set_vbar)
-       msr	vbar_el2, x0
-       ret
-ENDPROC(kvm_set_vbar)
-
-// just try to acticate the vm
-ENTRY( __kvm_test_active_vm)
-	
-	kern_hyp_va	x0
-	msr	tpidr_el2, x0	// Save the vcpu register
-
-	// Host context
-	ldr	x2, [x0, #VCPU_HOST_CONTEXT]
-	kern_hyp_va x2
-
-	save_host_regs
-	bl __save_sysregs
-
-#	compute_debug_state 1f
-#	add	x3, x0, #VCPU_HOST_DEBUG_STATE
-#	bl	__save_debug
-#1:
-##################################
-	activate_traps
-	activate_vm
-
-//	restore_vgic_state
-//	restore_timer_state
-
-//	 Guest context
-//	add	x2, x0, #VCPU_CONTEXT
-
-	// We must restore the 32-bit state before the sysregs, thanks
-	// to Cortex-A57 erratum #852523.
-//	restore_guest_32bit_state
-//	bl __restore_sysregs
-
-//	skip_debug_state x3, 1f
-//	ldr	x3, [x0, #VCPU_DEBUG_PTR]
-//	kern_hyp_va x3
-//	bl	__restore_debug
-#1:
-//	restore_guest_regs
-	// That's it, no more messing around.
-	eret
-
-__kvm_vcpu_return_raz:
-	// Assume x0 is the vcpu pointer, x1 the return code
-	// Guest's x0-x3 are on the stack
-
-	// Guest context
-#	add	x2, x0, #VCPU_CONTEXT
-
-#	save_guest_regs
-#	bl __save_fpsimd
-#	bl __save_sysregs
-
-#	skip_debug_state x3, 1f
-#	ldr	x3, [x0, #VCPU_DEBUG_PTR]
-#	kern_hyp_va x3
-#	bl	__save_debug
-#1:
-#	save_guest_32bit_state
-
-#	save_timer_state
-#	save_vgic_state
-
-#	deactivate_traps
-#	deactivate_vm
-
-	// Host context
-#	ldr	x2, [x0, #VCPU_HOST_CONTEXT]
-#	kern_hyp_va x2
-
-#	bl __restore_sysregs
-#	bl __restore_fpsimd
-	/* Clear FPSIMD and Trace trapping */
-#	msr     cptr_el2, xzr
-
-#	skip_debug_state x3, 1f
-	// Clear the dirty flag for the next run, as all the state has
-	// already been saved. Note that we nuke the whole 64bit word.
-	// If we ever add more flags, we'll have to be more careful...
-#	str	xzr, [x0, #VCPU_DEBUG_FLAGS]
-#	add	x3, x0, #VCPU_HOST_DEBUG_STATE
-#	bl	__restore_debug
-#1:
-#	restore_host_regs
-
-#	mov	x0, x1
-	ret
-ENDPROC(__kvm_test_active_vm)
-
-/*
- * Globals must be down here. the vector must be aligned
-*/
-__intr_cnt: .dword intr_cnt
-
-
-.data
-.balign 4
-
-.global intr_cnt
-intr_cnt:
-        .dword 1
 
 	.popsection
