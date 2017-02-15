@@ -8,48 +8,64 @@
 #include <asm/kvm_asm.h>
 #include <asm/kvm_arm.h>
 #include <asm/kvm_mmu.h>
+//#include <linux/truly.h>
 
 .text
 .pushsection	.hyp.text, "ax" // borrow  hyp.text
 
-
-.macro deactivate_traps
-	mov     x2, #HCR_RW 
-	orr	x2, x2, #HCR_SWIO
-	msr	hcr_el2, x2
-	msr	hstr_el2, xzr
-	mrs	x2, mdcr_el2
-	and	x2, x2, #MDCR_EL2_HPMN_MASK
-	msr	mdcr_el2, x2
+.macro invalid_vector   label,num
+.align 7
+\label:
+	mov	x6, \num
+        b __truly_panic
+ENDPROC(\label)
 .endm
 
-.macro activate_traps	
-	mov	x2, #MDCR_EL2_TDA
-	msr	mdcr_el2, x2
+.macro activate_traps
+        ldr     x2, =HCR_GUEST_FLAGS
+        msr     hcr_el2, x2
+        mov     x2, #CPTR_EL2_TTA
+        orr     x2, x2, #CPTR_EL2_TFP
+        msr     cptr_el2, x2
+
+        mov     x2, #(1 << 15)  // Trap CP15 Cr=15
+        msr     hstr_el2, x2
+
+        // Monitor Debug Config - see kvm_arm_setup_debug()
+      //  ldr     x2, [x0, #VCPU_MDCR_EL2]
+      //  msr     mdcr_el2, x2
 .endm
 
+.macro activate_vm
+        ldr     x1, [x0, #VCPU_KVM]
+        kern_hyp_va     x1
+        ldr     x2, [x1, #KVM_VTTBR]
+        msr     vttbr_el2, x2
+.endm
+
+// http://infocenter.arm.com/help/index.jsp?topic=/com.arm.doc.den0024a/CHDEEDDC.html
 .align 11
 ENTRY(__truly_vectors)
-        ventry  EL2_sync                        // raz test
-        ventry  EL2_irq_invalid                 // IRQ EL2t
-        ventry  EL2_fiq_invalid                 // FIQ EL2t
-        ventry  EL2_error_invalid               // Error EL2t
+        invalid_vector  EL2_sync,#1                        // raz test
+        invalid_vector  EL2_irq_invalid,#2                 // IRQ EL2t
+        invalid_vector  EL2_fiq_invalid,#3                // FIQ EL2t
+        invalid_vector  EL2_error_invalid,#4             // Error EL2t
 
-        ventry  EL2_sync  	              // Synchronous EL2h
-        ventry  EL2_irq_invalid                 // IRQ EL2h
-        ventry  EL2_fiq_invalid                 // FIQ EL2h
-        ventry  EL2_error_invalid               // Error EL2h
+        invalid_vector  EL2_syncELSpx,#5  	              // Synchronous EL2h
+        invalid_vector  EL2_irq_invalidELSpx,#6                 // IRQ EL2h
+        invalid_vector  EL2_fiq_invalidELSpx,#7                 // FIQ EL2h
+        invalid_vector  EL2_error_invalidELspx,#8               // Error EL2h
 
         ventry  EL1_sync                        // Synchronous 64-bit EL1
 
         ventry  EL1_irq                       // IRQ 64-bit EL1
-        ventry  EL1_fiq_invalid                 // FIQ 64-bit EL1
-        ventry  EL1_error_invalid               // Error 64-bit EL1
+        invalid_vector  EL1_fiq_invalid ,#9                // FIQ 64-bit EL1
+        invalid_vector  EL1_error_invalid  ,#10             // Error 64-bit EL1
 
-        ventry  EL1_irq                // Synchronous 32-bit EL1
-        ventry  EL1_irq_invalid                 // IRQ 32-bit EL1
-        ventry  EL1_fiq_invalid                 // FIQ 32-bit EL1
-        ventry  EL1_error_invalid               // Error 32-bit EL1
+        ventry  EL1_irq  	              // Synchronous 32-bit EL1
+        invalid_vector  EL1_irq_invalid,#11                 // IRQ 32-bit EL1
+        invalid_vector  EL1_fiq_invalidLowEL32 ,#12                // FIQ 32-bit EL1
+        invalid_vector  EL1_error_invalidLowEL32,#13               // Error 32-bit EL1
 ENDPROC(__truly_vectors)
 
 
@@ -95,31 +111,11 @@ EL1_sync:
 *	here I need to check for various syndroms
 */
 EL1_trap:
-	mrs    x1, tpidr_el2  // get truly context 
-	cbz    x1, 3f
-
-//
-//	store the exception code stored in x2
-//	D.7-1933
-//
-	mrs	x3, esr_el1
-        str     x3, [x1, #TP_CPU_OFFSET_DEBUG]
-	cmp	x2,#0x18 // ISS encoded D7-1950
-	b.eq	3f
-
-        str     x2, [x1, #TP_CPU_OFFSET_ESR_EL2]
-
-	// update  counter
-
-        ldr     x3, [x1, #TP_CPU_OFFSET_COUNT]
-        add     x3, x3, #1
-        str     x3, [x1, #TP_CPU_OFFSET_COUNT]
-//
-//	Jump over the next address to return to el1
-3:
-	mrs x2, elr_el2
-	add x2, x2 , #4
-	msr elr_el2, x2
+#	mrs    x1, tpidr_el2  // get truly context 
+#	cbz    x1, 4f
+	
+	b __truly_panic
+	
 // exit out
 4:
 	pop	x2, x3
@@ -163,28 +159,6 @@ __hyp_panic_str:
 	" HPFAR:%016x RAZDBG:%p\nTrulyCxt:%p\n\0"
 
 .align 2
-
-.macro invalid_vector   label,num
-.align 2
-\label:
-	mov	x6, \num
-        b __truly_panic
-ENDPROC(\label)
-.endm
-
-ENTRY( EL2_sync )
-	mov	x6, #9
-        b __truly_panic
-	eret
-ENDPROC(EL2_sync)
-
-invalid_vector  EL2_irq_invalid ,#2
-invalid_vector  EL2_fiq_invalid, #3
-invalid_vector  EL2_error_invalid, #4
-invalid_vector  EL1_sync_invalid,#5
-invalid_vector  EL1_irq_invalid,#6
-invalid_vector  EL1_fiq_invalid,#7
-invalid_vector  EL1_error_invalid,#8
 
 
 ENTRY(truly_has_vhe)
@@ -322,5 +296,14 @@ ENTRY(truly_exec_el1)
 
 	ret
 ENDPROC(truly_exec_el1)
+
+//
+// replace later to truly_run_hyp
+//
+ENTRY(truly_exec_el1_2)
+	activate_traps
+	activate_vm
+	ret
+ENDPROC(truly_exec_el1_2)
 
 .popsection

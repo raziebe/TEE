@@ -1090,7 +1090,7 @@ el1_irq:
 	.ltorg
 
 	.align 11
-
+// http://infocenter.arm.com/help/index.jsp?topic=/com.arm.doc.den0024a/CHDEEDDC.html
 ENTRY(__kvm_hyp_vector)
 	ventry	el2t_sync_invalid		// Synchronous EL2t
 	ventry	el2t_irq_invalid		// IRQ EL2t

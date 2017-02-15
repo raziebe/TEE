@@ -11,13 +11,32 @@
 #include <asm/sections.h>
 
 struct truly_vm tvm;
+EXPORT_SYMBOL_GPL(tvm);
+
+long truly_get_elr_el1(void)
+{
+	long e;
+
+	asm("mrs  %0, elr_el1\n" : "=r" (e) ) ;
+	return e;
+}
+
+void truly_set_sp_el1(long e)
+{
+	asm("msr  sp_el1,%0\n" :  "=r" (e) ) ;
+}
+
+void truly_set_elr_el1(long e)
+{
+	asm("msr  elr_el1,%0\n" :  "=r" (e) ) ;
+}
 
 void	truly_set_vtcr_el2(long vtcr_el2)
 {
 	asm("msr vctr_el2,%0\n" : "=r"  (vtcr_el2));
 }
 
-long truly_get_mfr(void)
+long 	truly_get_mfr(void)
 {	
 	long e = 0;
 	asm("mrs %0,id_aa64mmfr0_el1\n" : "=r"  (e));
@@ -25,7 +44,7 @@ long truly_get_mfr(void)
 }
 
 
-void truly_set_vttbr_el2(long vttbr_el2)
+void 	truly_set_vttbr_el2(long vttbr_el2)
 {	
 	asm("msr vttbr_el2,%0\n" : "=r"  (vttbr_el2));
 }
@@ -193,57 +212,6 @@ long truly_get_mem_regs(void *cxt)
 }
 EXPORT_SYMBOL_GPL(truly_get_mem_regs);
 
-#define VTCR_EL2_T0SZ_BIT_SHIFT 	0
-#define VTCR_EL2_SL0_BIT_SHIFT 		6
-#define VTCR_EL2_IRGN0_BIT_SHIFT 	8
-#define VTCR_EL2_ORGN0_BIT_SHIFT 	10
-#define VTCR_EL2_SH0_BIT_SHIFT 		12
-#define VTCR_EL2_TG0_BIT_SHIFT 		14
-#define VTCR_EL2_PS_BIT_SHIFT 		16
-
-#define SCTLR_EL2_EE_BIT_SHIFT		25
-#define SCTLR_EL2_WXN_BIT_SHIFT		19
-#define SCTLR_EL2_I_BIT_SHIFT		12
-#define SCTLR_EL2_C_BIT_SHIFT		2
-#define SCTLR_EL2_A_BIT_SHIFT		1	
-#define SCTLR_EL2_M_BIT_SHIFT		0
-
-/* Hyp Configuration Register (HCR) bits */
-#define HCR_ID		(UL(1) << 33)
-#define HCR_CD		(UL(1) << 32)
-#define HCR_RW_SHIFT	31
-#define HCR_RW		(UL(1) << HCR_RW_SHIFT)
-#define HCR_TRVM	(UL(1) << 30)
-#define HCR_HCD		(UL(1) << 29)
-#define HCR_TDZ		(UL(1) << 28)
-#define HCR_TGE		(UL(1) << 27)
-#define HCR_TVM		(UL(1) << 26)
-#define HCR_TTLB	(UL(1) << 25)
-#define HCR_TPU		(UL(1) << 24)
-#define HCR_TPC		(UL(1) << 23)
-#define HCR_TSW		(UL(1) << 22)
-#define HCR_TAC		(UL(1) << 21)
-#define HCR_TIDCP	(UL(1) << 20)
-#define HCR_TSC		(UL(1) << 19)
-#define HCR_TID3	(UL(1) << 18)
-#define HCR_TID2	(UL(1) << 17)
-#define HCR_TID1	(UL(1) << 16)
-#define HCR_TID0	(UL(1) << 15)
-#define HCR_TWE		(UL(1) << 14)
-#define HCR_TWI		(UL(1) << 13)
-#define HCR_DC		(UL(1) << 12)
-#define HCR_BSU		(3 << 10)
-#define HCR_BSU_IS	(UL(1) << 10)
-#define HCR_FB		(UL(1) << 9)
-#define HCR_VA		(UL(1) << 8)
-#define HCR_VI		(UL(1) << 7)
-#define HCR_VF		(UL(1) << 6)
-#define HCR_AMO		(UL(1) << 5)
-#define HCR_IMO		(UL(1) << 4)
-#define HCR_FMO		(UL(1) << 3)
-#define HCR_PTW		(UL(1) << 2)
-#define HCR_SWIO	(UL(1) << 1)
-#define HCR_VM		(UL(1) << 0)
 
 // D-2142
 void make_vtcr_el2(void)
@@ -301,13 +269,14 @@ void make_sctlr_el2(void)
 }
 
 
+
 //
-// To be used in hyp mode only
+// Used in hyp mode only
 //
 int truly_test_vttbr(void *cxt)
 {
+	printk("%s\n",__FUNCTION__);
 	// take an arbitary pointer
-//	void *p = cxt;
 	//
 	// copy the main table to vttbr_el2
 	make_vtcr_el2();
@@ -319,10 +288,14 @@ int truly_test_vttbr(void *cxt)
 	// page 5295
 	// should enable DC or VM to have a second stage 
 	// translationa
-	tvm.hcr_el2 = truly_get_hcr_el2() | HCR_RW | HCR_DC;
-	// turn on vm
+	tvm.hcr_el2 = HCR_VM;
+	//
+	// turn on vm else no stage2 would take place
+	//
+//	truly_set_elr_el1(tvm.elr_el1); 
+//	truly_set_sp_el1(tvm.sp_el1);
 	truly_set_hcr_el2(tvm.hcr_el2);
-
+	asm("eret\n" : ) ;
 	return 767;
 }
 EXPORT_SYMBOL_GPL(truly_test_vttbr);
@@ -351,7 +324,6 @@ int truly_init(void)
 			t0sz, t1sz, ips, pa_range);
 
 // level 0  
-		
 
 /*
   vtcr_el2.t0sz = ??? what is the translation table size
@@ -380,6 +352,7 @@ EXPORT_SYMBOL_GPL(truly_get_tcr_el2);
 EXPORT_SYMBOL_GPL(truly_get_tcr_el1);
 EXPORT_SYMBOL_GPL(truly_set_tcr_el2);
 EXPORT_SYMBOL_GPL(truly_exec_el1);
+EXPORT_SYMBOL_GPL(truly_exec_el1_2);
 
 EXPORT_SYMBOL_GPL(truly_get_ttbr0_el2);
 EXPORT_SYMBOL_GPL(truly_get_ttbr1_el2);
