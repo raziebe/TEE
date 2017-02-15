@@ -522,31 +522,7 @@ EXPORT_SYMBOL_GPL(__kvm_get_mdcr_el2);
 
 int truly_arch_vcpu_ioctl(struct kvm_vcpu* vcpu)
 {
-	int __kvm_test_active_vm(void);
-	int truly_get_hcr_el2(void);
-	int ret;
-
-	ret = kvm_call_hyp(  __kvm_get_mdcr_el2 , vcpu);
-	printk("truly: mdcr %d\n",ret);	
-
-	vcpu->kvm->arch.vmid = 0;
-	update_vttbr(vcpu->kvm);
-
-	preempt_disable();
-	kvm_timer_flush_hwstate(vcpu);
-	kvm_vgic_flush_hwstate(vcpu);
-// raz
-	local_irq_disable();
-	vcpu->arch.hcr_el2 = HCR_GUEST_FLAGS ;
-
-	ret = kvm_call_hyp( __kvm_test_active_vm , vcpu);
-	local_irq_enable();
-	preempt_enable();
-
-	ret = kvm_call_hyp( truly_get_hcr_el2 , vcpu);
-	
-	printk("truly kvm : debug count=%d in Exiting\n", vcpu->debug_counter  );
-	return ret;
+	return 0;
 }
 
 /**
