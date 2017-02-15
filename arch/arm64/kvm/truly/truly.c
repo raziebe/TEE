@@ -282,13 +282,13 @@ int truly_test_vttbr(void *cxt)
 	make_vtcr_el2();
 	make_sctlr_el2();	
 
-//	truly_set_vttbr_el2(tvm.vttbr_el2);
-//	truly_set_vtcr_el2(tvm.vtcr_el2);
-//	truly_set_sctlr_el2(tvm.sctlr_el2);
+	truly_set_vttbr_el2(tvm.vttbr_el2);
+	truly_set_vtcr_el2(tvm.vtcr_el2);
+	truly_set_sctlr_el2(tvm.sctlr_el2);
 	// page 5295
 	// should enable DC or VM to have a second stage 
 	// translationa
-	tvm.hcr_el2 = HCR_VM;
+	tvm.hcr_el2 = HCR_GUEST_FLAGS;
 //	truly_set_elr_el1(tvm.elr_el1); 
 //	truly_set_sp_el1(tvm.sp_el1);
 	//
