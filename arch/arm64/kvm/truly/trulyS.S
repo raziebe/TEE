@@ -122,7 +122,7 @@ EL1_trap:
 	pop	x0, x1
 	eret
 
-//	EL1 irq --> never saw this happens
+
 EL1_irq:
 	mov x6, #17
         b __truly_panic

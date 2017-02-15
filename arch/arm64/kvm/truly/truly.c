@@ -289,13 +289,13 @@ int truly_test_vttbr(void *cxt)
 	// should enable DC or VM to have a second stage 
 	// translationa
 	tvm.hcr_el2 = HCR_VM;
+//	truly_set_elr_el1(tvm.elr_el1); 
+//	truly_set_sp_el1(tvm.sp_el1);
 	//
 	// turn on vm else no stage2 would take place
 	//
-//	truly_set_elr_el1(tvm.elr_el1); 
-//	truly_set_sp_el1(tvm.sp_el1);
 	truly_set_hcr_el2(tvm.hcr_el2);
-	asm("eret\n" : ) ;
+
 	return 767;
 }
 EXPORT_SYMBOL_GPL(truly_test_vttbr);
