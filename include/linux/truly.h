@@ -130,7 +130,7 @@ void truly_set_hcr_el2(unsigned long);
 void truly_set_mdcr_el2(unsigned long);
 void truly_set_tpidr(unsigned long);
 
-int truly_test(struct truly_vm* cxt);
+int truly_run_vm(struct truly_vm* cxt);
 long truly_get_mem_regs(void *cxt);
 
 #define tp_info(fmt, ...) \

@@ -176,7 +176,7 @@ unsigned long tp_create_pg_tbl(void* cxt)
 {
 	struct truly_vm* vm = (struct truly_vm *)cxt;
 	long addr = 0;
-	long vmid = 0;
+	long vmid = 012;
 	struct page *pg_lvl_zero;
 
 /*
@@ -275,7 +275,6 @@ void make_sctlr_el2(void)
 //
 int truly_test_vttbr(void *cxt)
 {
-	printk("%s\n",__FUNCTION__);
 	// take an arbitary pointer
 	//
 	// copy the main table to vttbr_el2
@@ -294,7 +293,7 @@ int truly_test_vttbr(void *cxt)
 	//
 	// turn on vm else no stage2 would take place
 	//
-	truly_set_hcr_el2(tvm.hcr_el2);
+//	truly_set_hcr_el2(tvm.hcr_el2);
 
 	return 767;
 }
@@ -346,13 +345,13 @@ int truly_init(void)
 	return 0;
 }
 
+EXPORT_SYMBOL_GPL(truly_run_vm);
 EXPORT_SYMBOL_GPL(truly_get_sctlr_el1);
 EXPORT_SYMBOL_GPL(truly_get_sctlr_el2);
 EXPORT_SYMBOL_GPL(truly_get_tcr_el2);
 EXPORT_SYMBOL_GPL(truly_get_tcr_el1);
 EXPORT_SYMBOL_GPL(truly_set_tcr_el2);
 EXPORT_SYMBOL_GPL(truly_exec_el1);
-EXPORT_SYMBOL_GPL(truly_exec_el1_2);
 
 EXPORT_SYMBOL_GPL(truly_get_ttbr0_el2);
 EXPORT_SYMBOL_GPL(truly_get_ttbr1_el2);

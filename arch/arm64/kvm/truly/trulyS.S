@@ -286,6 +286,7 @@ ENTRY(truly_exec_el1)
 
 // Call the procedure
 	blr	lr
+
 // revert from VHE
 	mrs	x2, hcr_el2
 	eor	x2,x2,#((UL(1) << 34))
@@ -300,10 +301,10 @@ ENDPROC(truly_exec_el1)
 //
 // replace later to truly_run_hyp
 //
-ENTRY(truly_exec_el1_2)
+ENTRY(truly_run_vm)
 	activate_traps
 	activate_vm
 	ret
-ENDPROC(truly_exec_el1_2)
+ENDPROC(truly_run_vm)
 
 .popsection
