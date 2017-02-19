@@ -10,8 +10,12 @@
 #include <linux/init.h>
 #include <asm/sections.h>
 
-struct truly_vm tvm;
-EXPORT_SYMBOL_GPL(tvm);
+static struct truly_vm __percpu *tvm;
+
+struct truly_vm* get_tvm(void)
+{
+		return this_cpu_ptr(tvm);
+}
 
 long truly_get_elr_el1(void)
 {
@@ -214,7 +218,7 @@ EXPORT_SYMBOL_GPL(truly_get_mem_regs);
 
 
 // D-2142
-void make_vtcr_el2(void)
+void make_vtcr_el2(struct truly_vm *tvm)
 {
 	long vtcr_el2_t0sz;
 	long vtcr_el2_sl0;
@@ -232,7 +236,7 @@ void make_vtcr_el2(void)
  	vtcr_el2_tg0    = (truly_get_tcr_el1() & 0xc000) >> 14;
 	vtcr_el2_ps     = (truly_get_tcr_el1() & 0x700000000 ) >> 32;
 
-	tvm.vtcr_el2 =  ( vtcr_el2_t0sz   << VTCR_EL2_T0SZ_BIT_SHIFT  ) |
+	tvm->vtcr_el2 =  ( vtcr_el2_t0sz   << VTCR_EL2_T0SZ_BIT_SHIFT  ) |
 			( vtcr_el2_sl0    << VTCR_EL2_SL0_BIT_SHIFT   ) |
  		 	( vtcr_el2_irgn0  << VTCR_EL2_IRGN0_BIT_SHIFT ) | 	
 			( vtcr_el2_orgn0  << VTCR_EL2_ORGN0_BIT_SHIFT ) |
@@ -242,7 +246,7 @@ void make_vtcr_el2(void)
 	
 }
 
-void make_sctlr_el2(void)
+void make_sctlr_el2(struct truly_vm *tvm)
 {
 	long sctlr_el2_EE;
 	long sctlr_el2_WXN;
@@ -256,10 +260,10 @@ void make_sctlr_el2(void)
 	sctlr_el2_WXN = 0; // no effect
 	sctlr_el2_I =  0; // instructions non-cachable
 	sctlr_el2_C = 0; // data non-cacheable
-	sctlr_el2_A = 0; // do not do aligment check    
+	sctlr_el2_A = 0; // do not do alignment check
 	sctlr_el2_M = 1; // enable MMU
 
- 	tvm.sctlr_el2 = ( sctlr_el2_EE  << SCTLR_EL2_EE_BIT_SHIFT  ) |
+ 	tvm->sctlr_el2 = ( sctlr_el2_EE  << SCTLR_EL2_EE_BIT_SHIFT  ) |
 			( sctlr_el2_WXN << SCTLR_EL2_WXN_BIT_SHIFT ) |
 			( sctlr_el2_I   << SCTLR_EL2_I_BIT_SHIFT   ) |
 			( sctlr_el2_C   << SCTLR_EL2_C_BIT_SHIFT   ) |		
@@ -268,36 +272,15 @@ void make_sctlr_el2(void)
 
 }
 
-
-
-//
-// Used in hyp mode only
-//
-int truly_test_vttbr(void *cxt)
+ void make_hstr_el2(struct truly_vm *tvm)
 {
-	// take an arbitary pointer
-	//
-	// copy the main table to vttbr_el2
-	make_vtcr_el2();
-	make_sctlr_el2();	
-
-	truly_set_vttbr_el2(tvm.vttbr_el2);
-	truly_set_vtcr_el2(tvm.vtcr_el2);
-	truly_set_sctlr_el2(tvm.sctlr_el2);
-	// page 5295
-	// should enable DC or VM to have a second stage 
-	// translationa
-	tvm.hcr_el2 = HCR_GUEST_FLAGS;
-//	truly_set_elr_el1(tvm.elr_el1); 
-//	truly_set_sp_el1(tvm.sp_el1);
-	//
-	// turn on vm else no stage2 would take place
-	//
-//	truly_set_hcr_el2(tvm.hcr_el2);
-
-	return 767;
+	tvm->hstr_el2  =  1 << 15 ; // Trap CP15 Cr=15
 }
-EXPORT_SYMBOL_GPL(truly_test_vttbr);
+
+void make_hcr_el2(struct truly_vm *tvm)
+{
+	tvm->hcr_el2 = HCR_GUEST_FLAGS;
+}
 
 /*
  * construct page table
@@ -308,6 +291,7 @@ int truly_init(void)
        int t0sz;
        int t1sz;
        int ips;
+       int cpu;
        int pa_range;
        long id_aa64mmfr0_el1;
 
@@ -322,14 +306,6 @@ int truly_init(void)
        tp_info("t0sz = %d t1sz=%d ips=%d PARnage=%d\n", 
 			t0sz, t1sz, ips, pa_range);
 
-// level 0  
-
-/*
-  vtcr_el2.t0sz = ??? what is the translation table size
-*/
-      
-
-       tp_create_pg_tbl(&tvm) ;
        tp_info("Memory Layout code start=%p,%p\n "
                        "code end =%p,%p\n"
                        " size of code=%d\n"
@@ -342,16 +318,45 @@ int truly_init(void)
                        (void*)_end, (void *)virt_to_phys(_end-1),
                        (int)(virt_to_phys(_end-1) - virt_to_phys(_sdata) ) );
 
+
+       tvm = alloc_percpu(struct truly_vm);
+       if (!tvm) {
+           tp_info("Cannot allocate Truly VM\n");
+           return -1;
+     }
+
+     for_each_possible_cpu(cpu) {
+
+    	 	  int create_hyp_mappings(void*,void*);
+    	 	 int err;
+    	 	  struct truly_vm *_tvm;
+
+               _tvm = per_cpu_ptr(tvm, cpu);
+
+               err = create_hyp_mappings(_tvm, _tvm + 1);
+               if (err){
+            	   	   tp_err("Failed to map tvm");
+            	   	   return -1;
+               }
+     }
+     tp_create_pg_tbl(get_tvm()) ;
+
+     make_vtcr_el2(get_tvm());
+     make_sctlr_el2(get_tvm());
+     make_hcr_el2(get_tvm());
+
+
 	return 0;
 }
 
+EXPORT_SYMBOL_GPL(get_tvm);
 EXPORT_SYMBOL_GPL(truly_run_vm);
 EXPORT_SYMBOL_GPL(truly_get_sctlr_el1);
 EXPORT_SYMBOL_GPL(truly_get_sctlr_el2);
 EXPORT_SYMBOL_GPL(truly_get_tcr_el2);
 EXPORT_SYMBOL_GPL(truly_get_tcr_el1);
 EXPORT_SYMBOL_GPL(truly_set_tcr_el2);
-EXPORT_SYMBOL_GPL(truly_exec_el1);
+EXPORT_SYMBOL_GPL(truly_exec_el1);	// VHE support
 
 EXPORT_SYMBOL_GPL(truly_get_ttbr0_el2);
 EXPORT_SYMBOL_GPL(truly_get_ttbr1_el2);
@@ -367,4 +372,3 @@ EXPORT_SYMBOL_GPL(truly_get_tpidr);
 EXPORT_SYMBOL_GPL(truly_set_mdcr_el2);
 EXPORT_SYMBOL_GPL(truly_set_tpidr);
 EXPORT_SYMBOL_GPL(truly_set_sctlr_el2);
-

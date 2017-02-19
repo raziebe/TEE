@@ -21,52 +21,6 @@
 ENDPROC(\label)
 .endm
 
-.macro activate_traps
-        ldr     x2, =HCR_GUEST_FLAGS
-        msr     hcr_el2, x2
-        mov     x2, #CPTR_EL2_TTA
-        orr     x2, x2, #CPTR_EL2_TFP
-        msr     cptr_el2, x2
-
-        mov     x2, #(1 << 15)  // Trap CP15 Cr=15
-        msr     hstr_el2, x2
-
-        // Monitor Debug Config - see kvm_arm_setup_debug()
-      //  ldr     x2, [x0, #VCPU_MDCR_EL2]
-      //  msr     mdcr_el2, x2
-.endm
-
-.macro activate_vm
-        ldr     x1, [x0, #VCPU_KVM]
-        kern_hyp_va     x1
-        ldr     x2, [x1, #KVM_VTTBR]
-        msr     vttbr_el2, x2
-.endm
-
-// http://infocenter.arm.com/help/index.jsp?topic=/com.arm.doc.den0024a/CHDEEDDC.html
-.align 11
-ENTRY(__truly_vectors)
-        invalid_vector  EL2_sync,#1                        // raz test
-        invalid_vector  EL2_irq_invalid,#2                 // IRQ EL2t
-        invalid_vector  EL2_fiq_invalid,#3                // FIQ EL2t
-        invalid_vector  EL2_error_invalid,#4             // Error EL2t
-
-        invalid_vector  EL2_syncELSpx,#5  	              // Synchronous EL2h
-        invalid_vector  EL2_irq_invalidELSpx,#6                 // IRQ EL2h
-        invalid_vector  EL2_fiq_invalidELSpx,#7                 // FIQ EL2h
-        invalid_vector  EL2_error_invalidELspx,#8               // Error EL2h
-
-        ventry  EL1_sync                        // Synchronous 64-bit EL1
-
-        ventry  EL1_irq                       // IRQ 64-bit EL1
-        invalid_vector  EL1_fiq_invalid ,#9                // FIQ 64-bit EL1
-        invalid_vector  EL1_error_invalid  ,#10             // Error 64-bit EL1
-
-        ventry  EL1_irq  	              // Synchronous 32-bit EL1
-        invalid_vector  EL1_irq_invalid,#11                 // IRQ 32-bit EL1
-        invalid_vector  EL1_fiq_invalidLowEL32 ,#12                // FIQ 32-bit EL1
-        invalid_vector  EL1_error_invalidLowEL32,#13               // Error 32-bit EL1
-ENDPROC(__truly_vectors)
 
 
 EL1_sync:
@@ -79,7 +33,7 @@ EL1_sync:
 	cmp	x2, #ESR_ELx_EC_HVC64		// not 10110 then we have a trap
 	b.ne	EL1_trap
 
-#  vttbr  = virtualization translation table base register stage 2 
+//  vttbr  = virtualization translation table base register stage 2
 	mrs	x3, vttbr_el2			// If vttbr is valid, the 64bit guest, 
 	cbnz	x3, EL1_trap			// called HVC, 
 
@@ -98,8 +52,8 @@ EL1_sync:
 	 * Compute the function address in EL2, and shuffle the parameters.
 	 */
 	kern_hyp_va	x0
-	mov	lr, x0
-	mov	x0, x1
+	mov	lr, x0		// function address
+	mov	x0, x1		// the context
 	mov	x1, x2
 	mov	x2, x3
 	blr	lr
@@ -279,10 +233,10 @@ ENTRY(truly_exec_el1)
 	msr	tcr_el2,x3
 	isb
 
-        mov     x2, #HCR_RW                     // 64-bit EL1
-        orr     x2, x2, #((UL(1) << 34))  // Enable Host Extensions. But Not TGE
+    mov     x2, #HCR_RW                     // 64-bit EL1
+    orr     x2, x2, #((UL(1) << 34))  // Enable Host Extensions. But Not TGE
 	msr     hcr_el2, x2
-        isb
+    isb
 
 // Call the procedure
 	blr	lr
@@ -302,9 +256,63 @@ ENDPROC(truly_exec_el1)
 // replace later to truly_run_hyp
 //
 ENTRY(truly_run_vm)
-	activate_traps
-	activate_vm
+	kern_hyp_va  x0	// grab tvm
+
+	msr	tpidr_el2, x0	// save tvm context
+
+	ldr	x1, [x0, #TP_HCR_EL2]
+	kern_hyp_va x1
+    msr     hcr_el2, x1
+
+ //       mov     x2, #CPTR_EL2_TTA
+ //       orr     x2, x2, #CPTR_EL2_TFP
+ //       msr     cptr_el2, x2
+	ldr x1, [x0, #TP_HSTR_EL2]
+	kern_hyp_va x1
+    msr     hstr_el2, x1
+
+    // Monitor Debug Config - see kvm_arm_setup_debug()
+   //  ldr     x2, [x0, #VCPU_MDCR_EL2]
+   //  msr     mdcr_el2, x2
+    ldr		x1, [x0, #TP_VTCR_EL2]
+	kern_hyp_va x1
+	msr		vtcr_el2, x1
+
+    ldr		x1, [x0, #TP_SCTLR_EL2]
+	kern_hyp_va x1
+	msr		sctlr_el2, x1
+
+    ldr     x1, [x0, #TP_VTTBR_EL2]
+    kern_hyp_va x1
+    msr     vttbr_el2, x1
+
 	ret
 ENDPROC(truly_run_vm)
+
+
+// http://infocenter.arm.com/help/index.jsp?topic=/com.arm.doc.den0024a/CHDEEDDC.html
+.align 11
+ENTRY(__truly_vectors)
+        invalid_vector  EL2_sync,#1                        // raz test
+        invalid_vector  EL2_irq_invalid,#2                 // IRQ EL2t
+        invalid_vector  EL2_fiq_invalid,#3                // FIQ EL2t
+        invalid_vector  EL2_error_invalid,#4             // Error EL2t
+
+        invalid_vector  EL2_syncELSpx,#5  	              // Synchronous EL2h
+        invalid_vector  EL2_irq_invalidELSpx,#6                 // IRQ EL2h
+        invalid_vector  EL2_fiq_invalidELSpx,#7                 // FIQ EL2h
+        invalid_vector  EL2_error_invalidELspx,#8               // Error EL2h
+
+        ventry  EL1_sync                        // Synchronous 64-bit EL1
+
+        ventry  EL1_irq                       // IRQ 64-bit EL1
+        invalid_vector  EL1_fiq_invalid ,#9                // FIQ 64-bit EL1
+        invalid_vector  EL1_error_invalid  ,#10             // Error 64-bit EL1
+
+        ventry  EL1_irq  	              // Synchronous 32-bit EL1
+        invalid_vector  EL1_irq_invalid,#11                 // IRQ 32-bit EL1
+        invalid_vector  EL1_fiq_invalidLowEL32 ,#12                // FIQ 32-bit EL1
+        invalid_vector  EL1_error_invalidLowEL32,#13               // Error 32-bit EL1
+ENDPROC(__truly_vectors)
 
 .popsection

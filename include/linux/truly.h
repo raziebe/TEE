@@ -103,7 +103,6 @@ struct truly_vm {
 };
 
 
-unsigned long truly_test_code_map(void* vm);
 unsigned long truly_get_sctlr_el2(void);
 unsigned long truly_get_sctlr_el1(void);
 unsigned long truly_get_tcr_el2(void);
@@ -124,7 +123,7 @@ unsigned long truly_get_mdcr_el2(void);
 unsigned long truly_get_tpidr(void);
 unsigned long truly_get_vttbr_el2(void);
 
-unsigned long truly_test_vec(void);
+struct truly_vm* get_tvm(void);
 
 void truly_set_hcr_el2(unsigned long);
 void truly_set_mdcr_el2(unsigned long);
