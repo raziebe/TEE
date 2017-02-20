@@ -1013,7 +1013,7 @@ el1_trap:
 	cmp	x2, #ESR_ELx_EC_FP_ASIMD
 	b.eq	switch_to_guest_fpsimd
 
-	cmp	x2, #ESR_ELx_EC_DABT_LOW
+	cmp	x2, #ESR_ELx_EC_DABT_LOW	// x2 = x2 - ESR_ELx_EC_DABT_LOW , x2 = x2 -0x24
 	mov	x0, #ESR_ELx_EC_IABT_LOW
 	ccmp	x2, x0, #4, ne
 	b.ne	1f		// Not an abort we care about

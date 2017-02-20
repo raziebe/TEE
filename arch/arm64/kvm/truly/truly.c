@@ -48,10 +48,6 @@ long 	truly_get_mfr(void)
 }
 
 
-void 	truly_set_vttbr_el2(long vttbr_el2)
-{	
-	asm("msr vttbr_el2,%0\n" : "=r"  (vttbr_el2));
-}
 
 unsigned long truly_test_code_map(void* cxt) 
 {
@@ -97,8 +93,8 @@ void create_level_two(struct page *pg, long* addr)
 
        l2_descriptor = (long *)kmap(pg);
        if (l2_descriptor == NULL){
-		printk("%s desc NULL\n",__func__);
-		return;
+    	   printk("%s desc NULL\n",__func__);
+    	   return;
        }
 
 
@@ -128,14 +124,14 @@ void create_level_one(struct page *pg, long* addr)
 
        l1_descriptor = (long *)kmap(pg);	
        if (l1_descriptor == NULL){
-		printk("%s desc NULL\n",__func__);
-		return;
+    	   	   printk("%s desc NULL\n",__func__);
+    	   	   return;
        }
  
        pg_lvl_two = alloc_pages(GFP_KERNEL | __GFP_ZERO, 1);
        if (pg_lvl_two == NULL){
-		printk("%s alloc page NULL\n",__func__);
-		return;
+    	   	   printk("%s alloc page NULL\n",__func__);
+    	   	   return;
        }
        	
        for (i = 0 ; i  < 2 ; i++) {
@@ -149,30 +145,31 @@ void create_level_one(struct page *pg, long* addr)
        kunmap(pg);
 }
 
-void create_level_zero(struct page* pg, long *addr)
+void create_level_zero(struct truly_vm* tvm, struct page* pg, long *addr)
 {
        struct page *pg_lvl_one;
        long* l0_descriptor;
 
        pg_lvl_one = alloc_page(GFP_KERNEL | __GFP_ZERO);
        if (pg_lvl_one == NULL){
-		printk("%s alloc page NULL\n",__func__);
-		return;
+    	   printk("%s alloc page NULL\n",__func__);
+    	   return;
        }
 
        create_level_one(pg_lvl_one, addr);
 
        l0_descriptor = (long *)kmap(pg);	
        if (l0_descriptor == NULL){
-		printk("%s desc NULL\n",__func__);
-		return;
+    	   printk("%s desc NULL\n",__func__);
+    	   return;
        }
        memset(l0_descriptor, 0x00, PAGE_SIZE);
 
        l0_descriptor[0] = (page_to_phys(pg_lvl_one) << 12 ) | DESC_TABLE_BIT |
 		 ( 0b01 << DESC_MEMATTR_SHIFT ) | DESC_VALID_BIT | ( 0b11 << DESC_S2AP_SHIFT )  | ( 0b01 << DESC_SHREABILITY_SHIFT );
 
-	kunmap(pg);
+        kunmap(pg);
+        tvm->pg_lvl_one = (void *)pg_lvl_one;
         printk("EL2 IPA ranges to %p\n",(void *)( *addr));
 }
 
@@ -182,9 +179,9 @@ unsigned long tp_create_pg_tbl(void* cxt)
 	long addr = 0;
 	long vmid = 012;
 	struct page *pg_lvl_zero;
-
+	int starting_level = 1;
 /*
- ips = 1 --> 36bits 64GB
+ tosz = 25 --> 39bits 64GB
 	0-11
 2       12-20   :512 * 4096 = 2MB per entry
 1	21-29	: 512 * 2MB = per page 
@@ -197,9 +194,12 @@ unsigned long tp_create_pg_tbl(void* cxt)
 		printk("%s alloc page NULL\n",__func__);
 		return 0x00;
        }
-       create_level_zero(pg_lvl_zero, &addr);
-       vm->vttbr_el2 = page_to_phys(pg_lvl_zero) | ( vmid << 48);
-	
+       create_level_zero(tvm, pg_lvl_zero, &addr);
+       if (starting_level == 0)
+    	   vm->vttbr_el2 = page_to_phys(pg_lvl_zero) | ( vmid << 48);
+       else
+    	   vm->vttbr_el2 = page_to_phys( (struct page *)tvm->pg_lvl_one) | ( vmid << 48);
+
        return vm->vttbr_el2;
 }
 
@@ -228,22 +228,26 @@ void make_vtcr_el2(struct truly_vm *tvm)
 	long vtcr_el2_tg0;
 	long vtcr_el2_ps;
 
-	vtcr_el2_t0sz   = (truly_get_tcr_el1() & 0b111111);
-	vtcr_el2_sl0    = 0b10; // start at level 0.  D.2143
+	vtcr_el2_t0sz   = truly_get_tcr_el1() & 0b111111;
+	vtcr_el2_sl0    = 0b01; // start at level 1.  D.2143 + D4.1746
 	vtcr_el2_irgn0  = 0;
 	vtcr_el2_orgn0  = 0;
 	vtcr_el2_sh0    = 0;
  	vtcr_el2_tg0    = (truly_get_tcr_el1() & 0xc000) >> 14;
 	vtcr_el2_ps     = (truly_get_tcr_el1() & 0x700000000 ) >> 32;
 
-	tvm->vtcr_el2 =  ( vtcr_el2_t0sz   << VTCR_EL2_T0SZ_BIT_SHIFT  ) |
+	tvm->vtcr_el2 =  ( vtcr_el2_t0sz  ) |
 			( vtcr_el2_sl0    << VTCR_EL2_SL0_BIT_SHIFT   ) |
  		 	( vtcr_el2_irgn0  << VTCR_EL2_IRGN0_BIT_SHIFT ) | 	
 			( vtcr_el2_orgn0  << VTCR_EL2_ORGN0_BIT_SHIFT ) |
 			( vtcr_el2_sh0    << VTCR_EL2_SH0_BIT_SHIFT   ) |	
 			( vtcr_el2_tg0    << VTCR_EL2_TG0_BIT_SHIFT   ) |		
 			( vtcr_el2_ps	  << VTCR_EL2_PS_BIT_SHIFT); 		
-	
+
+	printk("RAZ tcr_el1.t0sz=%ld %ld %ld\n",
+			truly_get_tcr_el1() & 0b111111 ,
+			vtcr_el2_t0sz ,
+			tvm->vtcr_el2 & 0b111111  );
 }
 
 void make_sctlr_el2(struct truly_vm *tvm)
@@ -349,6 +353,7 @@ int truly_init(void)
 	return 0;
 }
 
+EXPORT_SYMBOL_GPL(truly_set_vttbr_el2);
 EXPORT_SYMBOL_GPL(get_tvm);
 EXPORT_SYMBOL_GPL(truly_run_vm);
 EXPORT_SYMBOL_GPL(truly_get_sctlr_el1);

@@ -8,10 +8,13 @@
 #include <asm/kvm_asm.h>
 #include <asm/kvm_arm.h>
 #include <asm/kvm_mmu.h>
-//#include <linux/truly.h>
+#include <asm/alternative.h>
+#include <asm/cpufeature.h>
 
 .text
 .pushsection	.hyp.text, "ax" // borrow  hyp.text
+
+
 
 .macro invalid_vector   label,num
 .align 7
@@ -21,7 +24,7 @@
 ENDPROC(\label)
 .endm
 
-
+//  code taken from kvm
 
 EL1_sync:
 	push	x0, x1
@@ -61,14 +64,85 @@ EL1_sync:
 	pop	lr, xzr
 2:	eret
 
-/*
-*	here I need to check for various syndroms
-*/
 EL1_trap:
-#	mrs    x1, tpidr_el2  // get truly context 
-#	cbz    x1, 4f
-	
-	b __truly_panic
+	/*
+	 * x1: ESR
+	 * x2: ESR_EC
+	 */
+
+	/* Guest accessed VFP/SIMD registers, save host, restore Guest */
+	cmp	x2, #ESR_ELx_EC_FP_ASIMD		// 0x7
+	b.eq	3f
+
+	cmp	x2, #ESR_ELx_EC_DABT_LOW	// ESR_ELx_EC_DABT_LOW = 0x20
+	mov	x0, #ESR_ELx_EC_IABT_LOW
+	ccmp	x2, x0, #4, ne // if x2 != x1 then br to 1
+	b.ne	1f		// Not an abort we care about
+
+	/* This is an abort. Check for permission fault */
+alternative_if_not ARM64_WORKAROUND_834220
+	and	x2, x1, #ESR_ELx_FSC_TYPE // 0x3c
+	cmp	x2, #FSC_PERM	// 0x0c
+	b.ne	1f		// Not a permission fault
+alternative_else
+	nop			// Use the permission fault path to
+	nop			// check for a valid S1 translation,
+	nop			// regardless of the ESR value.
+alternative_endif
+
+	/*
+	 * Check for Stage-1 page table walk, which is guaranteed
+	 * to give a valid HPFAR_EL2.
+	 */
+	tbnz	x1, #7, 1f	// S1PTW is set
+
+	/* Preserve PAR_EL1 */
+	mrs	x3, par_el1
+	push	x3, xzr
+
+	/*
+	 * Permission fault, HPFAR_EL2 is invalid.
+	 * Resolve the IPA the hard way using the guest VA.
+	 * Stage-1 translation already validated the memory access rights.
+	 * As such, we can use the EL1 translation regime, and don't have
+	 * to distinguish between EL0 and EL1 access.
+	 */
+	mrs	x2, far_el2
+	at	s1e1r, x2
+	isb
+
+	/* Read result */
+	mrs	x3, par_el1
+	pop	x0, xzr			// Restore PAR_EL1 from the stack
+	msr	par_el1, x0
+	tbnz	x3, #0, 3f		// Bail out if we failed the translation
+	ubfx	x3, x3, #12, #36	// Extract IPA
+	lsl	x3, x3, #4		// and present it like HPFAR
+	b	2f
+
+1:	mrs	x3, hpfar_el2
+	mrs	x2, far_el2
+
+2:	mrs	x0, tpidr_el2
+//	str	w1, [x0, #VCPU_ESR_EL2]
+//	str	x2, [x0, #VCPU_FAR_EL2]
+//	str	x3, [x0, #VCPU_HPFAR_EL2]
+
+//	mov	x1, #ARM_EXCEPTION_TRAP
+//	b	__kvm_vcpu_return
+
+	/*
+	 * Translation failed. Just return to the guest and
+	 * let it fault again. Another CPU is probably playing
+	 * behind our back.
+	 */
+3:	pop	x2, x3
+	pop	x0, x1
+
+	eret
+
+
+
 	
 // exit out
 4:
@@ -78,8 +152,6 @@ EL1_trap:
 
 
 EL1_irq:
-	mov x6, #17
-        b __truly_panic
 	eret
 ENDPROC(EL1_irq)
 
@@ -151,6 +223,22 @@ ENTRY(truly_get_tpidr)
 	mrs     x0, tpidr_el2
 	ret
 ENDPROC(truly_get_tpidr)
+
+
+ENTRY(truly_set_vttbr_el2)
+
+	kern_hyp_va  x0	// grab tvm
+	ldr	x1, [x0, #TP_VTTBR_EL2]
+	kern_hyp_va x1
+	msr	vttbr_el2,x1
+
+	ldr	x1, [x0, #TP_VTCR_EL2]
+	kern_hyp_va x1
+	msr	vtcr_el2,x1
+	ret
+
+ENDPROC(truly_set_vttbr_el2)
+
 
 // the virtualization translation base register for stage 2
 ENTRY(truly_get_vttbr_el2)

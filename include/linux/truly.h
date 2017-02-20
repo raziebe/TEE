@@ -69,9 +69,9 @@
 
 struct truly_vm {
 
-	unsigned long count; 
+	unsigned long count;
 	unsigned long debug;
-       	unsigned long hcr_el2;
+    unsigned long hcr_el2;
  	unsigned long hstr_el2;
  	unsigned long ttbr0_el2;
  	unsigned long ttbr1_el2;
@@ -81,13 +81,14 @@ struct truly_vm {
  	unsigned long tpidr_el2;
  	unsigned long tcr_el2;
  	unsigned long sp_el2;
-    	unsigned long elr_el2;
+    unsigned long elr_el2;
   	unsigned long esr_el2;
-    	unsigned long sp_el0;
+    unsigned long sp_el0;
  	unsigned long spsr_el2;
   	
-    	unsigned long vbar_el2;
+    unsigned long vbar_el2;
  	unsigned long sctlr_el2;
+ 	void* pg_lvl_one;
 
  	unsigned long tcr_el1;
  	unsigned long sp_el1;
@@ -110,6 +111,7 @@ unsigned long truly_get_tcr_el1(void);
 unsigned long truly_get_ttbr0_el2(void);
 unsigned long truly_get_ttbr1_el2(void);
 
+void truly_set_vttbr_el2(long vttbr_el2);
 void truly_set_sctlr_el2(unsigned long);
 void truly_set_ttbr1_el2(unsigned long t);
 void truly_set_ttbr0_el2(unsigned long t);
