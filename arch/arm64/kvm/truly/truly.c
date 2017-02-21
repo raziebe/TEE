@@ -12,11 +12,10 @@
 
 int create_hyp_mappings(void*,void*);
 static struct truly_vm __percpu *tvm;
-unsigned long long upper_mask = 0;//0xFFFF000000000000;
 
 struct truly_vm* get_tvm(void)
 {
-		return this_cpu_ptr(tvm);
+	return this_cpu_ptr(tvm);
 }
 
 long truly_get_elr_el1(void)
@@ -71,19 +70,18 @@ void create_level_three(struct page* pg,long* addr)
 		return;
     }
 
-   // create_hyp_mappings(l3_descriptor , l3_descriptor + 4096);
 	for (i = 0 ; i < PAGE_SIZE/sizeof(long); i++){
 		//
 		// see page 1781 for details
 		//
-       	   l3_descriptor[i] =  ( (*addr) << 12) | ( 0b01 << DESC_MEMATTR_SHIFT )|
-       								DESC_VALID_BIT | ( 0b11 << DESC_S2AP_SHIFT /* RW */ ) |
-									( 0b01 << DESC_SHREABILITY_SHIFT );
-       	   (*addr) += PAGE_SIZE;
-
-     	   l3_descriptor[i] = l3_descriptor[i] | upper_mask;
-    	 //  tp_info("L3 IPA %lx\n", l3_descriptor[i]);
-
+       	l3_descriptor[i] =  ( DESC_AF ) |
+							( 0b11 << DESC_SHREABILITY_SHIFT ) |
+							( 0b11 << DESC_S2AP_SHIFT )|
+       						( 0b1111 << 2)  | /* leave stage 1 un-changed see 1795*/
+       						  DESC_TABLE_BIT |
+							  DESC_VALID_BIT |
+							(*addr) ;
+       	(*addr) += PAGE_SIZE;
 	}
 
 	kunmap(pg);
@@ -111,15 +109,9 @@ void create_level_two(struct page *pg, long* addr)
 
     	   // fill an entire 2MB of mappings
     	   create_level_three(pg_lvl_three + i, addr);
-    	   //
-    	   // map the map to the hypervisor
-
     	   // calc the entry of this table
-    	   l2_descriptor[i] = (page_to_phys( pg_lvl_three + i ) << 12) | DESC_TABLE_BIT |
-    			    ( 0b01 << DESC_MEMATTR_SHIFT ) | DESC_VALID_BIT |
-					( 0b11 << DESC_S2AP_SHIFT )  | ( 0b01 << DESC_SHREABILITY_SHIFT );
+    	   l2_descriptor[i] = (page_to_phys( pg_lvl_three + i )) | DESC_TABLE_BIT | DESC_VALID_BIT ;
 
-    	   l2_descriptor[i] = l2_descriptor[i] | upper_mask;
     	   //tp_info("L2 IPA %lx\n", l2_descriptor[i]);
 
        }
@@ -148,13 +140,7 @@ void create_level_one(struct page *pg, long* addr)
  
     	   create_level_two(pg_lvl_two + i , addr);
 
-    	   l1_descriptor[i] = (page_to_phys(pg_lvl_two + i) << 12) |
-    			   	   DESC_TABLE_BIT |
-					   ( 0b01 << DESC_MEMATTR_SHIFT ) | DESC_VALID_BIT |
-					   ( 0b11 << DESC_S2AP_SHIFT )  |
-					   ( 0b01 << DESC_SHREABILITY_SHIFT );
-
-    	   l1_descriptor[i] = l1_descriptor[i] | upper_mask;
+    	   l1_descriptor[i] = (page_to_phys(pg_lvl_two + i)) |   DESC_TABLE_BIT | DESC_VALID_BIT ;
     	   printk("L1 IPA %lx\n", l1_descriptor[i]);
        }
        kunmap(pg);
@@ -181,10 +167,8 @@ void create_level_zero(struct truly_vm* tvm, struct page* pg, long *addr)
 
        memset(l0_descriptor, 0x00, PAGE_SIZE);
 
-       l0_descriptor[0] = (page_to_phys(pg_lvl_one) << 12 ) | DESC_TABLE_BIT |
-    		   	   	   ( 0b01 << DESC_MEMATTR_SHIFT ) | DESC_VALID_BIT |
-					   ( 0b11 << DESC_S2AP_SHIFT )  | ( 0b01 << DESC_SHREABILITY_SHIFT );
-       l0_descriptor[0] = l0_descriptor[0] | upper_mask ;
+       l0_descriptor[0] = (page_to_phys(pg_lvl_one) ) | DESC_TABLE_BIT | DESC_VALID_BIT;
+
        tvm->pg_lvl_one = (void *)pg_lvl_one;
 
        tp_info("L0 IPA %lx\n", l0_descriptor[0]);
@@ -301,7 +285,7 @@ void make_sctlr_el2(struct truly_vm *tvm)
 
 void make_hcr_el2(struct truly_vm *tvm)
 {
-	tvm->hcr_el2 = HCR_GUEST_FLAGS;
+	tvm->hcr_el2 = HCR_TRULY_FLAGS;
 }
 
 /*
@@ -325,39 +309,24 @@ int truly_init(void)
        ips  = (tcr_el1  >> 32) & 0b111;
 
        pa_range =  id_aa64mmfr0_el1 & 0b1111;
-/*
-       tp_info("Memory Layout code start=%p,%p\n "
-                       "code end =%p,%p\n"
-                       " size of code=%d\n"
-                       "data start = %p,%p\n"
-                       " end = %p,%p,\n" "size of data=%d\n",
-                       (void *)_text, (void*)virt_to_phys(_text),
-                       (void *)_end, (void *)virt_to_phys(_etext),
-                       (int)(virt_to_phys(_end) - virt_to_phys(_text)),
-                       (void*)_sdata, (void *)virt_to_phys(_sdata),
-                       (void*)_end, (void *)virt_to_phys(_end-1),
-                       (int)(virt_to_phys(_end-1) - virt_to_phys(_sdata) ) );
-*/
 
-     tvm = alloc_percpu(struct truly_vm);
-     if (!tvm) {
+       tvm = alloc_percpu(struct truly_vm);
+       if (!tvm) {
            tp_info("Cannot allocate Truly VM\n");
            return -1;
-     }
+       }
 
-     for_each_possible_cpu(cpu) {
+       for_each_possible_cpu(cpu) {
+    	   int err;
+    	   struct truly_vm *_tvm;
 
+          _tvm = per_cpu_ptr(tvm, cpu);
 
-    	 	 int err;
-    	 	  struct truly_vm *_tvm;
-
-               _tvm = per_cpu_ptr(tvm, cpu);
-
-               err = create_hyp_mappings(_tvm, _tvm + 1);
-               if (err){
-            	   	   tp_err("Failed to map tvm");
-            	   	   return -1;
-               }
+           err = create_hyp_mappings(_tvm, _tvm + 1);
+           if (err){
+            	   tp_err("Failed to map tvm");
+            	   return -1;
+          }
      }
 
      tp_create_pg_tbl(get_tvm()) ;
@@ -365,12 +334,14 @@ int truly_init(void)
      make_vtcr_el2(get_tvm());
      make_sctlr_el2(get_tvm());
      make_hcr_el2(get_tvm());
+     tp_info("Pre Calling to set vttbr");
+     truly_call_hyp(truly_set_vttbr_el2 ,get_tvm());
 
-     tp_info("t0sz = %d t1sz=%d ips=%d PARnage=%d \n",
+     tp_info("t0sz = %d t1sz=%d ips=%d PARnage=%d vttbr set\n",
 			t0sz, t1sz, ips, pa_range);
 
 
-	return 0;
+     return 0;
 }
 
 EXPORT_SYMBOL_GPL(truly_set_vttbr_el2);

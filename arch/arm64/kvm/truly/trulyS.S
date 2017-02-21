@@ -37,8 +37,8 @@ EL1_sync:
 	b.ne	EL1_trap
 
 //  vttbr  = virtualization translation table base register stage 2
-	mrs	x3, vttbr_el2			// If vttbr is valid, the 64bit guest, 
-	cbnz	x3, EL1_trap			// called HVC, 
+//	mrs	x3, vttbr_el2			// If vttbr is valid, the 64bit guest, 
+//	cbnz	x3, EL1_trap			// called HVC, 
 
 	/* Here, we're pretty sure the host called HVC. */
 	pop	x2, x3
@@ -72,11 +72,11 @@ EL1_trap:
 
 	/* Guest accessed VFP/SIMD registers, save host, restore Guest */
 	cmp	x2, #ESR_ELx_EC_FP_ASIMD		// 0x7
-	b.eq	3f
+	b.eq	4f
 
-	cmp	x2, #ESR_ELx_EC_DABT_LOW	// ESR_ELx_EC_DABT_LOW = 0x20
-	mov	x0, #ESR_ELx_EC_IABT_LOW
-	ccmp	x2, x0, #4, ne // if x2 != x1 then br to 1
+	cmp	x2, #ESR_ELx_EC_DABT_LOW	// ESR_ELx_EC_DABT_LOW = 0x24 = 36d = data abort
+	mov	x0, #ESR_ELx_EC_IABT_LOW	// ESR_ELx_EC_IABT_LOW = 0x20 = 32 instruction abort 
+	ccmp	x2, x0, #4, ne // if and 4 && (x2 and x0 ) then br to 1
 	b.ne	1f		// Not an abort we care about
 
 	/* This is an abort. Check for permission fault */
@@ -115,7 +115,7 @@ alternative_endif
 	mrs	x3, par_el1
 	pop	x0, xzr			// Restore PAR_EL1 from the stack
 	msr	par_el1, x0
-	tbnz	x3, #0, 3f		// Bail out if we failed the translation
+	tbnz	x3, #0, 4f		// Bail out if we failed the translation
 	ubfx	x3, x3, #12, #36	// Extract IPA
 	lsl	x3, x3, #4		// and present it like HPFAR
 	b	2f
@@ -136,13 +136,6 @@ alternative_endif
 	 * let it fault again. Another CPU is probably playing
 	 * behind our back.
 	 */
-3:	pop	x2, x3
-	pop	x0, x1
-
-	eret
-
-
-
 	
 // exit out
 4:
@@ -242,6 +235,10 @@ ENTRY(truly_set_vttbr_el2)
 
 ENDPROC(truly_set_vttbr_el2)
 
+ENTRY(truly_call_hyp)
+        hvc  #0
+        ret
+ENDPROC(truly_call_hyp)
 
 // the virtualization translation base register for stage 2
 ENTRY(truly_get_vttbr_el2)
@@ -376,9 +373,6 @@ ENTRY(truly_run_vm)
     ldr     x1, [x0, #TP_VTTBR_EL2]
     kern_hyp_va x1
     msr     vttbr_el2, x1
-
-//	mrs x1, ttbr1_el1
-//	msr	vttbr_el2, x1
 
 	ret
 ENDPROC(truly_run_vm)

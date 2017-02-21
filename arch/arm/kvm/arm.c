@@ -1111,7 +1111,7 @@ static int init_hyp_mode(void)
 		}
 	}
 
-	truly_init();
+
 	/*
 	 * Execute the init code on each CPU.
 	 */
@@ -1138,6 +1138,7 @@ static int init_hyp_mode(void)
 	kvm_perf_init();
 
 	kvm_info("Hyp mode initialized successfully\n");
+	truly_init();
 
 	return 0;
 out_free_context:

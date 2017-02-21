@@ -5,6 +5,7 @@
 #define DESC_TABLE_BIT 			( UL(1) << 1 )
 #define DESC_VALID_BIT 			( UL(1) << 0 )
 #define DESC_XN	       			( UL(1) << 54 )
+#define DESC_PXN	      		( UL(1) << 53 )
 #define DESC_CONTG_BIT		 	( UL(1) << 52 )
 #define DESC_AF	        		( UL(1) << 10 )
 #define DESC_SHREABILITY_SHIFT		(8)
@@ -30,42 +31,44 @@
 #define HCR_ID		(UL(1) << 33)
 #define HCR_CD		(UL(1) << 32)
 #define HCR_RW_SHIFT	31
-#define HCR_RW		(UL(1) << HCR_RW_SHIFT)
+#define HCR_RW		(UL(1) << HCR_RW_SHIFT) //
 #define HCR_TRVM	(UL(1) << 30)
 #define HCR_HCD		(UL(1) << 29)
 #define HCR_TDZ		(UL(1) << 28)
 #define HCR_TGE		(UL(1) << 27)
-#define HCR_TVM		(UL(1) << 26)
+#define HCR_TVM		(UL(1) << 26) // Trap Virtual Memory controls.
 #define HCR_TTLB	(UL(1) << 25)
 #define HCR_TPU		(UL(1) << 24)
 #define HCR_TPC		(UL(1) << 23)
-#define HCR_TSW		(UL(1) << 22)
-#define HCR_TAC		(UL(1) << 21)
-#define HCR_TIDCP	(UL(1) << 20)
-#define HCR_TSC		(UL(1) << 19)
+#define HCR_TSW		(UL(1) << 22)  // Trap data or unified cache maintenance
+#define HCR_TAC		(UL(1) << 21)  // Trap Auxiliary Control Register
+#define HCR_TIDCP	(UL(1) << 20)  // Trap IMPLEMENTATION DEFINED functionality
+#define HCR_TSC		(UL(1) << 19)  // Trap SMC
 #define HCR_TID3	(UL(1) << 18)
 #define HCR_TID2	(UL(1) << 17)
 #define HCR_TID1	(UL(1) << 16)
 #define HCR_TID0	(UL(1) << 15)
-#define HCR_TWE		(UL(1) << 14)
-#define HCR_TWI		(UL(1) << 13)
+#define HCR_TWE		(UL(1) << 14) // traps Non-secure EL0 and EL1 execution of WFE instructions to
+#define HCR_TWI		(UL(1) << 13) // traps Non-secure EL0 and EL1 execution of WFI instructions to EL2,
 #define HCR_DC		(UL(1) << 12)
 #define HCR_BSU		(3 << 10)
-#define HCR_BSU_IS	(UL(1) << 10)
-#define HCR_FB		(UL(1) << 9)
+#define HCR_BSU_IS	(UL(1) << 10) // Barrier Shareability upgrade
+#define HCR_FB		(UL(1) << 9)  // Force broadcast.
 #define HCR_VA		(UL(1) << 8)
 #define HCR_VI		(UL(1) << 7)
 #define HCR_VF		(UL(1) << 6)
-#define HCR_AMO		(UL(1) << 5)
+#define HCR_AMO		(UL(1) << 5) //Physical SError Interrupt routing.
 #define HCR_IMO		(UL(1) << 4)
 #define HCR_FMO		(UL(1) << 3)
 #define HCR_PTW		(UL(1) << 2)
-#define HCR_SWIO	(UL(1) << 1)
+#define HCR_SWIO	(UL(1) << 1) // Set/Way Invalidation Override
 #define HCR_VM		(UL(1) << 0)
 
 #define HCR_GUEST_FLAGS (HCR_TSC | HCR_TSW | HCR_TWE | HCR_TWI | HCR_VM | \
 			 HCR_TVM | HCR_BSU_IS | HCR_FB | HCR_TAC | \
 			 HCR_AMO | HCR_SWIO | HCR_TIDCP | HCR_RW)
+
+#define HCR_TRULY_FLAGS ( HCR_VM | HCR_TVM | HCR_RW)
 
 struct truly_vm {
 
@@ -133,6 +136,7 @@ void truly_set_tpidr(unsigned long);
 
 int truly_run_vm(struct truly_vm* cxt);
 long truly_get_mem_regs(void *cxt);
+long truly_call_hyp(void *hyper_func, ...);
 
 #define tp_info(fmt, ...) \
 	pr_info("truly [%i]: " fmt, task_pid_nr(current), ## __VA_ARGS__)
