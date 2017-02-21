@@ -75,7 +75,7 @@ struct truly_vm {
  	unsigned long hstr_el2;
  	unsigned long ttbr0_el2;
  	unsigned long ttbr1_el2;
- 	unsigned long vttbr_el2;
+ 	unsigned long long vttbr_el2;
  	unsigned long vtcr_el2;
 
  	unsigned long tpidr_el2;

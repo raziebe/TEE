@@ -228,13 +228,16 @@ ENDPROC(truly_get_tpidr)
 ENTRY(truly_set_vttbr_el2)
 
 	kern_hyp_va  x0	// grab tvm
+	
 	ldr	x1, [x0, #TP_VTTBR_EL2]
 	kern_hyp_va x1
 	msr	vttbr_el2,x1
 
+
 	ldr	x1, [x0, #TP_VTCR_EL2]
 	kern_hyp_va x1
-	msr	vtcr_el2,x1
+	msr	vtcr_el2, x1
+
 	ret
 
 ENDPROC(truly_set_vttbr_el2)
@@ -373,6 +376,9 @@ ENTRY(truly_run_vm)
     ldr     x1, [x0, #TP_VTTBR_EL2]
     kern_hyp_va x1
     msr     vttbr_el2, x1
+
+//	mrs x1, ttbr1_el1
+//	msr	vttbr_el2, x1
 
 	ret
 ENDPROC(truly_run_vm)
