@@ -36,9 +36,6 @@ EL1_sync:
 	cmp	x2, #ESR_ELx_EC_HVC64		// If not 10110 then we have a trap
 	b.ne	el1_trap
 
-//  vttbr  = virtualization translation table base register stage 2
-//	mrs	x3, vttbr_el2			// If vttbr is valid, the 64bit guest, 
-//	cbnz	x3, EL1_trap			// called HVC, 
 
 	/* Here, we're pretty sure the host called HVC. */
 	pop	x2, x3
@@ -62,6 +59,7 @@ EL1_sync:
 	blr	lr
 
 	pop	lr, xzr
+	
 2:	eret
 
 el1_trap:
@@ -222,14 +220,25 @@ ENTRY(truly_set_vttbr_el2)
 
 	kern_hyp_va  x0	// grab tvm
 	
+	mov	x1,xzr
 	ldr	x1, [x0, #TP_VTTBR_EL2]
 	kern_hyp_va x1
 	msr	vttbr_el2,x1
 
-
+	mov	x1,xzr
 	ldr	x1, [x0, #TP_VTCR_EL2]
 	kern_hyp_va x1
 	msr	vtcr_el2, x1
+
+	mov	x1,xzr
+ 	ldr x1, [x0, #TP_HSTR_EL2]
+	kern_hyp_va x1
+    msr hstr_el2, x1
+
+	mov	x1,xzr
+    ldr		x1, [x0, #TP_SCTLR_EL2]
+	kern_hyp_va x1
+	msr		sctlr_el2, x1
 
 	ret
 
@@ -348,28 +357,30 @@ ENTRY(truly_run_vm)
 	kern_hyp_va  x0	// grab tvm
 	msr	tpidr_el2, x0	// save tvm context
 
+	mov	x1,xzr
 	ldr	x1, [x0, #TP_HCR_EL2]
 	kern_hyp_va x1
     msr     hcr_el2, x1
-
+	
+	mov	x1,xzr
  	ldr x1, [x0, #TP_HSTR_EL2]
 	kern_hyp_va x1
     msr hstr_el2, x1
 
-    // Monitor Debug Config - see kvm_arm_setup_debug()
-   //  ldr     x2, [x0, #VCPU_MDCR_EL2]
-   //  msr     mdcr_el2, x2
+    mov	x1,xzr
     ldr		x1, [x0, #TP_VTCR_EL2]
 	kern_hyp_va x1
 	msr	vtcr_el2, x1
+ 
+    mov	x1,xzr
+    ldr     x1, [x0, #TP_VTTBR_EL2]
+    kern_hyp_va x1
+    msr vttbr_el2, x1
 
+    mov	x1,xzr
     ldr		x1, [x0, #TP_SCTLR_EL2]
 	kern_hyp_va x1
 	msr		sctlr_el2, x1
-
-    ldr     x1, [x0, #TP_VTTBR_EL2]
-    kern_hyp_va x1
-    msr     vttbr_el2, x1
 
 	ret
 ENDPROC(truly_run_vm)

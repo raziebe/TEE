@@ -68,18 +68,18 @@
 			 HCR_TVM | HCR_BSU_IS | HCR_FB | HCR_TAC | \
 			 HCR_AMO | HCR_SWIO | HCR_TIDCP | HCR_RW)
 
-#define HCR_TRULY_FLAGS ( HCR_VM | HCR_TVM | HCR_RW)
+#define HCR_TRULY_FLAGS ( HCR_VM )
 
 struct truly_vm {
 
 	unsigned long count;
 	unsigned long debug;
     unsigned long hcr_el2;
- 	unsigned long hstr_el2;
+ 	unsigned int hstr_el2;
  	unsigned long ttbr0_el2;
  	unsigned long ttbr1_el2;
  	unsigned long long vttbr_el2;
- 	unsigned long vtcr_el2;
+ 	unsigned int vtcr_el2;
 
  	unsigned long tpidr_el2;
  	unsigned long tcr_el2;
@@ -90,7 +90,7 @@ struct truly_vm {
  	unsigned long spsr_el2;
   	
     unsigned long vbar_el2;
- 	unsigned long sctlr_el2;
+ 	unsigned int sctlr_el2;
  	void* pg_lvl_one;
 
  	unsigned long tcr_el1;

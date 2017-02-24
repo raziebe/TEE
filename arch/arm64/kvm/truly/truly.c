@@ -258,33 +258,20 @@ void make_vtcr_el2(struct truly_vm *tvm)
 
 void make_sctlr_el2(struct truly_vm *tvm)
 {
-	long sctlr_el2_EE;
-	long sctlr_el2_WXN;
-	long sctlr_el2_I;
-	long sctlr_el2_C;
-	long sctlr_el2_A;    
-	long sctlr_el2_M;
+	char sctlr_el2_EE;
+	char sctlr_el2_M;
 
-
-	sctlr_el2_EE = ( truly_get_sctlr_el1() & 0x2000000 ) >> 25;
-	sctlr_el2_WXN = 0; // no effect
-	sctlr_el2_I =  0; // instructions non-cachable
-	sctlr_el2_C = 0; // data non-cacheable
-	sctlr_el2_A = 0; // do not do alignment check
+	sctlr_el2_EE = 1;
 	sctlr_el2_M = 1; // enable MMU
 
  	tvm->sctlr_el2 = ( sctlr_el2_EE  << SCTLR_EL2_EE_BIT_SHIFT  ) |
-			( sctlr_el2_WXN << SCTLR_EL2_WXN_BIT_SHIFT ) |
-			( sctlr_el2_I   << SCTLR_EL2_I_BIT_SHIFT   ) |
-			( sctlr_el2_C   << SCTLR_EL2_C_BIT_SHIFT   ) |		
-			( sctlr_el2_A   << SCTLR_EL2_A_BIT_SHIFT   ) |		      
-			( sctlr_el2_M   << SCTLR_EL2_M_BIT_SHIFT );		
+ 			( 0b01   << SCTLR_EL2_M_BIT_SHIFT );
 
 }
 
  void make_hstr_el2(struct truly_vm *tvm)
 {
-	tvm->hstr_el2  =  1 << 15 ; // Trap CP15 Cr=15
+	tvm->hstr_el2  = 0;// 1 << 15 ; // Trap CP15 Cr=15
 }
 
 void make_hcr_el2(struct truly_vm *tvm)
@@ -338,16 +325,17 @@ int truly_init(void)
      make_sctlr_el2(get_tvm());
      make_hcr_el2(get_tvm());
      tp_info("About to  call set vttbr");
-     truly_call_hyp(truly_set_vttbr_el2 ,get_tvm());
+  //   truly_call_hyp(truly_set_vttbr_el2 ,get_tvm());
 
-     tp_info("t0sz = %d t1sz=%d ips=%d PARnage=%d vttbr set\n",
-			t0sz, t1sz, ips, pa_range);
+     tp_info("t0sz = %d t1sz=%d ips=%d PARnage=%d sctrl_el2=%x\n",
+			t0sz, t1sz, ips, pa_range,tvm->sctlr_el2);
+
+     // fast stop
+   //  truly_call_hyp(truly_run_vm ,get_tvm());
 
      tp_info("Memory Layout code start=%p,%p\n "
                  ,(void*)_end, (void *)virt_to_phys(_end));
 
-     // fast stop
-   // truly_call_hyp(truly_run_vm ,get_tvm());
 
      return 0;
 }
