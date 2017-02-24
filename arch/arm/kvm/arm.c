@@ -45,6 +45,8 @@
 #include <asm/kvm_coproc.h>
 #include <asm/kvm_psci.h>
 
+#define __TRULY__
+
 #ifdef REQUIRES_VIRT
 __asm__(".arch_extension	virt");
 #endif
@@ -970,15 +972,20 @@ static void cpu_init_hyp_mode(void *dummy)
 	unsigned long hyp_stack_ptr;
 	unsigned long stack_page;
 	unsigned long vector_ptr;
+#ifdef __TRULY__
 	extern char __truly_vectors[];
-
+#endif
 	/* Switch from the HYP stub to our own HYP init vector */
 	__hyp_set_vectors(kvm_get_idmap_vector());
 	boot_pgd_ptr = kvm_mmu_get_boot_httbr();
 	pgd_ptr = kvm_mmu_get_httbr();
 	stack_page = __this_cpu_read(kvm_arm_hyp_stack_page);
 	hyp_stack_ptr = stack_page + PAGE_SIZE;
+#ifdef __TRULY__
 	vector_ptr = (unsigned long) __truly_vectors;
+#else	
+	vector_ptr = (unsigned long)__kvm_hyp_vector;
+#endif
 
 	__cpu_init_hyp_mode(boot_pgd_ptr, pgd_ptr, hyp_stack_ptr, vector_ptr);
 
@@ -1089,6 +1096,7 @@ static int init_hyp_mode(void)
 		}
 	}
 
+
 	/*
 	 * Map the host CPU structures
 	 */
@@ -1111,11 +1119,14 @@ static int init_hyp_mode(void)
 		}
 	}
 
-
 	/*
 	 * Execute the init code on each CPU.
 	 */
 	on_each_cpu(cpu_init_hyp_mode, NULL, 1);
+#ifdef __TRULY__
+	truly_init();
+	return 0;
+#endif
 
 	/*
 	 * Init HYP view of VGIC
@@ -1138,8 +1149,6 @@ static int init_hyp_mode(void)
 	kvm_perf_init();
 
 	kvm_info("Hyp mode initialized successfully\n");
-	truly_init();
-
 	return 0;
 out_free_context:
 	free_percpu(kvm_host_cpu_state);

@@ -10,6 +10,7 @@
 #include <linux/init.h>
 #include <asm/sections.h>
 
+
 int create_hyp_mappings(void*,void*);
 static struct truly_vm __percpu *tvm;
 
@@ -70,7 +71,7 @@ void create_level_three(struct page* pg,long* addr)
 		return;
     }
 
-	for (i = 0 ; i < PAGE_SIZE/sizeof(long); i++){
+	for (i = 0 ; i < PAGE_SIZE/sizeof(long long); i++){
 		//
 		// see page 1781 for details
 		//
@@ -80,7 +81,8 @@ void create_level_three(struct page* pg,long* addr)
        						( 0b1111 << 2)  | /* leave stage 1 un-changed see 1795*/
        						  DESC_TABLE_BIT |
 							  DESC_VALID_BIT |
-							(*addr) ;
+							  (*addr) ;
+
        	(*addr) += PAGE_SIZE;
 	}
 
@@ -105,16 +107,16 @@ void create_level_two(struct page *pg, long* addr)
     	   	printk("%s alloc page NULL\n",__func__);
 			return;
        }
-       for (i = 0 ; i < PAGE_SIZE/(sizeof(long)); i++){
 
+       for (i = 0 ; i < PAGE_SIZE/(sizeof(long)); i++){
     	   // fill an entire 2MB of mappings
     	   create_level_three(pg_lvl_three + i, addr);
     	   // calc the entry of this table
     	   l2_descriptor[i] = (page_to_phys( pg_lvl_three + i )) | DESC_TABLE_BIT | DESC_VALID_BIT ;
 
     	   //tp_info("L2 IPA %lx\n", l2_descriptor[i]);
-
        }
+
        kunmap(pg);
 }
 
@@ -130,18 +132,18 @@ void create_level_one(struct page *pg, long* addr)
     	   	   return;
        }
  
-       pg_lvl_two = alloc_pages(GFP_KERNEL | __GFP_ZERO, 1);
+       pg_lvl_two = alloc_pages(GFP_KERNEL | __GFP_ZERO, 3);
        if (pg_lvl_two == NULL){
     	   	   printk("%s alloc page NULL\n",__func__);
     	   	   return;
        }
        	
-       for (i = 0 ; i  < 2 ; i++) {
- 
+       for (i = 0 ; i  < 8 ; i++) {
+    	   get_page(pg_lvl_two + i);
     	   create_level_two(pg_lvl_two + i , addr);
 
     	   l1_descriptor[i] = (page_to_phys(pg_lvl_two + i)) |   DESC_TABLE_BIT | DESC_VALID_BIT ;
-    	   printk("L1 IPA %lx\n", l1_descriptor[i]);
+    	   printk("L1  %lx\n", l1_descriptor[i]);
        }
        kunmap(pg);
 }
@@ -149,7 +151,7 @@ void create_level_one(struct page *pg, long* addr)
 void create_level_zero(struct truly_vm* tvm, struct page* pg, long *addr)
 {
        struct page *pg_lvl_one;
-       long* l0_descriptor;
+       long* l0_descriptor;;
 
        pg_lvl_one = alloc_page(GFP_KERNEL | __GFP_ZERO);
        if (pg_lvl_one == NULL){
@@ -157,6 +159,7 @@ void create_level_zero(struct truly_vm* tvm, struct page* pg, long *addr)
     	   	   return;
        }
 
+       get_page(pg_lvl_one);
        create_level_one(pg_lvl_one, addr);
 
        l0_descriptor = (long *)kmap(pg);	
@@ -199,6 +202,7 @@ unsigned long tp_create_pg_tbl(void* cxt)
     	   return 0x00;
       }
 
+      get_page(pg_lvl_zero);
       create_level_zero(tvm, pg_lvl_zero, &addr);
 
       if (starting_level == 0)
@@ -235,10 +239,10 @@ void make_vtcr_el2(struct truly_vm *tvm)
 	long vtcr_el2_ps;
 
 	vtcr_el2_t0sz   = truly_get_tcr_el1() & 0b111111;
-	vtcr_el2_sl0    = 0b01; // start at level 1.  D.2143 + D4.1746
-	vtcr_el2_irgn0  = 0;
-	vtcr_el2_orgn0  = 0;
-	vtcr_el2_sh0    = 0;
+	vtcr_el2_sl0    = 0b01; //IMPORTANT start at level 1.  D.2143 + D4.1746
+	vtcr_el2_irgn0  = 0b1;
+	vtcr_el2_orgn0  = 0b1;
+	vtcr_el2_sh0    = 0b11; // inner sharable
  	vtcr_el2_tg0    = (truly_get_tcr_el1() & 0xc000) >> 14;
 	vtcr_el2_ps     = (truly_get_tcr_el1() & 0x700000000 ) >> 32;
 
@@ -321,7 +325,6 @@ int truly_init(void)
     	   struct truly_vm *_tvm;
 
           _tvm = per_cpu_ptr(tvm, cpu);
-
            err = create_hyp_mappings(_tvm, _tvm + 1);
            if (err){
             	   tp_err("Failed to map tvm");
@@ -334,12 +337,17 @@ int truly_init(void)
      make_vtcr_el2(get_tvm());
      make_sctlr_el2(get_tvm());
      make_hcr_el2(get_tvm());
-     tp_info("Pre Calling to set vttbr");
+     tp_info("About to  call set vttbr");
      truly_call_hyp(truly_set_vttbr_el2 ,get_tvm());
 
      tp_info("t0sz = %d t1sz=%d ips=%d PARnage=%d vttbr set\n",
 			t0sz, t1sz, ips, pa_range);
 
+     tp_info("Memory Layout code start=%p,%p\n "
+                 ,(void*)_end, (void *)virt_to_phys(_end));
+
+     // fast stop
+   // truly_call_hyp(truly_run_vm ,get_tvm());
 
      return 0;
 }

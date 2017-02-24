@@ -33,8 +33,8 @@ EL1_sync:
 	mrs	x1, esr_el2
 	lsr	x2, x1, #ESR_ELx_EC_SHIFT	// Syndrom shift 26 bits
 
-	cmp	x2, #ESR_ELx_EC_HVC64		// not 10110 then we have a trap
-	b.ne	EL1_trap
+	cmp	x2, #ESR_ELx_EC_HVC64		// If not 10110 then we have a trap
+	b.ne	el1_trap
 
 //  vttbr  = virtualization translation table base register stage 2
 //	mrs	x3, vttbr_el2			// If vttbr is valid, the 64bit guest, 
@@ -64,7 +64,7 @@ EL1_sync:
 	pop	lr, xzr
 2:	eret
 
-EL1_trap:
+el1_trap:
 	/*
 	 * x1: ESR
 	 * x2: ESR_EC
@@ -77,13 +77,13 @@ EL1_trap:
 	cmp	x2, #ESR_ELx_EC_DABT_LOW	// ESR_ELx_EC_DABT_LOW = 0x24 = 36d = data abort
 	mov	x0, #ESR_ELx_EC_IABT_LOW	// ESR_ELx_EC_IABT_LOW = 0x20 = 32 instruction abort 
 	ccmp	x2, x0, #4, ne // if and 4 && (x2 and x0 ) then br to 1
-	b.ne	1f		// Not an abort we care about
+	b.ne	4f		// Not an abort we care about
 
 	/* This is an abort. Check for permission fault */
 alternative_if_not ARM64_WORKAROUND_834220
 	and	x2, x1, #ESR_ELx_FSC_TYPE // 0x3c
 	cmp	x2, #FSC_PERM	// 0x0c
-	b.ne	1f		// Not a permission fault
+	b.ne	4f		// Not a permission fault
 alternative_else
 	nop			// Use the permission fault path to
 	nop			// check for a valid S1 translation,
@@ -94,7 +94,7 @@ alternative_endif
 	 * Check for Stage-1 page table walk, which is guaranteed
 	 * to give a valid HPFAR_EL2.
 	 */
-	tbnz	x1, #7, 1f	// S1PTW is set
+	tbnz	x1, #7, 4f	// S1PTW is set
 
 	/* Preserve PAR_EL1 */
 	mrs	x3, par_el1
@@ -123,7 +123,7 @@ alternative_endif
 1:	mrs	x3, hpfar_el2
 	mrs	x2, far_el2
 
-2:	mrs	x0, tpidr_el2
+//2:	mrs	x0, tpidr_el2
 //	str	w1, [x0, #VCPU_ESR_EL2]
 //	str	x2, [x0, #VCPU_FAR_EL2]
 //	str	x3, [x0, #VCPU_HPFAR_EL2]
@@ -344,27 +344,24 @@ ENDPROC(truly_exec_el1)
 // replace later to truly_run_hyp
 //
 ENTRY(truly_run_vm)
-	kern_hyp_va  x0	// grab tvm
 
+	kern_hyp_va  x0	// grab tvm
 	msr	tpidr_el2, x0	// save tvm context
 
 	ldr	x1, [x0, #TP_HCR_EL2]
 	kern_hyp_va x1
     msr     hcr_el2, x1
 
- //       mov     x2, #CPTR_EL2_TTA
- //       orr     x2, x2, #CPTR_EL2_TFP
- //       msr     cptr_el2, x2
-	ldr x1, [x0, #TP_HSTR_EL2]
+ 	ldr x1, [x0, #TP_HSTR_EL2]
 	kern_hyp_va x1
-    msr     hstr_el2, x1
+    msr hstr_el2, x1
 
     // Monitor Debug Config - see kvm_arm_setup_debug()
    //  ldr     x2, [x0, #VCPU_MDCR_EL2]
    //  msr     mdcr_el2, x2
     ldr		x1, [x0, #TP_VTCR_EL2]
 	kern_hyp_va x1
-	msr		vtcr_el2, x1
+	msr	vtcr_el2, x1
 
     ldr		x1, [x0, #TP_SCTLR_EL2]
 	kern_hyp_va x1
@@ -381,25 +378,24 @@ ENDPROC(truly_run_vm)
 // http://infocenter.arm.com/help/index.jsp?topic=/com.arm.doc.den0024a/CHDEEDDC.html
 .align 11
 ENTRY(__truly_vectors)
-        invalid_vector  EL2_sync,#1                        // raz test
+        invalid_vector  EL2_sync,#1                        //Current EL with SP0 
         invalid_vector  EL2_irq_invalid,#2                 // IRQ EL2t
         invalid_vector  EL2_fiq_invalid,#3                // FIQ EL2t
         invalid_vector  EL2_error_invalid,#4             // Error EL2t
 
-        invalid_vector  EL2_syncELSpx,#5  	              // Synchronous EL2h
+        invalid_vector  EL2_syncELSpx,#5  	              // Current EL with SPx
         invalid_vector  EL2_irq_invalidELSpx,#6                 // IRQ EL2h
         invalid_vector  EL2_fiq_invalidELSpx,#7                 // FIQ EL2h
         invalid_vector  EL2_error_invalidELspx,#8               // Error EL2h
 
-        ventry  EL1_sync                        // Synchronous 64-bit EL1
-
-        ventry  EL1_irq                       // IRQ 64-bit EL1
+        ventry  EL1_sync                        			// Synchronous 64-bit EL1
+        ventry  EL1_irq                       				// IRQ 64-bit EL1
         invalid_vector  EL1_fiq_invalid ,#9                // FIQ 64-bit EL1
         invalid_vector  EL1_error_invalid  ,#10             // Error 64-bit EL1
 
-        ventry  EL1_irq  	              // Synchronous 32-bit EL1
-        invalid_vector  EL1_irq_invalid,#11                 // IRQ 32-bit EL1
-        invalid_vector  EL1_fiq_invalidLowEL32 ,#12                // FIQ 32-bit EL1
+        ventry  EL1_irq  	              							// Synchronous 32-bit EL1
+        invalid_vector  EL1_irq_invalid,#11                 		// IRQ 32-bit EL1
+        invalid_vector  EL1_fiq_invalidLowEL32 ,#12               // FIQ 32-bit EL1
         invalid_vector  EL1_error_invalidLowEL32,#13               // Error 32-bit EL1
 ENDPROC(__truly_vectors)
 
