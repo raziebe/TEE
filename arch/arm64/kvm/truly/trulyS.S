@@ -130,7 +130,6 @@ alternative_endif
 4:
 	pop	x2, x3
 	pop	x0, x1
-	mrs x0, ttbr1_el1
 	
 	eret
 
