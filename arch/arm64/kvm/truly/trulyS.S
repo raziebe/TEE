@@ -116,18 +116,10 @@ alternative_endif
 	tbnz	x3, #0, 4f		// Bail out if we failed the translation
 	ubfx	x3, x3, #12, #36	// Extract IPA
 	lsl	x3, x3, #4		// and present it like HPFAR
-	b	2f
+	b	4f
 
 1:	mrs	x3, hpfar_el2
 	mrs	x2, far_el2
-
-//2:	mrs	x0, tpidr_el2
-//	str	w1, [x0, #VCPU_ESR_EL2]
-//	str	x2, [x0, #VCPU_FAR_EL2]
-//	str	x3, [x0, #VCPU_HPFAR_EL2]
-
-//	mov	x1, #ARM_EXCEPTION_TRAP
-//	b	__kvm_vcpu_return
 
 	/*
 	 * Translation failed. Just return to the guest and
@@ -135,10 +127,11 @@ alternative_endif
 	 * behind our back.
 	 */
 	
-// exit out
 4:
 	pop	x2, x3
 	pop	x0, x1
+	mrs x0, ttbr1_el1
+	
 	eret
 
 

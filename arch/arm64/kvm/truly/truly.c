@@ -261,11 +261,11 @@ void make_sctlr_el2(struct truly_vm *tvm)
 	char sctlr_el2_EE;
 	char sctlr_el2_M;
 
-	sctlr_el2_EE = 1;
-	sctlr_el2_M = 1; // enable MMU
+	sctlr_el2_EE = 0b00;
+	sctlr_el2_M = 0b01; // enable MMU
 
  	tvm->sctlr_el2 = ( sctlr_el2_EE  << SCTLR_EL2_EE_BIT_SHIFT  ) |
- 			( 0b01   << SCTLR_EL2_M_BIT_SHIFT );
+ 			( sctlr_el2_M   << SCTLR_EL2_M_BIT_SHIFT );
 
 }
 
