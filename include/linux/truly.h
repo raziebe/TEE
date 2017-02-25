@@ -68,8 +68,8 @@
 			 HCR_TVM | HCR_BSU_IS | HCR_FB | HCR_TAC | \
 			 HCR_AMO | HCR_SWIO | HCR_TIDCP | HCR_RW)
 
-#define HCR_TRULY_FLAGS ( HCR_TSW |  HCR_VM | \
-			   HCR_FB | HCR_TAC | \
+#define HCR_TRULY_FLAGS ( HCR_VM | \
+			  HCR_TAC | \
 			  HCR_TIDCP | HCR_RW)
 
 struct truly_vm {
