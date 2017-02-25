@@ -258,14 +258,16 @@ void make_vtcr_el2(struct truly_vm *tvm)
 
 void make_sctlr_el2(struct truly_vm *tvm)
 {
-	char sctlr_el2_EE;
-	char sctlr_el2_M;
+	char sctlr_el2_EE = 0b00;
+	char sctlr_el2_M = 0b01; // enable MMU
+	char sctlr_el2_SA = 0b1; // SP alignment check
+	char sctlr_el2_A = 0b1; //  alignment check
 
-	sctlr_el2_EE = 0b00;
-	sctlr_el2_M = 0b01; // enable MMU
 
- 	tvm->sctlr_el2 = ( sctlr_el2_EE  << SCTLR_EL2_EE_BIT_SHIFT  ) |
- 			( sctlr_el2_M   << SCTLR_EL2_M_BIT_SHIFT );
+ 	tvm->sctlr_el2 =	( sctlr_el2_A   << SCTLR_EL2_A_BIT_SHIFT   ) |
+ 						( sctlr_el2_SA  << SCTLR_EL2_SA_BIT_SHIFT  ) |
+ 						( sctlr_el2_EE  << SCTLR_EL2_EE_BIT_SHIFT  ) |
+ 					    ( sctlr_el2_M   << SCTLR_EL2_M_BIT_SHIFT );
 
 }
 
@@ -324,19 +326,9 @@ int truly_init(void)
      make_vtcr_el2(get_tvm());
      make_sctlr_el2(get_tvm());
      make_hcr_el2(get_tvm());
-     tp_info("About to  call set vttbr");
-  //   truly_call_hyp(truly_set_vttbr_el2 ,get_tvm());
-
      tp_info("t0sz = %d t1sz=%d ips=%d PARnage=%d sctrl_el2=%x\n",
 			t0sz, t1sz, ips, pa_range,tvm->sctlr_el2);
-
-     // fast stop
-   //  truly_call_hyp(truly_run_vm ,get_tvm());
-
-     tp_info("Memory Layout code start=%p,%p\n "
-                 ,(void*)_end, (void *)virt_to_phys(_end));
-
-
+   //  truly_call_hyp(truly_set_vttbr_el2 ,get_tvm());
      return 0;
 }
 

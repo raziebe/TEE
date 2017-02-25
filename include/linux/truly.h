@@ -23,6 +23,7 @@
 #define SCTLR_EL2_EE_BIT_SHIFT		25
 #define SCTLR_EL2_WXN_BIT_SHIFT		19
 #define SCTLR_EL2_I_BIT_SHIFT		12
+#define SCTLR_EL2_SA_BIT_SHIFT		3
 #define SCTLR_EL2_C_BIT_SHIFT		2
 #define SCTLR_EL2_A_BIT_SHIFT		1	
 #define SCTLR_EL2_M_BIT_SHIFT		0
@@ -68,9 +69,7 @@
 			 HCR_TVM | HCR_BSU_IS | HCR_FB | HCR_TAC | \
 			 HCR_AMO | HCR_SWIO | HCR_TIDCP | HCR_RW)
 
-#define HCR_TRULY_FLAGS ( HCR_VM | \
-			  HCR_TAC | \
-			  HCR_TIDCP | HCR_RW)
+#define HCR_TRULY_FLAGS ( HCR_VM | HCR_RW)
 
 struct truly_vm {
 

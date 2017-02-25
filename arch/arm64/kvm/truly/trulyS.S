@@ -13,8 +13,7 @@
 
 .text
 .pushsection	.hyp.text, "ax" // borrow  hyp.text
-
-
+.align	PAGE_SHIFT
 
 .macro invalid_vector   label,num
 .align 7
@@ -46,8 +45,7 @@ EL1_sync:
 	mrs	x0, vbar_el2
 	b	2f
 
-1:	push	lr, xzr
-
+1:	push	lr, xzr	
 	/*
 	 * Compute the function address in EL2, and shuffle the parameters.
 	 */
@@ -207,7 +205,7 @@ ENTRY(truly_get_tpidr)
 	ret
 ENDPROC(truly_get_tpidr)
 
-
+// calling this routine creates an oops
 ENTRY(truly_set_vttbr_el2)
 
 	kern_hyp_va  x0	// grab tvm
@@ -227,10 +225,14 @@ ENTRY(truly_set_vttbr_el2)
 	kern_hyp_va x1
     msr hstr_el2, x1
 
-	mov	x1,xzr
-    ldr		x1, [x0, #TP_SCTLR_EL2]
+//	mov	x1,xzr 
+  	ldr		x1, [x0, #TP_SCTLR_EL2]
 	kern_hyp_va x1
 	msr		sctlr_el2, x1
+
+	tlbi    vmalls12e1is
+	dsb    sy // Data Synchronization Barrier on to the inner shareable domain
+	isb		// Instruction Synchronization Barrier.
 
 	ret
 
@@ -341,40 +343,47 @@ ENTRY(truly_exec_el1)
 	ret
 ENDPROC(truly_exec_el1)
 
+.ltorg
 //
 // replace later to truly_run_hyp
 //
 ENTRY(truly_run_vm)
-
+	
+	pop	lr, xzr
+	mov	x4, lr		// save the link register of EL1 before losing it.
+	
 	kern_hyp_va  x0	// grab tvm
 	msr	tpidr_el2, x0	// save tvm context
 
-	mov	x1,xzr
 	ldr	x1, [x0, #TP_HCR_EL2]
 	kern_hyp_va x1
     msr     hcr_el2, x1
 	
-	mov	x1,xzr
  	ldr x1, [x0, #TP_HSTR_EL2]
 	kern_hyp_va x1
     msr hstr_el2, x1
 
-    mov	x1,xzr
     ldr		x1, [x0, #TP_VTCR_EL2]
 	kern_hyp_va x1
 	msr	vtcr_el2, x1
  
-    mov	x1,xzr
     ldr     x1, [x0, #TP_VTTBR_EL2]
     kern_hyp_va x1
     msr vttbr_el2, x1
 
-    mov	x1,xzr
     ldr		x1, [x0, #TP_SCTLR_EL2]
 	kern_hyp_va x1
 	msr		sctlr_el2, x1
 
-	ret
+	// Clear cntvoff for the host
+	msr	cntvoff_el2, xzr
+	
+	tlbi    vmalls12e1is
+	dsb    sy // Data Synchronization Barrier on to the inner shareable domain
+	isb		// Instruction Synchronization Barrier.
+	
+	mov	lr,x4
+	eret // must eret here. stack pointer is changed 
 ENDPROC(truly_run_vm)
 
 
