@@ -165,7 +165,11 @@ __hyp_panic_str:
 	.ascii	"Truly panic:\nCode:%08x PC:%016x ESR:%08x\nFAR:%016x" \
 	" HPFAR:%016x RAZDBG:%p\nTrulyCxt:%p\n\0"
 
-.align 2
+ENTRY(truly_get_tcr_el1)
+       mrs     x0, tcr_el1
+       isb
+       ret
+ENDPROC(truly_get_tcr_el1)
 
 
 ENTRY(truly_has_vhe)
@@ -173,37 +177,6 @@ ENTRY(truly_has_vhe)
         ubfx    x2, x2, #8, #4
 	mov	x0,x2 // if zero then no vhe
 ENDPROC(truly_has_vhe)
-
-ENTRY(truly_set_hcr_el2)
-	msr	 hcr_el2,x0
-	ret
-ENDPROC(truly_get_hcr_el2)
-
-ENTRY(truly_get_hcr_el2)
-	mrs	x0, hcr_el2
-	ret
-ENDPROC(truly_get_hcr_el2)
-
-ENTRY(truly_set_mdcr_el2)
-	msr	mdcr_el2,x0
-	ret
-ENDPROC(truly_set_mdcr_el2)
-
-ENTRY(truly_get_mdcr_el2)
-	mrs	x0, mdcr_el2
-	ret
-ENDPROC(truly_get_mdcr_el2)
-
-ENTRY(truly_set_tpidr)
-	kern_hyp_va	x0
-	msr     tpidr_el2, x0   // Save truly context 
-	ret
-ENDPROC(truly_set_tpidr)
-
-ENTRY(truly_get_tpidr)
-	mrs     x0, tpidr_el2
-	ret
-ENDPROC(truly_get_tpidr)
 
 // calling this routine creates an oops
 ENTRY(truly_set_vttbr_el2)
@@ -238,71 +211,8 @@ ENTRY(truly_set_vttbr_el2)
 
 ENDPROC(truly_set_vttbr_el2)
 
-ENTRY(truly_call_hyp)
-        hvc  #0
-        ret
-ENDPROC(truly_call_hyp)
 
-// the virtualization translation base register for stage 2
-ENTRY(truly_get_vttbr_el2)
-	mrs	x0, vttbr_el2
-	ret
-ENDPROC(truly_get_vttbr_el2)
-
-ENTRY(truly_get_ttbr0_el2)
-	mrs	x0, ttbr0_el2
-	ret
-ENDPROC(truly_get_ttbr0_el2)
-
-ENTRY(truly_get_ttbr1_el2)
-	mrs	x0, ttbr1_el2
-	ret
-ENDPROC(truly_get_ttbr1_el2)
-
-ENTRY(truly_set_ttbr1_el2)
-	msr	ttbr1_el2,x0
-	isb
-	ret
-ENDPROC(truly_set_ttbr1_el2)
-
-ENTRY(truly_set_ttbr0_el2)
-	msr	ttbr0_el2,x0
-	ret
-ENDPROC(truly_set_ttbr0_el2)
-
-ENTRY(truly_get_tcr_el1)
-	mrs	x0, tcr_el1
-	isb
-	ret
-ENDPROC(truly_get_tcr_el1)
-
-ENTRY(truly_get_tcr_el2)
-	mrs	x0, tcr_el2
-	ret
-ENDPROC(truly_get_tcr_el2)
-
-ENTRY(truly_set_tcr_el2)
-	msr	tcr_el2,x0
-	ret
-ENDPROC(truly_set_tcr_el2)
-
-ENTRY(truly_get_sctlr_el1)
-	mrs	x0, sctlr_el1
-	ret
-ENDPROC(truly_get_sctlr_el1)
-
-ENTRY(truly_get_sctlr_el2)
-	mrs	x0, sctlr_el2
-	ret
-ENDPROC(truly_get_sctlr_el2)
-
-ENTRY(truly_set_sctlr_el2)
-	msr 	sctlr_el2, x0 
-	isb
-	ret
-ENDPROC(truly_set_sctlr_el2)
-
-ENTRY(truly_exec_el1)
+ENTRY(vhe_exec_el1)
 
 	push	lr, xzr
 	mov	lr, x0
@@ -341,12 +251,9 @@ ENTRY(truly_exec_el1)
 	pop	lr, xzr
 
 	ret
-ENDPROC(truly_exec_el1)
+ENDPROC(vhe_exec_el1)
 
-.ltorg
-//
-// replace later to truly_run_hyp
-//
+
 ENTRY(truly_run_vm)
 	
 	pop	lr, xzr

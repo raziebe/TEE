@@ -69,7 +69,7 @@
 			 HCR_TVM | HCR_BSU_IS | HCR_FB | HCR_TAC | \
 			 HCR_AMO | HCR_SWIO | HCR_TIDCP | HCR_RW)
 
-#define HCR_TRULY_FLAGS ( HCR_VM | HCR_RW)
+#define HCR_TRULY_FLAGS ( HCR_VM | HCR_RW )
 
 struct truly_vm {
 
@@ -108,36 +108,12 @@ struct truly_vm {
 };
 
 
-unsigned long truly_get_sctlr_el2(void);
-unsigned long truly_get_sctlr_el1(void);
-unsigned long truly_get_tcr_el2(void);
-unsigned long truly_get_tcr_el1(void);
-unsigned long truly_get_ttbr0_el2(void);
-unsigned long truly_get_ttbr1_el2(void);
-
-void truly_set_vttbr_el2(long vttbr_el2);
-void truly_set_sctlr_el2(unsigned long);
-void truly_set_ttbr1_el2(unsigned long t);
-void truly_set_ttbr0_el2(unsigned long t);
-void truly_set_tcr_el2(unsigned long);
-void truly_exec_el1(void *vm);
-void truly_exec_el1_2(void *vm);
-int truly_test_vttbr(void *cxt);
-unsigned long truly_has_vhe(void);
-unsigned long truly_get_hcr_el2(void);
-unsigned long truly_get_mdcr_el2(void);
-unsigned long truly_get_tpidr(void);
-unsigned long truly_get_vttbr_el2(void);
 
 struct truly_vm* get_tvm(void);
-
-void truly_set_hcr_el2(unsigned long);
-void truly_set_mdcr_el2(unsigned long);
-void truly_set_tpidr(unsigned long);
-
+int vhe_exec_el1(struct truly_vm* cxt);
 int truly_run_vm(struct truly_vm* cxt);
-long truly_get_mem_regs(void *cxt);
 long truly_call_hyp(void *hyper_func, ...);
+unsigned long truly_get_tcr_el1(void);
 
 #define tp_info(fmt, ...) \
 	pr_info("truly [%i]: " fmt, task_pid_nr(current), ## __VA_ARGS__)
