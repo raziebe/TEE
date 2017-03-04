@@ -78,7 +78,7 @@ struct truly_vm {
     unsigned long hcr_el2;
  	unsigned int hstr_el2;
  	unsigned long ttbr0_el2;
- 	unsigned long ttbr1_el2;
+ 	unsigned long ttbr1_el2; // VHE
  	unsigned long long vttbr_el2;
  	unsigned int vtcr_el2;
 
@@ -89,9 +89,10 @@ struct truly_vm {
   	unsigned long esr_el2;
     unsigned long sp_el0;
  	unsigned long spsr_el2;
-  	
+ 	unsigned long mdcr_el2;
     unsigned long vbar_el2;
  	unsigned int sctlr_el2;
+
  	void* pg_lvl_one;
 
  	unsigned long tcr_el1;
