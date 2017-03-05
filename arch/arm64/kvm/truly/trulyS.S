@@ -69,7 +69,10 @@ el1_trap:
 	/* Guest accessed VFP/SIMD registers, save host, restore Guest */
 	cmp	x2, #ESR_ELx_EC_FP_ASIMD		// 0x7
 	b.eq	4f
-
+	
+	cmp x2, #0x3c					// debug brk command
+	b.eq	5f
+	
 	cmp	x2, #ESR_ELx_EC_DABT_LOW	// ESR_ELx_EC_DABT_LOW = 0x24 = 36d = data abort
 	mov	x0, #ESR_ELx_EC_IABT_LOW	// ESR_ELx_EC_IABT_LOW = 0x20 = 32 instruction abort 
 	ccmp	x2, x0, #4, ne // if and 4 && (x2 and x0 ) then br to 1
@@ -131,6 +134,13 @@ alternative_endif
 	
 	eret
 
+5:	// D.1.10.1 . In synchronous exceptions jump over the generating exception instruction 
+	mrs	x2,elr_el2
+	add x2, x2, #4
+	msr	elr_el2,x2	
+	pop	x2, x3
+	pop	x0, x1
+	
 
 EL1_irq:
 	eret
