@@ -288,14 +288,14 @@ ENTRY(truly_run_vm)
     kern_hyp_va x1
     msr vttbr_el2, x1
 
-    ldr		x1, [x0, #TP_SCTLR_EL2]
-	kern_hyp_va x1
-	msr		sctlr_el2, x1
-
+ 
     ldr		x1, [x0, #TP_MDCR_EL2]
 	kern_hyp_va x1
 	msr		mdcr_el2, x1
 
+   ldr		x1, [x0, #TP_SCTLR_EL2]
+	kern_hyp_va x1
+	msr		sctlr_el2, x1
 
 	// Clear cntvoff for the host
 	msr	cntvoff_el2, xzr
