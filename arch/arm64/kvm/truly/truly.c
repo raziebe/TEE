@@ -143,7 +143,7 @@ void create_level_one(struct page *pg, long* addr)
     	   create_level_two(pg_lvl_two + i , addr);
 
     	   l1_descriptor[i] = (page_to_phys(pg_lvl_two + i)) |   DESC_TABLE_BIT | DESC_VALID_BIT ;
-    	   printk("L1  %lx\n", l1_descriptor[i]);
+
        }
        kunmap(pg);
 }
@@ -280,7 +280,7 @@ void make_hcr_el2(struct truly_vm *tvm)
 {
 	tvm->hcr_el2 = HCR_TRULY_FLAGS;
 }
-
+u64 kvm_call_hyp(void *hypfn, ...);
 /*
  * construct page table
 */
@@ -319,16 +319,18 @@ int truly_init(void)
             	   tp_err("Failed to map tvm");
             	   return -1;
           }
+          make_vtcr_el2(_tvm);
+          make_sctlr_el2(_tvm);
+          make_hcr_el2(_tvm);
+          tvm->mdcr_el2 = 0x0;
+          tp_info("%d t0sz = %d t1sz=%d ips=%d PARnage=%d \n",
+        		  raw_smp_processor_id(),
+        		  t0sz, t1sz, ips, pa_range);
+
      }
 
      tp_create_pg_tbl(get_tvm()) ;
-
-     make_vtcr_el2(get_tvm());
-     make_sctlr_el2(get_tvm());
-     make_hcr_el2(get_tvm());
-     tp_info("t0sz = %d t1sz=%d ips=%d PARnage=%d sctrl_el2=%x\n",
-			t0sz, t1sz, ips, pa_range,tvm->sctlr_el2);
-   //  truly_call_hyp(truly_set_vttbr_el2 ,get_tvm());
+     kvm_call_hyp(truly_run_vm, get_tvm());
      return 0;
 }
 
