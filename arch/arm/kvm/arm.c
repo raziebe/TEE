@@ -1125,10 +1125,9 @@ static int init_hyp_mode(void)
 	 */
 	on_each_cpu(cpu_init_hyp_mode, NULL, 1);
 
-	#ifdef __TRULY__
+#ifdef __TRULY__
 	truly_init();
 	on_each_cpu(truly_clone_vm , NULL, 0);
-	truly_smp_run_hyp();
 	return 0;
 #endif
 

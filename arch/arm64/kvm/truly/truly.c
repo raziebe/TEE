@@ -285,6 +285,7 @@ int truly_init(void)
      int t0sz;
      int t1sz;
      int ips;
+     unsigned long hcr_el2;
      int pa_range;
      long id_aa64mmfr0_el1;
    	 int err;
@@ -318,6 +319,11 @@ int truly_init(void)
       tp_info(" T0SZ = %d T1SZ=%d IPS=%d PARnage=%d Initializg processor=%d\n",
          		  t0sz, t1sz, ips, pa_range,tp_init_cpu);
       tp_call_hyp(truly_run_vm, _tvm);
+      hcr_el2 = tp_call_hyp(truly_get_hcr_el2);
+
+      tp_info("Running HYP hcr_el2=%lX %lX\n",
+           			_tvm->hcr_el2, hcr_el2);
+
       return 0;
 }
 
@@ -330,19 +336,17 @@ void truly_clone_vm(void *d)
 
       tvm0 = per_cpu_ptr(TVM, tp_init_cpu);
       _tvm = this_cpu_ptr(TVM);
-      if (_tvm->mdcr_el2)
-       				return;
       memcpy(_tvm, tvm0, sizeof(struct truly_vm));
 
 }
 
 void tp_run_vm(void *x)
 {
-	long hcr_el2;
-    struct truly_vm *_tvm = get_tvm();
+	long hcr_el2=0;
+    struct truly_vm *_tvm = this_cpu_ptr(TVM);
 
-    tp_call_hyp(truly_run_vm, _tvm);
-    hcr_el2 = tp_call_hyp(truly_get_hcr_el2);
+//    tp_call_hyp(truly_run_vm, _tvm);
+  //  hcr_el2 = tp_call_hyp(truly_get_hcr_el2);
 
     tp_info("Running HYP hcr_el2=%lX %lX\n",
      			_tvm->hcr_el2, hcr_el2);
