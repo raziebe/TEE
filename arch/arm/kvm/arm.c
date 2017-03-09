@@ -46,6 +46,8 @@
 #include <asm/kvm_psci.h>
 
 #define __TRULY__
+int truly_init(void);
+void truly_clone_vm(void);
 
 #ifdef REQUIRES_VIRT
 __asm__(".arch_extension	virt");
@@ -972,7 +974,9 @@ static void cpu_init_hyp_mode(void *dummy)
 	unsigned long hyp_stack_ptr;
 	unsigned long stack_page;
 	unsigned long vector_ptr;
+
 #ifdef __TRULY__
+
 	extern char __truly_vectors[];
 #endif
 	/* Switch from the HYP stub to our own HYP init vector */
@@ -988,8 +992,8 @@ static void cpu_init_hyp_mode(void *dummy)
 #endif
 
 	__cpu_init_hyp_mode(boot_pgd_ptr, pgd_ptr, hyp_stack_ptr, vector_ptr);
-
 	kvm_arm_init_debug();
+
 }
 
 static int hyp_init_cpu_notify(struct notifier_block *self,
@@ -1045,7 +1049,7 @@ static int init_hyp_mode(void)
 {
 	int cpu;
 	int err = 0;
-	int truly_init(void);
+
 	/*
 	 * Allocate Hyp PGD and setup Hyp identity mapping
 	 */
@@ -1123,8 +1127,10 @@ static int init_hyp_mode(void)
 	 * Execute the init code on each CPU.
 	 */
 	on_each_cpu(cpu_init_hyp_mode, NULL, 1);
-#ifdef __TRULY__
+
+	#ifdef __TRULY__
 	truly_init();
+	on_each_cpu(truly_clone_vm , NULL, NULL);
 	return 0;
 #endif
 

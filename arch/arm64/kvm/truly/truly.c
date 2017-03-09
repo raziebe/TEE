@@ -12,11 +12,15 @@
 
 
 int create_hyp_mappings(void*,void*);
-static struct truly_vm __percpu *tvm;
+static struct truly_vm __percpu *TVM;
+void tp_call_hyp(void *, ...);
+void truly_clone_vm(void);
+static int tp_init_cpu = -1;
+
 
 struct truly_vm* get_tvm(void)
 {
-	return this_cpu_ptr(tvm);
+	return this_cpu_ptr(TVM);
 }
 
 long truly_get_elr_el1(void)
@@ -48,14 +52,6 @@ long 	truly_get_mfr(void)
 	asm("mrs %0,id_aa64mmfr0_el1\n" : "=r"  (e));
 	return e;
 }
-
-unsigned long truly_test_code_map(void* cxt) 
-{
-	struct truly_vm *vm =  (struct truly_vm *)cxt;
-	vm->debug = 1212;
-	return 4444;
-}
-EXPORT_SYMBOL_GPL(truly_test_code_map);
 
 //
 // alloc 512 * 4096  = 2MB 
@@ -280,60 +276,74 @@ void make_hcr_el2(struct truly_vm *tvm)
 {
 	tvm->hcr_el2 = HCR_TRULY_FLAGS;
 }
-u64 kvm_call_hyp(void *hypfn, ...);
+
+
 /*
  * construct page table
 */
 int truly_init(void)
 {
-       long long tcr_el1;
-       int t0sz;
-       int t1sz;
-       int ips;
-       int cpu;
-       int pa_range;
-       long id_aa64mmfr0_el1;
+     long long tcr_el1;
+     int t0sz;
+     int t1sz;
+     int ips;
+     int pa_range;
+     long id_aa64mmfr0_el1;
+   	 int err;
+   	 struct truly_vm *_tvm;
 
-       id_aa64mmfr0_el1 = truly_get_mfr();
-       tcr_el1 = truly_get_tcr_el1(); 
+     id_aa64mmfr0_el1 = truly_get_mfr();
+     tcr_el1 = truly_get_tcr_el1();
 
-       t0sz = tcr_el1 &	0b111111;
-       t1sz = (tcr_el1  >> 16) & 0b111111;
-       ips  = (tcr_el1  >> 32) & 0b111;
+     t0sz = tcr_el1 &	0b111111;
+     t1sz = (tcr_el1  >> 16) & 0b111111;
+     ips  = (tcr_el1  >> 32) & 0b111;
+     pa_range =  id_aa64mmfr0_el1 & 0b1111;
 
-       pa_range =  id_aa64mmfr0_el1 & 0b1111;
-
-       tvm = alloc_percpu(struct truly_vm);
-       if (!tvm) {
-           tp_info("Cannot allocate Truly VM\n");
-           return -1;
-       }
-
-       for_each_possible_cpu(cpu) {
-    	   int err;
-    	   struct truly_vm *_tvm;
-
-          _tvm = per_cpu_ptr(tvm, cpu);
-           err = create_hyp_mappings(_tvm, _tvm + 1);
-           if (err){
-            	   tp_err("Failed to map tvm");
-            	   return -1;
-          }
-          make_vtcr_el2(_tvm);
-          make_sctlr_el2(_tvm);
-          make_hcr_el2(_tvm);
-          tvm->mdcr_el2 = 0x0;
-          tp_info("%d t0sz = %d t1sz=%d ips=%d PARnage=%d \n",
-        		  raw_smp_processor_id(),
-        		  t0sz, t1sz, ips, pa_range);
-
+     TVM = alloc_percpu(struct truly_vm);
+     if (!TVM) {
+    		   tp_info("Cannot allocate Truly VM\n");
+    		   return -1;
      }
-
-     tp_create_pg_tbl(get_tvm()) ;
-     kvm_call_hyp(truly_run_vm, get_tvm());
-     return 0;
+     _tvm = this_cpu_ptr(TVM);
+     tp_create_pg_tbl(_tvm) ;
+	 err = create_hyp_mappings(_tvm, _tvm + 1);
+     if (err){
+        	   tp_err("Failed to map tvm");
+           	   return -1;
+      }
+      make_vtcr_el2(_tvm);
+      make_sctlr_el2(_tvm);
+      make_hcr_el2(_tvm);
+      _tvm->mdcr_el2 = 0xfe;
+      tp_init_cpu = raw_smp_processor_id();
+      tp_info(" T0SZ = %d T1SZ=%d IPS=%d PARnage=%d Initializg processor=%d\n",
+         		  t0sz, t1sz, ips, pa_range,tp_init_cpu);
+      tp_call_hyp(truly_run_vm, _tvm);
+      return 0;
 }
 
+void truly_clone_vm(void)
+{
+      struct truly_vm *tvm0, *_tvm;
+
+      if (tp_init_cpu == raw_smp_processor_id())
+    	  	  return;
+
+      tvm0 = per_cpu_ptr(TVM, tp_init_cpu);
+      _tvm = this_cpu_ptr(TVM);
+      if (_tvm->mdcr_el2)
+       				return;
+      memcpy(_tvm, tvm0, sizeof(struct truly_vm));
+      tp_info("setting tvm on processor %d init cpu %d\n",
+       			raw_smp_processor_id(), tp_init_cpu);
+
+     tp_call_hyp(truly_run_vm, _tvm);
+}
+
+EXPORT_SYMBOL_GPL(truly_clone_vm);
+EXPORT_SYMBOL_GPL(tp_call_hyp);
+EXPORT_SYMBOL_GPL(truly_init);
 EXPORT_SYMBOL_GPL(get_tvm);
 EXPORT_SYMBOL_GPL(truly_run_vm);
 EXPORT_SYMBOL_GPL(vhe_exec_el1);	// VHE support
