@@ -115,11 +115,12 @@ int vhe_exec_el1(struct truly_vm* cxt);
 int truly_run_vm(struct truly_vm* cxt);
 long truly_call_hyp(void *hyper_func, ...);
 unsigned long truly_get_tcr_el1(void);
+unsigned long truly_get_hcr_el2(void);
 
 #define tp_info(fmt, ...) \
-	pr_info("truly [%i]: " fmt, task_pid_nr(current), ## __VA_ARGS__)
+	pr_info("truly [%i]: " fmt, raw_smp_processor_id(), ## __VA_ARGS__)
 
 #define tp_err(fmt, ...) \
-	pr_err("truly [%i]: " fmt, task_pid_nr(current), ## __VA_ARGS__)
+	pr_err("truly [%i]: " fmt, raw_smp_processor_id(), ## __VA_ARGS__)
 
 #endif

@@ -335,12 +335,13 @@ void truly_clone_vm(void)
       if (_tvm->mdcr_el2)
        				return;
       memcpy(_tvm, tvm0, sizeof(struct truly_vm));
-      tp_info("setting tvm on processor %d init cpu %d\n",
-       			raw_smp_processor_id(), tp_init_cpu);
+      tp_info("setting tvm on processor %d init cpu %d hcr_el2=%lX %lX\n",
+       			raw_smp_processor_id(), tp_init_cpu,_tvm->hcr_el2,tvm0->hcr_el2);
 
-     tp_call_hyp(truly_run_vm, _tvm);
+      tp_call_hyp(truly_run_vm, _tvm);
 }
 
+EXPORT_SYMBOL_GPL(truly_get_hcr_el2);
 EXPORT_SYMBOL_GPL(truly_clone_vm);
 EXPORT_SYMBOL_GPL(tp_call_hyp);
 EXPORT_SYMBOL_GPL(truly_init);

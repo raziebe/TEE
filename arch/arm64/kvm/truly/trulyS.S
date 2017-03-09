@@ -181,6 +181,11 @@ ENTRY(truly_get_tcr_el1)
        ret
 ENDPROC(truly_get_tcr_el1)
 
+ENTRY(truly_get_hcr_el2)
+       mrs     x0, hcr_el2
+       ret
+ENDPROC(truly_get_hcr_el2)
+
 ENTRY(tp_call_hyp)
         hvc	#0
         ret
@@ -190,7 +195,7 @@ ENDPROC(tp_call_hyp)
 ENTRY(truly_has_vhe)
         mrs     x2, id_aa64mmfr1_el1
         ubfx    x2, x2, #8, #4
-	mov	x0,x2 // if zero then no vhe
+		mov	x0,x2 // if zero then no vhe
 ENDPROC(truly_has_vhe)
 
 // calling this routine creates an oops
