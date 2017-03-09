@@ -44,10 +44,8 @@
 #include <asm/kvm_emulate.h>
 #include <asm/kvm_coproc.h>
 #include <asm/kvm_psci.h>
+#include <linux/truly.h>
 
-#define __TRULY__
-int truly_init(void);
-void truly_clone_vm(void);
 
 #ifdef REQUIRES_VIRT
 __asm__(".arch_extension	virt");
@@ -975,10 +973,6 @@ static void cpu_init_hyp_mode(void *dummy)
 	unsigned long stack_page;
 	unsigned long vector_ptr;
 
-#ifdef __TRULY__
-
-	extern char __truly_vectors[];
-#endif
 	/* Switch from the HYP stub to our own HYP init vector */
 	__hyp_set_vectors(kvm_get_idmap_vector());
 	boot_pgd_ptr = kvm_mmu_get_boot_httbr();
@@ -986,7 +980,10 @@ static void cpu_init_hyp_mode(void *dummy)
 	stack_page = __this_cpu_read(kvm_arm_hyp_stack_page);
 	hyp_stack_ptr = stack_page + PAGE_SIZE;
 #ifdef __TRULY__
-	vector_ptr = (unsigned long) __truly_vectors;
+	{
+		extern char __truly_vectors[];
+		vector_ptr = (unsigned long) __truly_vectors;
+	}
 #else	
 	vector_ptr = (unsigned long)__kvm_hyp_vector;
 #endif
@@ -1130,7 +1127,8 @@ static int init_hyp_mode(void)
 
 	#ifdef __TRULY__
 	truly_init();
-	on_each_cpu(truly_clone_vm , NULL, NULL);
+	on_each_cpu(truly_clone_vm , NULL, 0);
+	truly_smp_run_hyp();
 	return 0;
 #endif
 

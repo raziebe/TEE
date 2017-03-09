@@ -13,8 +13,6 @@
 
 int create_hyp_mappings(void*,void*);
 static struct truly_vm __percpu *TVM;
-void tp_call_hyp(void *, ...);
-void truly_clone_vm(void);
 static int tp_init_cpu = -1;
 
 
@@ -323,7 +321,7 @@ int truly_init(void)
       return 0;
 }
 
-void truly_clone_vm(void)
+void truly_clone_vm(void *d)
 {
       struct truly_vm *tvm0, *_tvm;
 
@@ -335,12 +333,28 @@ void truly_clone_vm(void)
       if (_tvm->mdcr_el2)
        				return;
       memcpy(_tvm, tvm0, sizeof(struct truly_vm));
-      tp_info("setting tvm on processor %d init cpu %d hcr_el2=%lX %lX\n",
-       			raw_smp_processor_id(), tp_init_cpu,_tvm->hcr_el2,tvm0->hcr_el2);
 
-      tp_call_hyp(truly_run_vm, _tvm);
 }
 
+void tp_run_vm(void *x)
+{
+	long hcr_el2;
+    struct truly_vm *_tvm = get_tvm();
+
+    tp_call_hyp(truly_run_vm, _tvm);
+    hcr_el2 = tp_call_hyp(truly_get_hcr_el2);
+
+    tp_info("Running HYP hcr_el2=%lX %lX\n",
+     			_tvm->hcr_el2, hcr_el2);
+
+}
+
+void truly_smp_run_hyp(void)
+{
+	on_each_cpu(tp_run_vm , NULL, 0);
+}
+
+EXPORT_SYMBOL_GPL(truly_smp_run_hyp);
 EXPORT_SYMBOL_GPL(truly_get_hcr_el2);
 EXPORT_SYMBOL_GPL(truly_clone_vm);
 EXPORT_SYMBOL_GPL(tp_call_hyp);

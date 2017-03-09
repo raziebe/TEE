@@ -1,6 +1,8 @@
 #ifndef _TRULY_H_
 #define _TRULY_H_
 
+#define __TRULY__
+
 // page 1775
 #define DESC_TABLE_BIT 			( UL(1) << 1 )
 #define DESC_VALID_BIT 			( UL(1) << 0 )
@@ -109,11 +111,14 @@ struct truly_vm {
 };
 
 
-
+int truly_init(void);
+void truly_clone_vm(void *);
+void truly_smp_run_hyp(void);
+void truly_clone_vm(void *d);
 struct truly_vm* get_tvm(void);
 int vhe_exec_el1(struct truly_vm* cxt);
 int truly_run_vm(struct truly_vm* cxt);
-long truly_call_hyp(void *hyper_func, ...);
+long tp_call_hyp(void *hyper_func, ...);
 unsigned long truly_get_tcr_el1(void);
 unsigned long truly_get_hcr_el2(void);
 
