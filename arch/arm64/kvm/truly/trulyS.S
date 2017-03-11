@@ -215,39 +215,6 @@ ENTRY(truly_has_vhe)
 		mov	x0,x2 // if zero then no vhe
 ENDPROC(truly_has_vhe)
 
-// calling this routine creates an oops
-ENTRY(truly_set_vttbr_el2)
-
-	kern_hyp_va  x0	// grab tvm
-	
-	mov	x1,xzr
-	ldr	x1, [x0, #TP_VTTBR_EL2]
-	kern_hyp_va x1
-	msr	vttbr_el2,x1
-
-	mov	x1,xzr
-	ldr	x1, [x0, #TP_VTCR_EL2]
-	kern_hyp_va x1
-	msr	vtcr_el2, x1
-
-	mov	x1,xzr
- 	ldr x1, [x0, #TP_HSTR_EL2]
-	kern_hyp_va x1
-    msr hstr_el2, x1
-
-//	mov	x1,xzr 
-  	ldr		x1, [x0, #TP_SCTLR_EL2]
-	kern_hyp_va x1
-	msr		sctlr_el2, x1
-
-	tlbi    vmalls12e1is
-	dsb    sy // Data Synchronization Barrier on to the inner shareable domain
-	isb		// Instruction Synchronization Barrier.
-
-	ret
-
-ENDPROC(truly_set_vttbr_el2)
-
 
 ENTRY(vhe_exec_el1)
 
