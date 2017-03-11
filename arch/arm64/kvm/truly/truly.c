@@ -342,8 +342,8 @@ void tp_run_vm(void *x)
 	}
     tp_call_hyp(truly_run_vm, _tvm);
     hcr_el2 = tp_call_hyp(truly_get_hcr_el2);
-    tp_info("Running HYP hcr_el2=%lX %lX\n",
-     			_tvm->hcr_el2, hcr_el2);
+  //  tp_info("Running HYP hcr_el2=%lX %lX\n",
+    // 			_tvm->hcr_el2, hcr_el2);
 
 }
 
