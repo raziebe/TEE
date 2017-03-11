@@ -29,7 +29,9 @@
 #include <asm/system_misc.h>
 #include <asm/smp_plat.h>
 #include <asm/suspend.h>
+#include <linux/truly.h>
 
+#define	 __TRULY__
 /*
  * While a 64-bit OS can make calls with SMC32 calling conventions, for some
  * calls it is necessary to use SMC64 to pass or return 64-bit values.
@@ -111,7 +113,8 @@ static unsigned long __invoke_psci_fn_hvc(unsigned long function_id,
 			unsigned long arg2)
 {
 	struct arm_smccc_res res;
-
+	
+	dump_stack();
 	arm_smccc_hvc(function_id, arg0, arg1, arg2, 0, 0, 0, 0, &res);
 	return res.a0;
 }
@@ -122,7 +125,25 @@ static unsigned long __invoke_psci_fn_smc(unsigned long function_id,
 {
 	struct arm_smccc_res res;
 
+#if 0
+
+	unsigned long vbar_el2;
+	unsigned long vbar_el2_current = (unsigned long)(KERN_TO_HYP( __truly_vectors ));
+	int restore_vbar_el2=0;
+
+
+	vbar_el2 = truly_get_vectors();
+	tp_info("Testing for vbar_el2 %lx %lx\n",vbar_el2,vbar_el2_current);
+	if (vbar_el2 ==  vbar_el2_current) {
+		restore_vbar_el2 = 1;
+		tp_info("Testing for vbar_el2 should restore\n");
+	}
+
+#endif
+
 	arm_smccc_smc(function_id, arg0, arg1, arg2, 0, 0, 0, 0, &res);
+
+
 	return res.a0;
 }
 

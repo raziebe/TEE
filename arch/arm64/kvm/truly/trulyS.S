@@ -181,6 +181,16 @@ ENTRY(truly_get_tcr_el1)
        ret
 ENDPROC(truly_get_tcr_el1)
 
+// This procedure calls the default hypervisor vector and
+// and sets truly vector. This is because when the cpu drops
+// Linux calls smc and vbar_el2 reseets.
+ENTRY(truly_get_vectors)
+	mov	x0,xzr
+ENTRY(truly_set_vectors)
+	hvc #0
+	ret
+ENDPROC(truly_set_vectors)
+
 ENTRY(truly_get_hcr_el2)
        mrs     x0, hcr_el2
        ret

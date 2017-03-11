@@ -13,8 +13,6 @@
 
 int create_hyp_mappings(void*,void*);
 static struct truly_vm __percpu *TVM;
-static int tp_init_cpu = -1;
-
 
 struct truly_vm* get_tvm(void)
 {
@@ -285,11 +283,10 @@ int truly_init(void)
      int t0sz;
      int t1sz;
      int ips;
-     unsigned long hcr_el2;
      int pa_range;
      long id_aa64mmfr0_el1;
-   	 int err;
    	 struct truly_vm *_tvm;
+   	 int cpu = 0 ;
 
      id_aa64mmfr0_el1 = truly_get_mfr();
      tcr_el1 = truly_get_tcr_el1();
@@ -306,38 +303,33 @@ int truly_init(void)
      }
      _tvm = this_cpu_ptr(TVM);
      tp_create_pg_tbl(_tvm) ;
-	 err = create_hyp_mappings(_tvm, _tvm + 1);
-     if (err){
-        	   tp_err("Failed to map tvm");
-           	   return -1;
-      }
       make_vtcr_el2(_tvm);
       make_sctlr_el2(_tvm);
       make_hcr_el2(_tvm);
-      _tvm->mdcr_el2 = 0xfe;
-      tp_init_cpu = raw_smp_processor_id();
-      tp_info(" T0SZ = %d T1SZ=%d IPS=%d PARnage=%d Initializg processor=%d\n",
-         		  t0sz, t1sz, ips, pa_range,tp_init_cpu);
-      tp_call_hyp(truly_run_vm, _tvm);
-      hcr_el2 = tp_call_hyp(truly_get_hcr_el2);
+     _tvm->mdcr_el2 = 0xfe;
 
-      tp_info("Running HYP hcr_el2=%lX %lX\n",
-           			_tvm->hcr_el2, hcr_el2);
+     for_each_possible_cpu(cpu) {
+    	struct truly_vm *tv =  this_cpu_ptr(TVM);
+    	if (tv != _tvm) {
+    		memcpy(tv, _tvm, sizeof(*_tvm));
+    		tp_info("Copying tvm mdcrel2 %lx", tv->mdcr_el2);
+    	}
+     }
 
-      return 0;
+     return 0;
 }
 
 void truly_clone_vm(void *d)
 {
-      struct truly_vm *tvm0, *_tvm;
+		int err;
+		struct truly_vm *tv =  this_cpu_ptr(TVM);
 
-      if (tp_init_cpu == raw_smp_processor_id())
-    	  	  return;
-
-      tvm0 = per_cpu_ptr(TVM, tp_init_cpu);
-      _tvm = this_cpu_ptr(TVM);
-      memcpy(_tvm, tvm0, sizeof(struct truly_vm));
-
+	   	err = create_hyp_mappings(tv, tv + 1);
+	   	if (err){
+	   		tp_err("Failed to map tvm");
+	   	}else{
+	   		tp_info("Mapped tvm");
+	   	}
 }
 
 void tp_run_vm(void *x)
@@ -345,9 +337,9 @@ void tp_run_vm(void *x)
 	long hcr_el2=0;
     struct truly_vm *_tvm = this_cpu_ptr(TVM);
 
-//    tp_call_hyp(truly_run_vm, _tvm);
-  //  hcr_el2 = tp_call_hyp(truly_get_hcr_el2);
+    tp_call_hyp(truly_run_vm, _tvm);
 
+    hcr_el2 = tp_call_hyp(truly_get_hcr_el2);
     tp_info("Running HYP hcr_el2=%lX %lX\n",
      			_tvm->hcr_el2, hcr_el2);
 

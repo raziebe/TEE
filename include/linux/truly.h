@@ -110,7 +110,7 @@ struct truly_vm {
 	unsigned long id_aa64mmfr0_el1;
 };
 
-
+extern char __truly_vectors[];
 int truly_init(void);
 void truly_clone_vm(void *);
 void truly_smp_run_hyp(void);
@@ -121,9 +121,17 @@ int truly_run_vm(struct truly_vm* cxt);
 long tp_call_hyp(void *hyper_func, ...);
 unsigned long truly_get_tcr_el1(void);
 unsigned long truly_get_hcr_el2(void);
+void truly_set_vectors(unsigned long vbar_el2);
+unsigned long truly_get_vectors(void);
+
+#define HYP_PAGE_OFFSET_SHIFT   VA_BITS
+#define HYP_PAGE_OFFSET_MASK    ((UL(1) << HYP_PAGE_OFFSET_SHIFT) - 1)
+#define HYP_PAGE_OFFSET         (PAGE_OFFSET & HYP_PAGE_OFFSET_MASK)
+
+#define KERN_TO_HYP(kva)        ((unsigned long)kva - PAGE_OFFSET + HYP_PAGE_OFFSET)
 
 #define tp_info(fmt, ...) \
-	pr_info("truly [%i]: " fmt, raw_smp_processor_id(), ## __VA_ARGS__)
+	pr_info("truly %s [%i]: " fmt, __func__,raw_smp_processor_id(), ## __VA_ARGS__)
 
 #define tp_err(fmt, ...) \
 	pr_err("truly [%i]: " fmt, raw_smp_processor_id(), ## __VA_ARGS__)
