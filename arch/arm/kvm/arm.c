@@ -973,23 +973,24 @@ static void cpu_init_hyp_mode(void *dummy)
 	unsigned long stack_page;
 	unsigned long vector_ptr;
 
+#ifdef __TRULY__
+	vector_ptr = (unsigned long) __truly_vectors;
+//	tp_info("E: Current=%lx \n", (long) __hyp_get_vectors());
+#else	
+	vector_ptr = (unsigned long)__kvm_hyp_vector;
+#endif
 	/* Switch from the HYP stub to our own HYP init vector */
 	__hyp_set_vectors(kvm_get_idmap_vector());
 	boot_pgd_ptr = kvm_mmu_get_boot_httbr();
 	pgd_ptr = kvm_mmu_get_httbr();
 	stack_page = __this_cpu_read(kvm_arm_hyp_stack_page);
 	hyp_stack_ptr = stack_page + PAGE_SIZE;
-#ifdef __TRULY__
-	{
-		extern char __truly_vectors[];
-		vector_ptr = (unsigned long) __truly_vectors;
-	}
-#else	
-	vector_ptr = (unsigned long)__kvm_hyp_vector;
-#endif
 
 	__cpu_init_hyp_mode(boot_pgd_ptr, pgd_ptr, hyp_stack_ptr, vector_ptr);
 	kvm_arm_init_debug();
+
+	tp_run_vm(NULL);
+//	tp_info("X: Current=%lx \n", (long)__hyp_get_vectors());
 
 }
 
@@ -999,6 +1000,10 @@ static int hyp_init_cpu_notify(struct notifier_block *self,
 	switch (action) {
 	case CPU_STARTING:
 	case CPU_STARTING_FROZEN:
+		tp_info("%lx %lx" ,
+					(long) __hyp_get_vectors() ,
+					(long) hyp_default_vectors);
+
 		if (__hyp_get_vectors() == hyp_default_vectors)
 			cpu_init_hyp_mode(NULL);
 		break;
@@ -1016,6 +1021,14 @@ static int hyp_init_cpu_pm_notifier(struct notifier_block *self,
 				    unsigned long cmd,
 				    void *v)
 {
+
+/*	tp_info("E current=%lx default=%lx truly=%lx cmd=%d\n",
+			(unsigned long)__hyp_get_vectors(),
+			(unsigned long)	hyp_default_vectors,
+			(unsigned long)	__truly_vectors,
+			(int)cmd);
+			exit from power management.
+*/
 	if (cmd == CPU_PM_EXIT &&
 	    __hyp_get_vectors() == hyp_default_vectors) {
 		cpu_init_hyp_mode(NULL);
@@ -1058,6 +1071,7 @@ static int init_hyp_mode(void)
 	 * It is probably enough to obtain the default on one
 	 * CPU. It's unlikely to be different on the others.
 	 */
+
 	hyp_default_vectors = __hyp_get_vectors();
 
 	/*
@@ -1119,17 +1133,12 @@ static int init_hyp_mode(void)
 			goto out_free_context;
 		}
 	}
-
+	truly_init();
 	/*
 	 * Execute the init code on each CPU.
 	 */
 	on_each_cpu(cpu_init_hyp_mode, NULL, 1);
-
-#ifdef __TRULY__
-	truly_init();
-	on_each_cpu(truly_clone_vm , NULL, 0);
 	return 0;
-#endif
 
 	/*
 	 * Init HYP view of VGIC

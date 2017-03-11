@@ -10,15 +10,13 @@
 #include <linux/init.h>
 #include <asm/sections.h>
 
-
 int create_hyp_mappings(void*,void*);
-static struct truly_vm __percpu *TVM;
-static int tp_init_cpu = -1;
-
+DECLARE_PER_CPU(struct truly_vm, TVM);
+DEFINE_PER_CPU(struct truly_vm, TVM);
 
 struct truly_vm* get_tvm(void)
 {
-	return this_cpu_ptr(TVM);
+	return this_cpu_ptr(&TVM);
 }
 
 long truly_get_elr_el1(void)
@@ -218,7 +216,6 @@ long truly_get_mem_regs(void *cxt)
 	vm->tcr_el1 = truly_get_tcr_el1();
 	return 0;
 }
-EXPORT_SYMBOL_GPL(truly_get_mem_regs);
 
 
 // D-2142
@@ -274,8 +271,6 @@ void make_hcr_el2(struct truly_vm *tvm)
 {
 	tvm->hcr_el2 = HCR_TRULY_FLAGS;
 }
-
-
 /*
  * construct page table
 */
@@ -285,11 +280,10 @@ int truly_init(void)
      int t0sz;
      int t1sz;
      int ips;
-     unsigned long hcr_el2;
      int pa_range;
      long id_aa64mmfr0_el1;
-   	 int err;
    	 struct truly_vm *_tvm;
+   	 int cpu = 0 ;
 
      id_aa64mmfr0_el1 = truly_get_mfr();
      tcr_el1 = truly_get_tcr_el1();
@@ -299,57 +293,57 @@ int truly_init(void)
      ips  = (tcr_el1  >> 32) & 0b111;
      pa_range =  id_aa64mmfr0_el1 & 0b1111;
 
-     TVM = alloc_percpu(struct truly_vm);
-     if (!TVM) {
-    		   tp_info("Cannot allocate Truly VM\n");
-    		   return -1;
-     }
-     _tvm = this_cpu_ptr(TVM);
+     _tvm = this_cpu_ptr(&TVM);
+     memset(_tvm, 0x00, sizeof(*_tvm));
      tp_create_pg_tbl(_tvm) ;
-	 err = create_hyp_mappings(_tvm, _tvm + 1);
-     if (err){
-        	   tp_err("Failed to map tvm");
-           	   return -1;
-      }
-      make_vtcr_el2(_tvm);
-      make_sctlr_el2(_tvm);
-      make_hcr_el2(_tvm);
-      _tvm->mdcr_el2 = 0xfe;
-      tp_init_cpu = raw_smp_processor_id();
-      tp_info(" T0SZ = %d T1SZ=%d IPS=%d PARnage=%d Initializg processor=%d\n",
-         		  t0sz, t1sz, ips, pa_range,tp_init_cpu);
-      tp_call_hyp(truly_run_vm, _tvm);
-      hcr_el2 = tp_call_hyp(truly_get_hcr_el2);
-
-      tp_info("Running HYP hcr_el2=%lX %lX\n",
-           			_tvm->hcr_el2, hcr_el2);
-
-      return 0;
+     make_vtcr_el2(_tvm);
+     make_sctlr_el2(_tvm);
+     make_hcr_el2(_tvm);
+     _tvm->mdcr_el2 = 0xFE;
+       
+     for_each_possible_cpu(cpu) {
+    	struct truly_vm *tv =  &per_cpu(TVM, cpu);
+    	if (tv != _tvm) {
+    		memcpy(tv, _tvm, sizeof(*_tvm));
+    	}
+     }
+     return 0;
 }
 
 void truly_clone_vm(void *d)
 {
-      struct truly_vm *tvm0, *_tvm;
+		int err;
+		struct truly_vm *tv =  this_cpu_ptr(&TVM);
 
-      if (tp_init_cpu == raw_smp_processor_id())
-    	  	  return;
+		if (tv->initialized)
+				return;
 
-      tvm0 = per_cpu_ptr(TVM, tp_init_cpu);
-      _tvm = this_cpu_ptr(TVM);
-      memcpy(_tvm, tvm0, sizeof(struct truly_vm));
-
+	   	err = create_hyp_mappings(tv, tv + 1);
+	   	if (err){
+	   		tp_err("Failed to map tvm");
+	   	}else{
+	   		tp_info("Mapped tvm");
+	   	}
+	    tv->initialized = 1;
 }
 
 void tp_run_vm(void *x)
 {
 	long hcr_el2=0;
-    struct truly_vm *_tvm = this_cpu_ptr(TVM);
+    struct truly_vm *_tvm = this_cpu_ptr(&TVM);
+	unsigned long vbar_el2;
+	unsigned long vbar_el2_current = (unsigned long)(KERN_TO_HYP( __truly_vectors ));
 
-//    tp_call_hyp(truly_run_vm, _tvm);
-  //  hcr_el2 = tp_call_hyp(truly_get_hcr_el2);
-
-    tp_info("Running HYP hcr_el2=%lX %lX\n",
-     			_tvm->hcr_el2, hcr_el2);
+	truly_clone_vm(NULL);
+	vbar_el2 = truly_get_vectors();
+	if (vbar_el2 !=  vbar_el2_current) {
+		tp_info("vbar_el2 should restore\n");
+		truly_set_vectors(vbar_el2);
+	}
+    tp_call_hyp(truly_run_vm, _tvm);
+    hcr_el2 = tp_call_hyp(truly_get_hcr_el2);
+  //  tp_info("Running HYP hcr_el2=%lX %lX\n",
+    // 			_tvm->hcr_el2, hcr_el2);
 
 }
 
@@ -358,12 +352,12 @@ void truly_smp_run_hyp(void)
 	on_each_cpu(tp_run_vm , NULL, 0);
 }
 
+EXPORT_SYMBOL_GPL(truly_get_mem_regs);
 EXPORT_SYMBOL_GPL(truly_smp_run_hyp);
 EXPORT_SYMBOL_GPL(truly_get_hcr_el2);
 EXPORT_SYMBOL_GPL(truly_clone_vm);
 EXPORT_SYMBOL_GPL(tp_call_hyp);
 EXPORT_SYMBOL_GPL(truly_init);
 EXPORT_SYMBOL_GPL(get_tvm);
-EXPORT_SYMBOL_GPL(truly_run_vm);
 EXPORT_SYMBOL_GPL(vhe_exec_el1);	// VHE support
 
