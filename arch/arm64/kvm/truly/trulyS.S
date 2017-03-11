@@ -70,8 +70,10 @@ el1_trap:
 	cmp	x2, #ESR_ELx_EC_FP_ASIMD		// 0x7
 	b.eq	4f
 	
-	cmp x2, #0x3c					// debug brk command
+	cmp x2, #0x18				// MRC,MRS
 	b.eq	5f
+	cmp x2, #0x3c					// debug brk command
+	b.eq	brk_count
 	
 	cmp	x2, #ESR_ELx_EC_DABT_LOW	// ESR_ELx_EC_DABT_LOW = 0x24 = 36d = data abort
 	mov	x0, #ESR_ELx_EC_IABT_LOW	// ESR_ELx_EC_IABT_LOW = 0x20 = 32 instruction abort 
@@ -133,7 +135,16 @@ alternative_endif
 	pop	x0, x1
 	
 	eret
+ 
 
+brk_count:
+
+	mrs	x0,tpidr_el2
+	ldr	x1, [x0, #TP_BRK_COUNT_EL2]
+	add x1,x1,#1
+	str x1,[x0, #TP_BRK_COUNT_EL2]
+
+	
 5:	// D.1.10.1 . In synchronous exceptions jump over the generating exception instruction 
 	mrs	x2,elr_el2
 	add x2, x2, #4
@@ -208,39 +219,6 @@ ENTRY(truly_has_vhe)
 		mov	x0,x2 // if zero then no vhe
 ENDPROC(truly_has_vhe)
 
-// calling this routine creates an oops
-ENTRY(truly_set_vttbr_el2)
-
-	kern_hyp_va  x0	// grab tvm
-	
-	mov	x1,xzr
-	ldr	x1, [x0, #TP_VTTBR_EL2]
-	kern_hyp_va x1
-	msr	vttbr_el2,x1
-
-	mov	x1,xzr
-	ldr	x1, [x0, #TP_VTCR_EL2]
-	kern_hyp_va x1
-	msr	vtcr_el2, x1
-
-	mov	x1,xzr
- 	ldr x1, [x0, #TP_HSTR_EL2]
-	kern_hyp_va x1
-    msr hstr_el2, x1
-
-//	mov	x1,xzr 
-  	ldr		x1, [x0, #TP_SCTLR_EL2]
-	kern_hyp_va x1
-	msr		sctlr_el2, x1
-
-	tlbi    vmalls12e1is
-	dsb    sy // Data Synchronization Barrier on to the inner shareable domain
-	isb		// Instruction Synchronization Barrier.
-
-	ret
-
-ENDPROC(truly_set_vttbr_el2)
-
 
 ENTRY(vhe_exec_el1)
 
@@ -291,6 +269,7 @@ ENTRY(truly_run_vm)
 	
 	kern_hyp_va  x0	// grab tvm
 	msr	tpidr_el2, x0	// save tvm context
+	
 
 	ldr	x1, [x0, #TP_HCR_EL2]
 	kern_hyp_va x1
@@ -308,7 +287,6 @@ ENTRY(truly_run_vm)
     kern_hyp_va x1
     msr vttbr_el2, x1
 
- 
     ldr		x1, [x0, #TP_MDCR_EL2]
 	kern_hyp_va x1
 	msr		mdcr_el2, x1
