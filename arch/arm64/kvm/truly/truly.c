@@ -299,7 +299,7 @@ static ssize_t proc_read(struct file *filp, char __user * page,
                 return 0;
         for_each_possible_cpu(cpu) {
         	struct truly_vm *tv =  &per_cpu(TVM, cpu);
-            len += sprintf(page +len, "cpu %d brk count %d\n",cpu,
+            len += sprintf(page +len, "cpu %d brk count %ld\n",cpu,
                            tv->brk_count_el2);
         }
         filp->private_data = 0x00;
@@ -349,7 +349,7 @@ int truly_init(void)
      make_vtcr_el2(_tvm);
      make_sctlr_el2(_tvm);
      make_hcr_el2(_tvm);
-     _tvm->mdcr_el2 = 0xFE0;
+     _tvm->mdcr_el2 = 0x100;
        
      for_each_possible_cpu(cpu) {
     	struct truly_vm *tv =  &per_cpu(TVM, cpu);
