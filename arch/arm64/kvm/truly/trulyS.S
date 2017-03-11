@@ -71,7 +71,7 @@ el1_trap:
 	b.eq	4f
 	
 	cmp x2, #0x3c					// debug brk command
-	b.eq	5f
+	b.eq	brk_count
 	
 	cmp	x2, #ESR_ELx_EC_DABT_LOW	// ESR_ELx_EC_DABT_LOW = 0x24 = 36d = data abort
 	mov	x0, #ESR_ELx_EC_IABT_LOW	// ESR_ELx_EC_IABT_LOW = 0x20 = 32 instruction abort 
@@ -134,6 +134,13 @@ alternative_endif
 	
 	eret
 
+brk_count:
+	mrs	x0,tpidr_el2
+	ldr	x1, [x0, #TP_BRK_COUNT_EL2]
+	add x1,x1,#1
+	str x1,[x0, #TP_BRK_COUNT_EL2]
+
+	
 5:	// D.1.10.1 . In synchronous exceptions jump over the generating exception instruction 
 	mrs	x2,elr_el2
 	add x2, x2, #4

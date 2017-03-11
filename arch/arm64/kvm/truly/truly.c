@@ -9,6 +9,7 @@
 #include <linux/linkage.h>
 #include <linux/init.h>
 #include <asm/sections.h>
+#include <linux/proc_fs.h>
 
 int create_hyp_mappings(void*,void*);
 DECLARE_PER_CPU(struct truly_vm, TVM);
@@ -271,6 +272,55 @@ void make_hcr_el2(struct truly_vm *tvm)
 {
 	tvm->hcr_el2 = HCR_TRULY_FLAGS;
 }
+
+static struct proc_dir_entry *procfs = NULL;
+//static struct proc_dir_entry *root = NULL;
+
+static ssize_t proc_write(struct file *file, const char __user *buffer,
+                           size_t count, loff_t* dummy)
+{
+
+	return count;
+}
+
+static int proc_open(struct inode *inode, struct file *filp)
+{
+        filp->private_data = (void *)0x1;
+        return 0;
+}
+
+static ssize_t proc_read(struct file *filp, char __user * page,
+                           size_t size, loff_t * off)
+{
+		ssize_t len = 0;
+		int cpu;
+
+        if (filp->private_data == 0x00)
+                return 0;
+        for_each_possible_cpu(cpu) {
+        	struct truly_vm *tv =  &per_cpu(TVM, cpu);
+            len += sprintf(page +len, "cpu %d brk count %d\n",cpu,
+                           tv->brk_count_el2);
+        }
+        filp->private_data = 0x00;
+        return len;
+}
+
+
+
+static struct file_operations proc_ops = {
+      .open  = proc_open,
+      .read =    proc_read,
+      .write =  proc_write,
+};
+
+
+static void init_procfs(void)
+{
+//	root = proc_mkdir("Truly", NULL);
+	procfs = proc_create_data("truly_stats", O_RDWR , NULL, &proc_ops , NULL);
+}
+
 /*
  * construct page table
 */
@@ -306,7 +356,9 @@ int truly_init(void)
     	if (tv != _tvm) {
     		memcpy(tv, _tvm, sizeof(*_tvm));
     	}
+
      }
+     init_procfs();
      return 0;
 }
 
@@ -351,6 +403,8 @@ void truly_smp_run_hyp(void)
 {
 	on_each_cpu(tp_run_vm , NULL, 0);
 }
+
+
 
 EXPORT_SYMBOL_GPL(truly_get_mem_regs);
 EXPORT_SYMBOL_GPL(truly_smp_run_hyp);

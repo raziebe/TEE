@@ -184,6 +184,7 @@ int main(void)
   DEFINE(TP_VBAR_EL2 , offsetof(struct truly_vm,  vbar_el2));
   DEFINE(TP_SCTLR_EL2 , offsetof(struct truly_vm,  sctlr_el2));
   DEFINE(TP_MDCR_EL2 , offsetof(struct truly_vm,  mdcr_el2));
+  DEFINE(TP_BRK_COUNT_EL2 , offsetof(struct truly_vm,  brk_count_el2));
 
   return 0;
 }

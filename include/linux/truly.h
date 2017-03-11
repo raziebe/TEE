@@ -94,7 +94,8 @@ struct truly_vm {
  	unsigned long mdcr_el2;
     unsigned long vbar_el2;
  	unsigned int sctlr_el2;
-
+ 	unsigned int brk_count_el2;
+ 	
  	void* pg_lvl_one;
 
  	unsigned long tcr_el1;
