@@ -106,7 +106,7 @@ struct truly_vm {
  	unsigned long vttbr_el1;
  	unsigned long vbar_el1;
  	unsigned long sctlr_el1;
-
+ 	unsigned long initialized;
 	unsigned long id_aa64mmfr0_el1;
 };
 
@@ -117,7 +117,8 @@ void truly_smp_run_hyp(void);
 void truly_clone_vm(void *d);
 struct truly_vm* get_tvm(void);
 int vhe_exec_el1(struct truly_vm* cxt);
-int truly_run_vm(struct truly_vm* cxt);
+void tp_run_vm(void *);
+void truly_run_vm(void *);
 long tp_call_hyp(void *hyper_func, ...);
 unsigned long truly_get_tcr_el1(void);
 unsigned long truly_get_hcr_el2(void);
