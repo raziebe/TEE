@@ -70,6 +70,8 @@ el1_trap:
 	cmp	x2, #ESR_ELx_EC_FP_ASIMD		// 0x7
 	b.eq	4f
 	
+	cmp x2, #0x18				// MRC,MRS
+	b.eq	5f
 	cmp x2, #0x3c					// debug brk command
 	b.eq	brk_count
 	
@@ -299,12 +301,6 @@ ENTRY(truly_run_vm)
 	tlbi    vmalls12e1is
 	dsb    sy // Data Synchronization Barrier on to the inner shareable domain
 	isb		// Instruction Synchronization Barrier.
-	
-// test mmu access
-//	mrs	x0,	tpidr_el2
-//	ldr	x1, [x0, #TP_HCR_EL2]
-//	mrs	x2, hcr_el2
-//	str x2,[x0, #TP_HCR_EL2] 
 	
 	mov	lr,x4
 	eret // must eret here. stack pointer is changed 
