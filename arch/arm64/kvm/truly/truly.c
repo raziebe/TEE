@@ -349,7 +349,7 @@ int truly_init(void)
      make_vtcr_el2(_tvm);
      make_sctlr_el2(_tvm);
      make_hcr_el2(_tvm);
-     _tvm->mdcr_el2 = 0xFE;
+     _tvm->mdcr_el2 = 0xFE0;
        
      for_each_possible_cpu(cpu) {
     	struct truly_vm *tv =  &per_cpu(TVM, cpu);
@@ -405,7 +405,7 @@ void truly_smp_run_hyp(void)
 }
 
 
-
+EXPORT_SYMBOL_GPL(truly_get_vectors);
 EXPORT_SYMBOL_GPL(truly_get_mem_regs);
 EXPORT_SYMBOL_GPL(truly_smp_run_hyp);
 EXPORT_SYMBOL_GPL(truly_get_hcr_el2);
