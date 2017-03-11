@@ -167,21 +167,19 @@ int main(void)
   DEFINE(ARM_SMCCC_RES_X0_OFFS,	offsetof(struct arm_smccc_res, a0));
   DEFINE(ARM_SMCCC_RES_X2_OFFS,	offsetof(struct arm_smccc_res, a2));
 
-  DEFINE(TP_COUNT, offsetof(struct truly_vm, count ));
-  DEFINE(TP_DEBUG, offsetof(struct truly_vm, debug));
   DEFINE(TP_ESR_EL2, offsetof(struct truly_vm, esr_el2));
   DEFINE(TP_HCR_EL2, offsetof(struct truly_vm,  hcr_el2));
   DEFINE(TP_HSTR_EL2 , offsetof(struct truly_vm,  hstr_el2));
-  DEFINE(TP_TTBR0_EL2 , offsetof(struct truly_vm,  ttbr0_el2));
-  DEFINE(TP_TTBR1_EL2 , offsetof(struct truly_vm,  ttbr1_el2));
+  DEFINE(TP_HPFAR_EL2 , offsetof(struct truly_vm,  hpfar_el2));
+  DEFINE(TP_FAR_EL2 , offsetof(struct truly_vm,  far_el2));
   DEFINE(TP_VTTBR_EL2 , offsetof(struct truly_vm,  vttbr_el2));
   DEFINE(TP_VTCR_EL2 , offsetof(struct truly_vm,  vtcr_el2));
-  DEFINE(TP_TPIDR_EL2 , offsetof(struct truly_vm,  tpidr_el2));
+//  DEFINE(TP_TPIDR_EL2 , offsetof(struct truly_vm,  tpidr_el2));
   DEFINE(TP_TCR_EL2 , offsetof(struct truly_vm,  tcr_el2));
-  DEFINE(TP_SP_EL2 , offsetof(struct truly_vm,  sp_el2));
-  DEFINE(TP_ELR_EL2 , offsetof(struct truly_vm,  elr_el2));
-  DEFINE(TP_SPSR_EL2 , offsetof(struct truly_vm,  spsr_el2));
-  DEFINE(TP_VBAR_EL2 , offsetof(struct truly_vm,  vbar_el2));
+//  DEFINE(TP_SP_EL2 , offsetof(struct truly_vm,  sp_el2));
+//  DEFINE(TP_ELR_EL2 , offsetof(struct truly_vm,  elr_el2));
+//  DEFINE(TP_SPSR_EL2 , offsetof(struct truly_vm,  spsr_el2));
+//  DEFINE(TP_VBAR_EL2 , offsetof(struct truly_vm,  vbar_el2));
   DEFINE(TP_SCTLR_EL2 , offsetof(struct truly_vm,  sctlr_el2));
   DEFINE(TP_MDCR_EL2 , offsetof(struct truly_vm,  mdcr_el2));
   DEFINE(TP_BRK_COUNT_EL2 , offsetof(struct truly_vm,  brk_count_el2));

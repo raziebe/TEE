@@ -139,11 +139,13 @@ alternative_endif
 
 brk_count:
 
+// statitics
 	mrs	x0,tpidr_el2
 	ldr	x1, [x0, #TP_BRK_COUNT_EL2]
 	add x1,x1,#1
 	str x1,[x0, #TP_BRK_COUNT_EL2]
 
+	
 	
 5:	// D.1.10.1 . In synchronous exceptions jump over the generating exception instruction 
 	mrs	x2,elr_el2
@@ -220,46 +222,6 @@ ENTRY(truly_has_vhe)
 ENDPROC(truly_has_vhe)
 
 
-ENTRY(vhe_exec_el1)
-
-	push	lr, xzr
-	mov	lr, x0
-	mov	x0,x1
-
-// turn on the mmu
-	mov	x3,xzr
-	orr     x3, x3, #1
-	msr     sctlr_el2, x3
-	isb
-
-	mrs	x3,ttbr1_el1
-	msr	ttbr1_el2,x3
-	isb
-	// copy t0sz 
-	mrs     x2,tcr_el1
-	mov	x3,#0
-	orr	x3,x2,#31
-	msr	tcr_el2,x3
-	isb
-
-    mov     x2, #HCR_RW                     // 64-bit EL1
-    orr     x2, x2, #((UL(1) << 34))  // Enable Host Extensions. But Not TGE
-	msr     hcr_el2, x2
-    isb
-
-// Call the procedure
-	blr	lr
-
-// revert from VHE
-	mrs	x2, hcr_el2
-	eor	x2,x2,#((UL(1) << 34))
-	msr	hcr_el2, x2	
-	isb
-	
-	pop	lr, xzr
-
-	ret
-ENDPROC(vhe_exec_el1)
 
 
 ENTRY(truly_run_vm)

@@ -75,30 +75,32 @@
 
 struct truly_vm {
 
-	unsigned long count;
-	unsigned long debug;
+	unsigned long hpfar_el2;
+	unsigned long far_el2;
     unsigned long hcr_el2;
  	unsigned int hstr_el2;
- 	unsigned long ttbr0_el2;
- 	unsigned long ttbr1_el2; // VHE
+// 	unsigned long ttbr0_el2;
+// 	unsigned long ttbr1_el2; // VHE
  	unsigned long long vttbr_el2;
  	unsigned int vtcr_el2;
 
  	unsigned long tpidr_el2;
  	unsigned long tcr_el2;
- 	unsigned long sp_el2;
-    unsigned long elr_el2;
+// 	unsigned long sp_el2;
+//    unsigned long elr_el2;
   	unsigned long esr_el2;
-    unsigned long sp_el0;
- 	unsigned long spsr_el2;
+ //   unsigned long sp_el0;
+// 	unsigned long spsr_el2;
  	unsigned long mdcr_el2;
-    unsigned long vbar_el2;
+//    unsigned long vbar_el2;
  	unsigned int sctlr_el2;
  	unsigned long brk_count_el2;
- 	
+ 	unsigned long initialized;
  	void* pg_lvl_one;
-
+ 	unsigned long id_aa64mmfr0_el1;
  	unsigned long tcr_el1;
+ 	/*
+ 	
  	unsigned long sp_el1;
  	unsigned long elr_el1;
  	unsigned long spsr_el1;
@@ -107,8 +109,9 @@ struct truly_vm {
  	unsigned long vttbr_el1;
  	unsigned long vbar_el1;
  	unsigned long sctlr_el1;
- 	unsigned long initialized;
-	unsigned long id_aa64mmfr0_el1;
+ 	
+	
+*/
 };
 
 extern char __truly_vectors[];

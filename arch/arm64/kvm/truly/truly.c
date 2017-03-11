@@ -15,6 +15,14 @@ int create_hyp_mappings(void*,void*);
 DECLARE_PER_CPU(struct truly_vm, TVM);
 DEFINE_PER_CPU(struct truly_vm, TVM);
 
+#define __hyp_text __section(.hyp.text) notrace
+#define __hyp	// a marker to show that this code is non-mmu
+/*
+void  __hyp_text truly_replace_code(struct __hyp truly_vm *_tvm)
+{
+
+}
+*/
 struct truly_vm* get_tvm(void)
 {
 	return this_cpu_ptr(&TVM);
@@ -413,5 +421,5 @@ EXPORT_SYMBOL_GPL(truly_clone_vm);
 EXPORT_SYMBOL_GPL(tp_call_hyp);
 EXPORT_SYMBOL_GPL(truly_init);
 EXPORT_SYMBOL_GPL(get_tvm);
-EXPORT_SYMBOL_GPL(vhe_exec_el1);	// VHE support
+
 
