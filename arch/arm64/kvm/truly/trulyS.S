@@ -133,8 +133,10 @@ alternative_endif
 	pop	x0, x1
 	
 	eret
+ 
 
 brk_count:
+
 	mrs	x0,tpidr_el2
 	ldr	x1, [x0, #TP_BRK_COUNT_EL2]
 	add x1,x1,#1
@@ -265,6 +267,7 @@ ENTRY(truly_run_vm)
 	
 	kern_hyp_va  x0	// grab tvm
 	msr	tpidr_el2, x0	// save tvm context
+	
 
 	ldr	x1, [x0, #TP_HCR_EL2]
 	kern_hyp_va x1
@@ -282,7 +285,6 @@ ENTRY(truly_run_vm)
     kern_hyp_va x1
     msr vttbr_el2, x1
 
- 
     ldr		x1, [x0, #TP_MDCR_EL2]
 	kern_hyp_va x1
 	msr		mdcr_el2, x1
@@ -297,6 +299,12 @@ ENTRY(truly_run_vm)
 	tlbi    vmalls12e1is
 	dsb    sy // Data Synchronization Barrier on to the inner shareable domain
 	isb		// Instruction Synchronization Barrier.
+	
+// test mmu access
+//	mrs	x0,	tpidr_el2
+//	ldr	x1, [x0, #TP_HCR_EL2]
+//	mrs	x2, hcr_el2
+//	str x2,[x0, #TP_HCR_EL2] 
 	
 	mov	lr,x4
 	eret // must eret here. stack pointer is changed 
