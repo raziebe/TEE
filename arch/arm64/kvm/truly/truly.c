@@ -10,6 +10,8 @@
 #include <linux/init.h>
 #include <asm/sections.h>
 #include <linux/proc_fs.h>
+#include <linux/slab.h>
+#include <asm/page.h>
 
 int create_hyp_mappings(void*,void*);
 DECLARE_PER_CPU(struct truly_vm, TVM);
@@ -17,12 +19,48 @@ DEFINE_PER_CPU(struct truly_vm, TVM);
 
 #define __hyp_text __section(.hyp.text) notrace
 #define __hyp	// a marker to show that this code is non-mmu
-/*
-void  __hyp_text truly_replace_code(struct __hyp truly_vm *_tvm)
-{
 
-}
+//
+// Walk on the pages of TTBR0_EL2
+// Assume 3 levels
+// assume 4096 bytes page size
+//
+void  __hyp_text truly_walk_on_the_pages(struct truly_vm *tvm,unsigned long addr)
+{
+	unsigned long index_3, index_2,index_1;
+	unsigned long next_tbl;
+	void* next_tbl_va;
+	unsigned long hyp_va;
+	unsigned long pte;
+
+	tp_info("%p\n",(void*)addr);
+	// first cast to hyp va
+	hyp_va = KERN_TO_HYP(addr);
+	tp_info("%p\n",hyp_va);
+/*
+	index_1 = (hyp_va & 0x1FF0000) >> 12;
+	index_2 = (hyp_va & 0x3FE00000) >> 21;
+	index_3 = (hyp_va & 0x7FC0000000) >> 30;
+	tp_info("%ld %ld %ld\n",index_1,index_2,index_3);
+
+	// 3
+	next_tbl = tvm->ttbr0_el2 + index_3;
+	tp_info("next_tbl = %ld \n",next_tbl);
+	next_tbl_va = page_address((struct page*)next_tbl);
+	tp_info("next_tbl = %p \n",next_tbl_va);
+	// 2
+	next_tbl = (unsigned long)next_tbl_va + index_2;
+	tp_info("next_tbl = %ld \n",next_tbl);
+	next_tbl_va = page_address((struct page*)next_tbl);
+	tp_info("next_tbl = %p \n",next_tbl_va);
+
+	// 1
+	pte = (unsigned long)next_tbl_va + index_1;
+	tvm->pte_va = page_address((struct page *)pte);
+	tp_info("pte va=%p %p\n",tvm->pte_va, pte);
 */
+}
+
 struct truly_vm* get_tvm(void)
 {
 	return this_cpu_ptr(&TVM);
@@ -282,7 +320,6 @@ void make_hcr_el2(struct truly_vm *tvm)
 }
 
 static struct proc_dir_entry *procfs = NULL;
-//static struct proc_dir_entry *root = NULL;
 
 static ssize_t proc_write(struct file *file, const char __user *buffer,
                            size_t count, loff_t* dummy)
@@ -325,7 +362,6 @@ static struct file_operations proc_ops = {
 
 static void init_procfs(void)
 {
-//	root = proc_mkdir("Truly", NULL);
 	procfs = proc_create_data("truly_stats", O_RDWR , NULL, &proc_ops , NULL);
 }
 
@@ -358,19 +394,29 @@ int truly_init(void)
      make_sctlr_el2(_tvm);
      make_hcr_el2(_tvm);
      _tvm->mdcr_el2 = 0x100;
-       
+     _tvm->temp_page =  kmalloc(4096, GFP_ATOMIC);
+      memset(_tvm->temp_page,'a',4096); // marker
+
      for_each_possible_cpu(cpu) {
     	struct truly_vm *tv =  &per_cpu(TVM, cpu);
     	if (tv != _tvm) {
     		memcpy(tv, _tvm, sizeof(*_tvm));
     	}
-
      }
+
+     tp_info("HYP_PAGE_OFFSET_SHIFT=%x HYP_PAGE_OFFSET_MASK=%lx HYP_PAGE_OFFSET=%lx PAGE_OFFSET=%lx\n",
+    		 HYP_PAGE_OFFSET_SHIFT,
+			 HYP_PAGE_OFFSET_MASK,
+			 HYP_PAGE_OFFSET,PAGE_OFFSET);
+
      init_procfs();
+
      return 0;
 }
 
-void truly_clone_vm(void *d)
+
+
+void truly_map_tvm(void *d)
 {
 		int err;
 		struct truly_vm *tv =  this_cpu_ptr(&TVM);
@@ -381,10 +427,14 @@ void truly_clone_vm(void *d)
 	   	err = create_hyp_mappings(tv, tv + 1);
 	   	if (err){
 	   		tp_err("Failed to map tvm");
-	   	}else{
+	   	 } else{
 	   		tp_info("Mapped tvm");
 	   	}
-	    tv->initialized = 1;
+	   	// map the temp page
+	 //  	err = create_hyp_mappings(tv->temp_page, (char *)tv->temp_page + 4096);
+	   	tv->initialized = 1;
+	   	mb();
+	 //  	truly_walk_on_the_pages(tv, (unsigned long) tv->temp_page);
 }
 
 void tp_run_vm(void *x)
@@ -394,7 +444,7 @@ void tp_run_vm(void *x)
 	unsigned long vbar_el2;
 	unsigned long vbar_el2_current = (unsigned long)(KERN_TO_HYP( __truly_vectors ));
 
-	truly_clone_vm(NULL);
+	truly_map_tvm(NULL);
 	vbar_el2 = truly_get_vectors();
 	if (vbar_el2 !=  vbar_el2_current) {
 		tp_info("vbar_el2 should restore\n");
@@ -402,9 +452,6 @@ void tp_run_vm(void *x)
 	}
     tp_call_hyp(truly_run_vm, _tvm);
     hcr_el2 = tp_call_hyp(truly_get_hcr_el2);
-  //  tp_info("Running HYP hcr_el2=%lX %lX\n",
-    // 			_tvm->hcr_el2, hcr_el2);
-
 }
 
 void truly_smp_run_hyp(void)
@@ -417,9 +464,6 @@ EXPORT_SYMBOL_GPL(truly_get_vectors);
 EXPORT_SYMBOL_GPL(truly_get_mem_regs);
 EXPORT_SYMBOL_GPL(truly_smp_run_hyp);
 EXPORT_SYMBOL_GPL(truly_get_hcr_el2);
-EXPORT_SYMBOL_GPL(truly_clone_vm);
 EXPORT_SYMBOL_GPL(tp_call_hyp);
 EXPORT_SYMBOL_GPL(truly_init);
 EXPORT_SYMBOL_GPL(get_tvm);
-
-

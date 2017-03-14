@@ -326,7 +326,7 @@ CHECKFLAGS     := -D__linux__ -Dlinux -D__STDC__ -Dunix -D__unix__ \
 CFLAGS_MODULE   =
 AFLAGS_MODULE   =
 LDFLAGS_MODULE  =
-CFLAGS_KERNEL	= -g
+CFLAGS_KERNEL	=
 AFLAGS_KERNEL	=
 CFLAGS_GCOV	= -fprofile-arcs -ftest-coverage
 
@@ -604,7 +604,7 @@ all: vmlinux
 # values of the respective KBUILD_* variables
 ARCH_CPPFLAGS :=
 ARCH_AFLAGS :=
-ARCH_CFLAGS := -g
+ARCH_CFLAGS :=
 include arch/$(SRCARCH)/Makefile
 
 KBUILD_CFLAGS	+= $(call cc-option,-fno-delete-null-pointer-checks,)

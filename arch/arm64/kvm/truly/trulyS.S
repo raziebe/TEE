@@ -145,8 +145,29 @@ brk_count:
 	add x1,x1,#1
 	str x1,[x0, #TP_BRK_COUNT_EL2]
 
-	
-	
+//  collect hpfar_el2 , far_el2, and the esr
+	ldr	x1, [x0, #TP_ESR_EL2]
+	add x1,x1,#1
+	str x1,[x0, #TP_ESR_EL2]
+
+	mrs	x1, elr_el2
+	at	S12e0R, x1		// compute the address
+	mrs	x1,par_el1		// read the result
+
+	// strip pfn into x4
+	and x4, x1,#0xFFFFFFFFF000
+	lsr x4,x4,#12
+
+	// disable ttbr0_el2 mmu
+	mrs x2,sctlr_el2
+	and x3,x2,#0xFFFFFFFE
+	msr sctlr_el2,x3
+
+	mrs x1,elr_el2
+	and x1,x1,#0xFFF		// offset in page
+	ldr x3,[x4,x1]			//  grub the physical address
+
+
 5:	// D.1.10.1 . In synchronous exceptions jump over the generating exception instruction 
 	mrs	x2,elr_el2
 	add x2, x2, #4
@@ -220,8 +241,6 @@ ENTRY(truly_has_vhe)
         ubfx    x2, x2, #8, #4
 		mov	x0,x2 // if zero then no vhe
 ENDPROC(truly_has_vhe)
-
-
 
 
 ENTRY(truly_run_vm)
