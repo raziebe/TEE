@@ -1660,12 +1660,12 @@ int kvm_mmu_init(void)
 	hyp_pgd = (pgd_t *)__get_free_pages(GFP_KERNEL | __GFP_ZERO, hyp_pgd_order);
 	boot_hyp_pgd = (pgd_t *)__get_free_pages(GFP_KERNEL | __GFP_ZERO, hyp_pgd_order);
 
+	printk("hyp_pgd %lx\n",hyp_pgd);
 	if (!hyp_pgd || !boot_hyp_pgd) {
 		kvm_err("Hyp mode PGD not allocated\n");
 		err = -ENOMEM;
 		goto out;
 	}
-
 	/* Create the idmap in the boot page tables */
 	err = 	__create_hyp_mappings(boot_hyp_pgd,
 				      hyp_idmap_start, hyp_idmap_end,

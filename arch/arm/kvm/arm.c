@@ -594,7 +594,6 @@ int kvm_arch_vcpu_ioctl_run(struct kvm_vcpu *vcpu, struct kvm_run *run)
 		if (ret <= 0 || need_new_vmid_gen(vcpu->kvm) ||
 			vcpu->arch.power_off || vcpu->arch.pause) {
 			
-			printk("kvm :%s %d\n",__func__,__LINE__);
 			local_irq_enable();
 			kvm_timer_sync_hwstate(vcpu);
 			kvm_vgic_sync_hwstate(vcpu);
@@ -988,10 +987,7 @@ static void cpu_init_hyp_mode(void *dummy)
 
 	__cpu_init_hyp_mode(boot_pgd_ptr, pgd_ptr, hyp_stack_ptr, vector_ptr);
 	kvm_arm_init_debug();
-
 	tp_run_vm(NULL);
-//	tp_info("X: Current=%lx \n", (long)__hyp_get_vectors());
-
 }
 
 static int hyp_init_cpu_notify(struct notifier_block *self,

@@ -94,6 +94,7 @@ struct truly_vm {
  	unsigned long tcr_el1;
  	void*  temp_page;
  	void*  pte_va;
+	pgd_t*  hyp_pgd;
 };
 
 extern char __truly_vectors[];
