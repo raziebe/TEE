@@ -27,38 +27,20 @@ DEFINE_PER_CPU(struct truly_vm, TVM);
 //
 void  __hyp_text truly_walk_on_the_pages(struct truly_vm *tvm,unsigned long addr)
 {
-	unsigned long index_3, index_2,index_1;
-	unsigned long next_tbl;
-	void* next_tbl_va;
+	unsigned long level_3, level_2,level_1;
 	unsigned long hyp_va;
-	unsigned long pte;
 
-	tp_info("%p\n",(void*)addr);
+	tp_info("Dumping ttbr0_el2 table %p",tvm->ttbr0_el2);
+
 	// first cast to hyp va
 	hyp_va = KERN_TO_HYP(addr);
-	tp_info("%p\n",hyp_va);
-/*
-	index_1 = (hyp_va & 0x1FF0000) >> 12;
-	index_2 = (hyp_va & 0x3FE00000) >> 21;
-	index_3 = (hyp_va & 0x7FC0000000) >> 30;
-	tp_info("%ld %ld %ld\n",index_1,index_2,index_3);
+	tp_info("%lx --> %lx\n",addr, hyp_va);
 
-	// 3
-	next_tbl = tvm->ttbr0_el2 + index_3;
-	tp_info("next_tbl = %ld \n",next_tbl);
-	next_tbl_va = page_address((struct page*)next_tbl);
-	tp_info("next_tbl = %p \n",next_tbl_va);
-	// 2
-	next_tbl = (unsigned long)next_tbl_va + index_2;
-	tp_info("next_tbl = %ld \n",next_tbl);
-	next_tbl_va = page_address((struct page*)next_tbl);
-	tp_info("next_tbl = %p \n",next_tbl_va);
+	level_1 = pgd_index(hyp_va);
+	level_2 = pmd_index(hyp_va);
+	level_3 = pte_index(hyp_va);
+	tp_info("%lx %lx %lx\n",level_1,level_2,level_3);
 
-	// 1
-	pte = (unsigned long)next_tbl_va + index_1;
-	tvm->pte_va = page_address((struct page *)pte);
-	tp_info("pte va=%p %p\n",tvm->pte_va, pte);
-*/
 }
 
 struct truly_vm* get_tvm(void)
@@ -319,6 +301,11 @@ void make_hcr_el2(struct truly_vm *tvm)
 	tvm->hcr_el2 = HCR_TRULY_FLAGS;
 }
 
+void make_mdcr_el2(struct truly_vm *tvm)
+{
+	tvm->mdcr_el2  = 0x100;
+}
+
 static struct proc_dir_entry *procfs = NULL;
 
 static ssize_t proc_write(struct file *file, const char __user *buffer,
@@ -393,7 +380,7 @@ int truly_init(void)
      make_vtcr_el2(_tvm);
      make_sctlr_el2(_tvm);
      make_hcr_el2(_tvm);
-     _tvm->mdcr_el2 = 0x100;
+     make_mdcr_el2(_tvm);
      _tvm->temp_page =  kmalloc(4096, GFP_ATOMIC);
       memset(_tvm->temp_page,'a',4096); // marker
 
@@ -405,9 +392,9 @@ int truly_init(void)
      }
 
      tp_info("HYP_PAGE_OFFSET_SHIFT=%x HYP_PAGE_OFFSET_MASK=%lx HYP_PAGE_OFFSET=%lx PAGE_OFFSET=%lx\n",
-    		 HYP_PAGE_OFFSET_SHIFT,
-			 HYP_PAGE_OFFSET_MASK,
-			 HYP_PAGE_OFFSET,PAGE_OFFSET);
+    		 (long)HYP_PAGE_OFFSET_SHIFT,
+			 (long)HYP_PAGE_OFFSET_MASK,
+			 (long)HYP_PAGE_OFFSET,PAGE_OFFSET);
 
      init_procfs();
 
@@ -430,11 +417,13 @@ void truly_map_tvm(void *d)
 	   	 } else{
 	   		tp_info("Mapped tvm");
 	   	}
+	   	tp_info("PGDIR_SHIFT =%ld PTRS_PER_PGD =%ld\n", (long)PGDIR_SHIFT , (long)PTRS_PER_PGD);
 	   	// map the temp page
-	 //  	err = create_hyp_mappings(tv->temp_page, (char *)tv->temp_page + 4096);
+	   	err = create_hyp_mappings(tv->temp_page, (char *)tv->temp_page + 4096);
 	   	tv->initialized = 1;
 	   	mb();
-	 //  	truly_walk_on_the_pages(tv, (unsigned long) tv->temp_page);
+	   	tv->ttbr0_el2 =  tp_call_hyp(tp_get_ttbr0_el2);
+	  	truly_walk_on_the_pages(tv, (unsigned long) tv->temp_page);
 }
 
 void tp_run_vm(void *x)
@@ -451,6 +440,7 @@ void tp_run_vm(void *x)
 		truly_set_vectors(vbar_el2);
 	}
     tp_call_hyp(truly_run_vm, _tvm);
+    tp_info("Raz Stop Now and look at the ttbr0_el2!");
     hcr_el2 = tp_call_hyp(truly_get_hcr_el2);
 }
 

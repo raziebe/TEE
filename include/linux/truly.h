@@ -108,6 +108,7 @@ void truly_run_vm(void *);
 long tp_call_hyp(void *hyper_func, ...);
 unsigned long truly_get_tcr_el1(void);
 unsigned long truly_get_hcr_el2(void);
+unsigned long tp_get_ttbr0_el2(void);
 void truly_set_vectors(unsigned long vbar_el2);
 unsigned long truly_get_vectors(void);
 

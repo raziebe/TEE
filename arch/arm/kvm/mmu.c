@@ -547,7 +547,8 @@ static int __create_hyp_mappings(pgd_t *pgdp,
 	end = PAGE_ALIGN(end);
 	do {
 		pgd = pgdp + pgd_index(addr);
-
+		printk("pgd 0x%lx index=%ld addr = 0x%lx\n",
+						(unsigned long)pgd, pgd_index(addr),(unsigned long)addr);
 		if (pgd_none(*pgd)) {
 			pud = pud_alloc_one(NULL, addr);
 			if (!pud) {
@@ -605,6 +606,7 @@ int create_hyp_mappings(void *from, void *to)
 		int err;
 
 		phys_addr = kvm_kaddr_to_phys(from + virt_addr - start);
+
 		err = __create_hyp_mappings(hyp_pgd, virt_addr,
 					    virt_addr + PAGE_SIZE,
 					    __phys_to_pfn(phys_addr),

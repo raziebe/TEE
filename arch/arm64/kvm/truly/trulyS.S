@@ -158,11 +158,6 @@ brk_count:
 	and x4, x1,#0xFFFFFFFFF000
 	lsr x4,x4,#12
 
-	// disable ttbr0_el2 mmu
-	mrs x2,sctlr_el2
-	and x3,x2,#0xFFFFFFFE
-	msr sctlr_el2,x3
-
 	mrs x1,elr_el2
 	and x1,x1,#0xFFF		// offset in page
 	ldr x3,[x4,x1]			//  grub the physical address
@@ -229,6 +224,12 @@ ENTRY(truly_get_hcr_el2)
        mrs     x0, hcr_el2
        ret
 ENDPROC(truly_get_hcr_el2)
+
+ENTRY(tp_get_ttbr0_el2)
+       mrs     x0, ttbr0_el2
+       ret
+ENDPROC(tp_get_ttbr0_el2)
+
 
 ENTRY(tp_call_hyp)
         hvc	#0
