@@ -20,27 +20,57 @@ DEFINE_PER_CPU(struct truly_vm, TVM);
 #define __hyp_text __section(.hyp.text) notrace
 #define __hyp	// a marker to show that this code is non-mmu
 
+#define	HYP_TTBR0_EL2_FLAGS_MASK 	0xFFFF000000000FFF
+#define HYP_TTBR0_EL2_ADDR_MASK 	0x0000FFFFFFFFF000
+#define __hyp_ttbr0_el2_addr(addr)	(HYP_TTBR0_EL2_ADDR_MASK & addr)
+
 //
 // Walk on the pages of TTBR0_EL2
 // Assume 3 levels
 // assume 4096 bytes page size
 //
-void  __hyp_text truly_walk_on_the_pages(struct truly_vm *tvm,unsigned long addr)
+void  __hyp_text truly_walk_on_hyp_pages(struct truly_vm *tvm,unsigned long addr)
 {
 	unsigned long level_3, level_2,level_1;
 	unsigned long hyp_va;
-
-	tp_info("Dumping ttbr0_el2 table %p",tvm->ttbr0_el2);
+	pgd_t *ttbr0_el2;
+	pgd_t *pgd;
+	pmd_t *pmd;
+	pte_t *pte;
+	
+	tvm->ttbr0_el2 =  tp_call_hyp(tp_get_ttbr0_el2);
+	tp_info("Dumping ttbr0_el2 table %p\n",
+			(unsigned long *)tvm->ttbr0_el2);
 
 	// first cast to hyp va
 	hyp_va = KERN_TO_HYP(addr);
 	tp_info("%lx --> %lx\n",addr, hyp_va);
 
-	level_1 = pgd_index(hyp_va);
+	level_3 = pgd_index(hyp_va);
 	level_2 = pmd_index(hyp_va);
-	level_3 = pte_index(hyp_va);
-	tp_info("%lx %lx %lx\n",level_1,level_2,level_3);
+	level_1 = pte_index(hyp_va);
+	tp_info("l1=%lx l2=%lx l3=%lx\n",level_1,level_2,level_3);
+	//
+	// while the address is in hyp , to access the tables
+	// we need to use kernel virtual address
+	//
+	ttbr0_el2 = (pgd_t *)tvm->ttbr0_el2;
+	ttbr0_el2 =  phys_to_virt( (phys_addr_t ) ttbr0_el2 );
+	pgd = ttbr0_el2 + level_3;
+	// take pmd 
+	pmd = (pmd_t *) __hyp_ttbr0_el2_addr( (unsigned long) *pgd);
+	pmd = (pmd_t *) (pmd + level_2); // pmd value
+	pmd = phys_to_virt( (phys_addr_t) pmd);
+	// take pte
+	pte = (pte_t *)__hyp_ttbr0_el2_addr( (unsigned long) pmd);
+	pte = (pte_t *) (pte + level_1); // pte value
 
+	printk("truly: TTBR0_EL2=%llx PGD=%llx PMD=%llx PTE=%llx\n",
+		(unsigned long long)ttbr0_el2,
+		(unsigned long long)*pgd, 
+		(unsigned long long) pmd,
+		(unsigned long long) pte );
+	tp_call_hyp(tp_get_ttbr0_el2);
 }
 
 struct truly_vm* get_tvm(void)
@@ -390,12 +420,12 @@ int truly_init(void)
     		memcpy(tv, _tvm, sizeof(*_tvm));
     	}
      }
-
+/*
      tp_info("HYP_PAGE_OFFSET_SHIFT=%x HYP_PAGE_OFFSET_MASK=%lx HYP_PAGE_OFFSET=%lx PAGE_OFFSET=%lx\n",
     		 (long)HYP_PAGE_OFFSET_SHIFT,
 			 (long)HYP_PAGE_OFFSET_MASK,
 			 (long)HYP_PAGE_OFFSET,PAGE_OFFSET);
-
+*/
      init_procfs();
 
      return 0;
@@ -422,8 +452,7 @@ void truly_map_tvm(void *d)
 	   	err = create_hyp_mappings(tv->temp_page, (char *)tv->temp_page + 4096);
 	   	tv->initialized = 1;
 	   	mb();
-	   	tv->ttbr0_el2 =  tp_call_hyp(tp_get_ttbr0_el2);
-	  	truly_walk_on_the_pages(tv, (unsigned long) tv->temp_page);
+	  	truly_walk_on_hyp_pages(tv, (unsigned long) tv->temp_page);
 }
 
 void tp_run_vm(void *x)
