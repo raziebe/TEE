@@ -547,8 +547,6 @@ static int __create_hyp_mappings(pgd_t *pgdp,
 	end = PAGE_ALIGN(end);
 	do {
 		pgd = pgdp + pgd_index(addr);
-		printk("pgd 0x%lx index=%ld addr = 0x%lx\n",
-						(unsigned long)pgd, pgd_index(addr),(unsigned long)addr);
 		if (pgd_none(*pgd)) {
 			pud = pud_alloc_one(NULL, addr);
 			if (!pud) {
