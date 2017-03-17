@@ -57,19 +57,22 @@ void  __hyp_text truly_walk_on_hyp_pages(struct truly_vm *tvm,unsigned long addr
 	ttbr0_el2 = (pgd_t *)tvm->ttbr0_el2;
 	ttbr0_el2 =  phys_to_virt( (phys_addr_t ) ttbr0_el2 );
 	pgd = ttbr0_el2 + level_3;
+	
 	// take pmd 
 	pmd = (pmd_t *) __hyp_ttbr0_el2_addr( (unsigned long) *pgd);
 	pmd = phys_to_virt( (phys_addr_t) pmd);
 	pmd = (pmd_t *)(pmd + level_2); // pmd value
+	
 	// take pte
-//	pte = (pte_t *)__hyp_ttbr0_el2_addr( (unsigned long)*pmd);
-//	pte = (pte_t *) (pte + level_1); // pte value
+	pte = (pte_t *)__hyp_ttbr0_el2_addr( (unsigned long)*pmd);
+	pte = phys_to_virt( (phys_addr_t) pte);
+	pte = (pte_t *) (pte + level_1); // pte value
 
-	printk("truly: TTBR0_EL2=%llx PGD=%llx PMD=%llx PTE=%llx\n",
+	printk("truly: TTBR0_EL2=%llx *PGD=%llx *PMD=%llx *PTE=%llx\n",
 		(unsigned long long)ttbr0_el2,
 		(unsigned long long)*pgd, 
 		(unsigned long long)*pmd,
-		(unsigned long long) pte );
+		(unsigned long long)*pte );
 	tp_call_hyp(tp_get_ttbr0_el2);
 }
 
