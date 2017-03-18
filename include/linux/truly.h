@@ -77,11 +77,11 @@ struct truly_vm {
 
 	unsigned long hpfar_el2;
 	unsigned long far_el2;
-    unsigned long hcr_el2;
+	unsigned long hcr_el2;
  	unsigned int hstr_el2;
  	unsigned long long vttbr_el2;
  	unsigned int vtcr_el2;
-    unsigned long ttbr0_el2;
+	unsigned long ttbr0_el2;
  	unsigned long tpidr_el2;
  	unsigned long tcr_el2;
   	unsigned long esr_el2;
@@ -93,8 +93,14 @@ struct truly_vm {
  	unsigned long id_aa64mmfr0_el1;
  	unsigned long tcr_el1;
  	void*  temp_page;
+	unsigned long* temp_page_pte;
  	void*  pte_va;
 	pgd_t*  hyp_pgd;
+
+	long pte_index;
+	pmd_t temp_pmd;
+	pgd_t temp_pgd;
+	long pte_offset;
 };
 
 extern char __truly_vectors[];

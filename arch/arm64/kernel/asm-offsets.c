@@ -174,12 +174,9 @@ int main(void)
   DEFINE(TP_FAR_EL2 , offsetof(struct truly_vm,  far_el2));
   DEFINE(TP_VTTBR_EL2 , offsetof(struct truly_vm,  vttbr_el2));
   DEFINE(TP_VTCR_EL2 , offsetof(struct truly_vm,  vtcr_el2));
-//  DEFINE(TP_TPIDR_EL2 , offsetof(struct truly_vm,  tpidr_el2));
   DEFINE(TP_TCR_EL2 , offsetof(struct truly_vm,  tcr_el2));
-//  DEFINE(TP_SP_EL2 , offsetof(struct truly_vm,  sp_el2));
-//  DEFINE(TP_ELR_EL2 , offsetof(struct truly_vm,  elr_el2));
-//  DEFINE(TP_SPSR_EL2 , offsetof(struct truly_vm,  spsr_el2));
-//  DEFINE(TP_VBAR_EL2 , offsetof(struct truly_vm,  vbar_el2));
+  DEFINE(TP_PTE_INDEX , offsetof(struct truly_vm,  pte_index));
+  DEFINE(TP_TEMP_PMD , offsetof(struct truly_vm,  temp_pmd));
   DEFINE(TP_SCTLR_EL2 , offsetof(struct truly_vm,  sctlr_el2));
   DEFINE(TP_MDCR_EL2 , offsetof(struct truly_vm,  mdcr_el2));
   DEFINE(TP_BRK_COUNT_EL2 , offsetof(struct truly_vm,  brk_count_el2));
