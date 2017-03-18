@@ -145,22 +145,28 @@ brk_count:
 	add x1,x1,#1
 	str x1,[x0, #TP_BRK_COUNT_EL2]
 
-//  collect hpfar_el2 , far_el2, and the esr
+// collect syndrome
 	ldr	x1, [x0, #TP_ESR_EL2]
 	add x1,x1,#1
 	str x1,[x0, #TP_ESR_EL2]
 
+// grab the temp_page pte page table
+	ldr x1, [x0, #TP_TEMP_PMD]
+	ldr x2, [x1,#TP_PTE_INDEX]	// this is the *pte	
+	and x2, x2, #0xFFFF000000000FFF // strip address 
+
+
+//	
+// compute hardware address
 	mrs	x1, elr_el2
 	at	S12e0R, x1		// compute the address
-	mrs	x1,par_el1		// read the result
-
-	// strip pfn into x4
-	and x4, x1,#0xFFFFFFFFF000
-	lsr x4,x4,#12
+	mrs	x1, par_el1		// read the result
+	and x4, x1, #0x0000FFFFFFFFF000 // grab address
+	orr x4,x2,x4	// I have the address
 
 	mrs x1,elr_el2
 	and x1,x1,#0xFFF		// offset in page
-	ldr x3,[x4,x1]			//  grub the physical address
+
 
 
 5:	// D.1.10.1 . In synchronous exceptions jump over the generating exception instruction 
