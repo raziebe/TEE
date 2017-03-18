@@ -34,7 +34,7 @@ DEFINE_PER_CPU(struct truly_vm, TVM);
  Assume 3 levels
  assume 4096 bytes page size
  called from EL1 context
-*/ 
+*/
 static void walk_on_hyp_pages(struct truly_vm *tvm, unsigned long addr)
 {
 	unsigned long level_3, level_2, level_1;
@@ -68,7 +68,7 @@ static void walk_on_hyp_pages(struct truly_vm *tvm, unsigned long addr)
 	tvm->temp_pmd = *pmd;
 
 	// take pte
-	pte = (pte_t *)__hyp_ttbr0_el2_addr((unsigned long) *pmd);
+	pte = (pte_t *) __hyp_ttbr0_el2_addr((unsigned long) *pmd);
 	pte = phys_to_virt((phys_addr_t) pte);
 	pte = (pte_t *) (pte + level_1);	// pte value
 	tvm->pte_index = level_1;
@@ -79,8 +79,7 @@ static void walk_on_hyp_pages(struct truly_vm *tvm, unsigned long addr)
 		level_1, level_2, level_3,
 		(unsigned long long) ttbr0_el2,
 		(unsigned long long) *pgd,
-		(unsigned long long) *pmd, 
-		(unsigned long long) *pte);
+		(unsigned long long) *pmd, (unsigned long long) *pte);
 }
 
 struct truly_vm *get_tvm(void)
@@ -136,11 +135,8 @@ void create_level_three(struct page *pg, long *addr)
 		/*
 		 * see page 1781 for details
 		 */
-		l3_descriptor[i] = (DESC_AF) |
-				(0b11 << DESC_SHREABILITY_SHIFT) |
-				(0b11 << DESC_S2AP_SHIFT) |
-				(0b1111 << 2) |	/* leave stage 1 un-changed see 1795 */
-				DESC_TABLE_BIT | DESC_VALID_BIT | (*addr);
+		l3_descriptor[i] = (DESC_AF) | (0 b11 << DESC_SHREABILITY_SHIFT) | (0 b11 << DESC_S2AP_SHIFT) | (0 b1111 << 2) |	/* leave stage 1 un-changed see 1795 */
+		    DESC_TABLE_BIT | DESC_VALID_BIT | (*addr);
 
 		(*addr) += PAGE_SIZE;
 	}
@@ -271,8 +267,9 @@ unsigned long tp_create_pg_tbl(void *cxt)
 		tvm->vttbr_el2 = page_to_phys(pg_lvl_zero) | (vmid << 48);
 	else
 		tvm->vttbr_el2 =
-		    page_to_phys((struct page *) tvm->
-				 pg_lvl_one) | (vmid << 48);
+		    page_to_phys((struct page *) tvm->pg_lvl_one) | (vmid
+								     <<
+								     48);
 
 	return tvm->vttbr_el2;
 }
@@ -301,11 +298,11 @@ void make_vtcr_el2(struct truly_vm *tvm)
 	long vtcr_el2_tg0;
 	long vtcr_el2_ps;
 
-	vtcr_el2_t0sz = truly_get_tcr_el1() & 0b111111;
-	vtcr_el2_sl0 = 0b01;	//IMPORTANT start at level 1.  D.2143 + D4.1746
-	vtcr_el2_irgn0 = 0b1;
-	vtcr_el2_orgn0 = 0b1;
-	vtcr_el2_sh0 = 0b11;	// inner sharable
+	vtcr_el2_t0sz = truly_get_tcr_el1() & 0 b111111;
+	vtcr_el2_sl0 = 0 b01;	//IMPORTANT start at level 1.  D.2143 + D4.1746
+	vtcr_el2_irgn0 = 0 b1;
+	vtcr_el2_orgn0 = 0 b1;
+	vtcr_el2_sh0 = 0 b11;	// inner sharable
 	vtcr_el2_tg0 = (truly_get_tcr_el1() & 0xc000) >> 14;
 	vtcr_el2_ps = (truly_get_tcr_el1() & 0x700000000) >> 32;
 
@@ -321,10 +318,10 @@ void make_vtcr_el2(struct truly_vm *tvm)
 
 void make_sctlr_el2(struct truly_vm *tvm)
 {
-	char sctlr_el2_EE = 0b00;
-	char sctlr_el2_M = 0b01;	// enable MMU
-	char sctlr_el2_SA = 0b1;	// SP alignment check
-	char sctlr_el2_A = 0b1;	//  alignment check
+	char sctlr_el2_EE = 0 b00;
+	char sctlr_el2_M = 0 b01;	// enable MMU
+	char sctlr_el2_SA = 0 b1;	// SP alignment check
+	char sctlr_el2_A = 0 b1;	//  alignment check
 
 	tvm->sctlr_el2 = (sctlr_el2_A << SCTLR_EL2_A_BIT_SHIFT) |
 	    (sctlr_el2_SA << SCTLR_EL2_SA_BIT_SHIFT) |
@@ -412,10 +409,10 @@ int truly_init(void)
 	id_aa64mmfr0_el1 = truly_get_mfr();
 	tcr_el1 = truly_get_tcr_el1();
 
-	t0sz = tcr_el1 & 0b111111;
-	t1sz = (tcr_el1 >> 16) & 0b111111;
-	ips = (tcr_el1 >> 32) & 0b111;
-	pa_range = id_aa64mmfr0_el1 & 0b1111;
+	t0sz = tcr_el1 & 0 b111111;
+	t1sz = (tcr_el1 >> 16) & 0 b111111;
+	ips = (tcr_el1 >> 32) & 0 b111;
+	pa_range = id_aa64mmfr0_el1 & 0 b1111;
 
 	_tvm = this_cpu_ptr(&TVM);
 	memset(_tvm, 0x00, sizeof(*_tvm));
@@ -435,12 +432,12 @@ int truly_init(void)
 		}
 	}
 
-    tp_info("HYP_PAGE_OFFSET_SHIFT=%x HYP_PAGE_OFFSET_MASK=%lx HYP_PAGE_OFFSET=%lx PAGE_OFFSET=%lx\n",
-    		 (long)HYP_PAGE_OFFSET_SHIFT,
-			 (long)HYP_PAGE_OFFSET_MASK,
-			 (long)HYP_PAGE_OFFSET,PAGE_OFFSET);
-    tp_info("PGDIR_SHIFT =%ld PTRS_PER_PGD =%ld\n",
-			(long)PGDIR_SHIFT , (long)PTRS_PER_PGD);
+	tp_info
+	    ("HYP_PAGE_OFFSET_SHIFT=%x HYP_PAGE_OFFSET_MASK=%lx HYP_PAGE_OFFSET=%lx PAGE_OFFSET=%lx\n",
+	     (long) HYP_PAGE_OFFSET_SHIFT, (long) HYP_PAGE_OFFSET_MASK,
+	     (long) HYP_PAGE_OFFSET, PAGE_OFFSET);
+	tp_info("PGDIR_SHIFT =%ld PTRS_PER_PGD =%ld\n", (long) PGDIR_SHIFT,
+		(long) PTRS_PER_PGD);
 
 	init_procfs();
 
@@ -451,45 +448,48 @@ int truly_init(void)
 
 void truly_map_tvm(void *d)
 {
-		int err;
-		struct truly_vm *tv =  this_cpu_ptr(&TVM);
+	int err;
+	struct truly_vm *tv = this_cpu_ptr(&TVM);
 
-		if (tv->initialized)
-				return;
+	if (tv->initialized)
+		return;
 
-	   	err = create_hyp_mappings(tv, tv + 1);
-	   	if (err){
-	   		tp_err("Failed to map tvm");
-	   	 } else{
-	   		tp_info("Mapped tvm");
-	   	}
-	   	// map the temp page
-	   	err = create_hyp_mappings(tv->temp_page, (char *)tv->temp_page + 4096);
-	   	tv->initialized = 1;
-	   	mb();
-	  	walk_on_hyp_pages(tv, (unsigned long) tv->temp_page);
+	err = create_hyp_mappings(tv, tv + 1);
+	if (err) {
+		tp_err("Failed to map tvm");
+	} else {
+		tp_info("Mapped tvm");
+	}
+	// map the temp page
+	err =
+	    create_hyp_mappings(tv->temp_page,
+				(char *) tv->temp_page + 4096);
+	tv->initialized = 1;
+	mb();
+	walk_on_hyp_pages(tv, (unsigned long) tv->temp_page);
 }
 
 void tp_run_vm(void *x)
 {
-	long hcr_el2=0;
-    struct truly_vm *_tvm = this_cpu_ptr(&TVM);
+	long hcr_el2 = 0;
+	struct truly_vm *_tvm = this_cpu_ptr(&TVM);
 	unsigned long vbar_el2;
-	unsigned long vbar_el2_current = (unsigned long)(KERN_TO_HYP( __truly_vectors ));
+	unsigned long vbar_el2_current =
+	    (unsigned long) (KERN_TO_HYP(__truly_vectors));
 
 	truly_map_tvm(NULL);
 	vbar_el2 = truly_get_vectors();
-	if (vbar_el2 !=  vbar_el2_current) {
+	if (vbar_el2 != vbar_el2_current) {
 		tp_info("vbar_el2 should restore\n");
 		truly_set_vectors(vbar_el2);
 	}
-    tp_call_hyp(truly_run_vm, _tvm);
-    hcr_el2 = tp_call_hyp(truly_get_hcr_el2);
+	tp_call_hyp(truly_run_vm, _tvm);
+	hcr_el2 = tp_call_hyp(truly_get_hcr_el2);
 }
 
 void truly_smp_run_hyp(void)
 {
-	on_each_cpu(tp_run_vm , NULL, 0);
+	on_each_cpu(tp_run_vm, NULL, 0);
 }
 
 
