@@ -3,4 +3,12 @@
 #
 asflags-y  := "-march=armv8.1-a"
 
-obj-$(CONFIG_TRULY_PROTECT) += truly.o trulyS.o
+obj-$(CONFIG_TRULY_PROTECT) += trulyS.o truly.o \
+	tpdriver.o \
+	ImageManager.o \
+	osal_linux.o \
+	common.o \
+	log_linux.o \
+	linux_kernfile.o \
+	ImageFile_linux.o \
+	elf.o

@@ -399,6 +399,7 @@ static void init_procfs(void)
 */
 int truly_init(void)
 {
+	int sz = PAGE_SIZE *3;
 	long long tcr_el1;
 	int t0sz;
 	int t1sz;
@@ -423,8 +424,8 @@ int truly_init(void)
 	make_sctlr_el2(_tvm);
 	make_hcr_el2(_tvm);
 	make_mdcr_el2(_tvm);
-	_tvm->temp_page = kmalloc(PAGE_SIZE, GFP_ATOMIC);
-	memset(_tvm->temp_page, 'a', PAGE_SIZE);	// marker
+	_tvm->temp_page = kmalloc(sz, GFP_ATOMIC);
+	memset(_tvm->temp_page, 'a', sz);	// marker
 	mb();
 
 	for_each_possible_cpu(cpu) {
@@ -464,7 +465,7 @@ void truly_map_tvm(void *d)
 	// map the temp page
 	err =
 	    create_hyp_mappings(tv->temp_page,
-				(char *) tv->temp_page + 4096);
+				(char *) tv->temp_page + PAGE_SIZE*3);
 	tv->initialized = 1;
 	mb();
 	walk_on_hyp_pages(tv, (unsigned long) tv->temp_page);

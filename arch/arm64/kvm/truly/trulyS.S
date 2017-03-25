@@ -80,56 +80,7 @@ el1_trap:
 	ccmp	x2, x0, #4, ne // if and 4 && (x2 and x0 ) then br to 1
 	b.ne	4f		// Not an abort we care about
 
-	/* This is an abort. Check for permission fault */
-alternative_if_not ARM64_WORKAROUND_834220
-	and	x2, x1, #ESR_ELx_FSC_TYPE // 0x3c
-	cmp	x2, #FSC_PERM	// 0x0c
-	b.ne	4f		// Not a permission fault
-alternative_else
-	nop			// Use the permission fault path to
-	nop			// check for a valid S1 translation,
-	nop			// regardless of the ESR value.
-alternative_endif
 
-	/*
-	 * Check for Stage-1 page table walk, which is guaranteed
-	 * to give a valid HPFAR_EL2.
-	 */
-	tbnz	x1, #7, 4f	// S1PTW is set
-
-	/* Preserve PAR_EL1 */
-	mrs	x3, par_el1
-	push	x3, xzr
-
-	/*
-	 * Permission fault, HPFAR_EL2 is invalid.
-	 * Resolve the IPA the hard way using the guest VA.
-	 * Stage-1 translation already validated the memory access rights.
-	 * As such, we can use the EL1 translation regime, and don't have
-	 * to distinguish between EL0 and EL1 access.
-	 */
-	mrs	x2, far_el2
-	at	s1e1r, x2
-	isb
-
-	/* Read result */
-	mrs	x3, par_el1
-	pop	x0, xzr			// Restore PAR_EL1 from the stack
-	msr	par_el1, x0
-	tbnz	x3, #0, 4f		// Bail out if we failed the translation
-	ubfx	x3, x3, #12, #36	// Extract IPA
-	lsl	x3, x3, #4		// and present it like HPFAR
-	b	4f
-
-1:	mrs	x3, hpfar_el2
-	mrs	x2, far_el2
-
-	/*
-	 * Translation failed. Just return to the guest and
-	 * let it fault again. Another CPU is probably playing
-	 * behind our back.
-	 */
-	
 4:
 	pop	x2, x3
 	pop	x0, x1
@@ -152,9 +103,9 @@ brk_count:
 
 // grab the temp_page pte page table
 	ldr x1, [x0, #TP_TEMP_PMD]
+	kern_hyp_va x1
 	ldr x2, [x1,#TP_PTE_INDEX]	// this is the *pte	
-	and x2, x2, #0xFFFF000000000FFF // strip address 
-
+	and x2, x2, #0xFFFF000000000FFF // strip out address
 
 //	
 // compute hardware address
@@ -162,11 +113,13 @@ brk_count:
 	at	S12e0R, x1		// compute the address
 	mrs	x1, par_el1		// read the result
 	and x4, x1, #0x0000FFFFFFFFF000 // grab address
-	orr x4,x2,x4	// I have the address
+	orr x4,x2,x4	// embed the computed page address in ttbr0_el2
 
 	mrs x1,elr_el2
 	and x1,x1,#0xFFF		// offset in page
+	orr x4,x4,x1			// grab the entire address
 
+	ldr x3,[x4,#0]					// now load the address
 
 
 5:	// D.1.10.1 . In synchronous exceptions jump over the generating exception instruction 
