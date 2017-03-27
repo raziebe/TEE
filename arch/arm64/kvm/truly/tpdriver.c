@@ -227,13 +227,13 @@ void tp_execve_handler(unsigned long ret_value)
     image_file_init_bases(image_file, base);
     is_protected = im_handle_image(&image_manager, image_file, (UINT64)current->pid, base);
     image_file_free(image_file);
-/*
-    if (is_protected && global_state == NULL)
+
+    if (is_protected)
     {
-        KdPrint(("Launching TPVISOR..pid = %d\n", current->pid));
-        status = launch_tpvisor();
+        printk("Launching TPVISOR..pid = %d\n", current->pid);
+       // status = launch_tpvisor();
     }
-    */
+    
     mutex_unlock(&protected_image_mutex);
 /*
    if (status != TP_SUCCESS)
@@ -245,7 +245,6 @@ void tp_execve_handler(unsigned long ret_value)
 */
 //clean_1:
     file_close(file);
-
 clean_2:
 
    if (path_to_free)
@@ -264,9 +263,10 @@ static int __init tp_init(void)
     im_init(&image_manager, NULL, MemoryLayoutInit(TRUE));
 
     glob_mutexes_init();
-    	
+
     printk("TP Init\n");
     return 0;
 }
 
 module_init(tp_init);
+
