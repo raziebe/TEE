@@ -484,7 +484,7 @@ void tp_run_vm(void *x)
 		tp_info("vbar_el2 should restore\n");
 		truly_set_vectors(vbar_el2);
 	}
-	tp_call_hyp(truly_run_vm, _tvm);
+//	tp_call_hyp(truly_run_vm, _tvm);
 }
 
 void truly_smp_run_hyp(void)

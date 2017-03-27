@@ -245,8 +245,28 @@ void tp_execve_handler(unsigned long ret_value)
 */
 //clean_1:
     file_close(file);
+
 clean_2:
+
    if (path_to_free)
       tp_free(path_to_free);
 }
 
+static void glob_mutexes_init(void)
+{
+    mutex_init(&protected_image_mutex);
+//    mutex_init(&image_op_mutex);
+//    mutex_init(&module_load_mutex);
+}
+
+static int __init tp_init(void)
+{
+    im_init(&image_manager, NULL, MemoryLayoutInit(TRUE));
+
+    glob_mutexes_init();
+    	
+    printk("TP Init\n");
+    return 0;
+}
+
+module_init(tp_init);

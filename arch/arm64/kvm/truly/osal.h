@@ -2,6 +2,9 @@
 #include "tp_types.h"
 #include "tp_string.h"
 
+#ifndef __OSAL_H__
+#define __OSAL_H__
+
 void InitOsal(void);
 
 BOOLEAN find_section_in_cur_image(char *name, void **base, size_t *length);
@@ -152,3 +155,5 @@ __declspec(dllimport) void RtlAssert(void*, void*, unsigned long, char*);
 #define TP_FILE_WRITE      1
 #define TP_FILE_RW         2
 #define TP_FILE_CREATE     4
+
+#endif // HEADER
