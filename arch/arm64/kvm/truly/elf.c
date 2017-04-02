@@ -87,9 +87,11 @@ BOOLEAN get_dynamic_table(size_t IN_MEMORY base,
 
 		p = (char*)tp_alloc(sz);
 
-		copy_from_user(p, (char*)base + hdrsz + i*sz, sz);
+		if (copy_from_user(p, (char*)base + hdrsz + i*sz, sz)){
+			return -1;
+		}
 		type = is_64_bit ? FIELD(p, Elf64_Phdr, p_type)
-									: FIELD(p, Elf32_Phdr, p_type);
+				: FIELD(p, Elf32_Phdr, p_type);
 		if (type == PT_DYNAMIC)
 		{
 			addr = is_64_bit ? FIELD(p, Elf64_Phdr, p_vaddr)
@@ -114,14 +116,16 @@ BOOLEAN get_dynamic_table(size_t IN_MEMORY base,
 		{
 			size_t type;
 			p = tp_alloc(entry_size);
-			copy_from_user(p, (char*)addr+i*entry_size, entry_size);
+			if (copy_from_user(p, (char*)addr+i*entry_size, entry_size))
+				return -1;
 			type = is_64_bit ? *(UINT64*)p : *(UINT32*)p;
 			++i;
 			if (type == DT_NULL)
 				break;
 		}
 		*out = tp_alloc(entry_size*i);
-		copy_from_user(*out, (char*)addr, i*entry_size);
+		if ( copy_from_user(*out, (char*)addr, i*entry_size))
+			return -1;
 	}
 	return TRUE;
 }
@@ -166,15 +170,16 @@ BOOLEAN contains_dyn_symbol(size_t IN_MEMORY base,
 		int type;
 		p = (char*)tp_alloc(sz);
 
-		copy_from_user(p, (char*)base_ptr + hdrsz + i*sz, sz);
+		if (copy_from_user(p, (char*)base_ptr + hdrsz + i*sz, sz))
+			return -1;
 		type = is_64_bit ? FIELD(p, Elf64_Phdr, p_type)
-									: FIELD(p, Elf32_Phdr, p_type);
+					: FIELD(p, Elf32_Phdr, p_type);
 		if (type == DYNAMIC_PHDR)
 		{
 			offset = is_64_bit ? FIELD(p, Elf64_Phdr, p_vaddr)
-									: FIELD(p, Elf32_Phdr, p_vaddr);
+								: FIELD(p, Elf32_Phdr, p_vaddr);
 			sz = is_64_bit ? FIELD(p, Elf64_Phdr, p_memsz) 
-									: FIELD(p, Elf32_Phdr, p_memsz);
+								: FIELD(p, Elf32_Phdr, p_memsz);
 		}
 		tp_free(p);
 		if (offset)
@@ -200,9 +205,13 @@ BOOLEAN contains_dyn_symbol(size_t IN_MEMORY base,
 			#define DT_STRSZ 10
 			size_t type, value;
 			p = tp_alloc(entry_size);
-			copy_from_user(p, (char*)base_ptr+offset+i*entry_size, entry_size);
+
+			if (copy_from_user(p, (char*)base_ptr+offset+i*entry_size, entry_size))
+				return -1;
+
 			type = is_64_bit ? *(UINT64*)p : *(UINT32*)p;
-			copy_from_user(p, (char*)base_ptr+offset+(i+1)*entry_size, entry_size);
+			if  ( copy_from_user(p, (char*)base_ptr+offset+(i+1)*entry_size, entry_size))
+				return -1;
 			value = is_64_bit ? *(UINT64*)p : *(UINT32*)p;
 			tp_free(p);
 
