@@ -513,7 +513,7 @@ void tp_run_vm(void *x)
 		truly_set_vectors(vbar_el2);
 	}
 	tp_call_hyp(truly_run_vm, _tvm);
-
+	asm ("brk #3"); // testing only
 }
 
 void truly_smp_run_hyp(void)
