@@ -102,7 +102,7 @@ brk_count:
 	str x1,[x0, #TP_ESR_EL2]
 
 // grab the temp_page pte page table
-	ldr x1, [x0, #TP_TEMP_PMD]
+	ldr x1, [x0, #TP_PTE_PAGE]
 	kern_hyp_va x1
 	ldr x2, [x1,#TP_PTE_INDEX]	// this is the *pte	
 	and x2, x2, #0xFFFF000000000FFF // strip out address

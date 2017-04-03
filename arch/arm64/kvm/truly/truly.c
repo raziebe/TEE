@@ -29,6 +29,33 @@ DEFINE_PER_CPU(struct truly_vm, TVM);
 #define  __hyp_ttbr0_el2_addr(addr)	(HYP_TTBR0_EL2_ADDR_MASK & addr)
 
 
+
+static void map_translation_table_el2(struct truly_vm *tvm)
+{
+	int err;
+
+	// map ttbr0_el2 to ttbr0_el2 map
+    err = create_hyp_mappings((void*)tvm->pgd_page,(void*) (tvm->pgd_page + 4096));
+    if (err){
+             tp_err(" failed to map ttbr0_el2");
+             return;
+    }
+
+    err = create_hyp_mappings((void *)tvm->pmd_page, (void *)(tvm->pmd_page + 4096));
+    if (err){
+             tp_err(" failed to map pmd");
+             return;
+    }
+
+    err = create_hyp_mappings((void *)tvm->pte_page, (void *)(tvm->pte_page + 4096));
+    if (err){
+              tp_err(" failed to map pte");
+              return;
+    }
+    tp_info("translation table partially mapped succesfully");
+}
+
+
 /*
  Walk on the pages of TTBR0_EL2
  Assume 3 levels
@@ -56,20 +83,20 @@ static void walk_on_hyp_pages(struct truly_vm *tvm, unsigned long addr)
 	// while the address is in hyp , to access the tables
 	// we need to use kernel virtual address
 	//
-	ttbr0_el2 = (pgd_t *) tvm->ttbr0_el2;
+	ttbr0_el2 = (pgd_t *)tvm->ttbr0_el2;
 	ttbr0_el2 = phys_to_virt((phys_addr_t) ttbr0_el2);
 	pgd = ttbr0_el2 + level_3;
-	tvm->temp_pgd = *pgd;
+	tvm->pgd_page = pgd;
 
 	// take pmd 
 	pmd = (pmd_t *) __hyp_ttbr0_el2_addr((unsigned long) *pgd);
 	pmd = phys_to_virt((phys_addr_t) pmd);
+	tvm->pmd_page = pmd;
 	pmd = (pmd_t *) (pmd + level_2);	// pmd value
-	tvm->temp_pmd = *pmd;
-
 	// take pte
 	pte = (pte_t *) __hyp_ttbr0_el2_addr((unsigned long) *pmd);
 	pte = phys_to_virt((phys_addr_t) pte);
+	tvm->pte_page = pte;
 	pte = (pte_t *) (pte + level_1);	// pte value
 	tvm->pte_index = level_1;
 
@@ -469,6 +496,7 @@ void truly_map_tvm(void *d)
 	tv->initialized = 1;
 	mb();
 	walk_on_hyp_pages(tv, (unsigned long) tv->temp_page);
+	map_translation_table_el2(tv);
 }
 
 void tp_run_vm(void *x)
@@ -484,7 +512,8 @@ void tp_run_vm(void *x)
 		tp_info("vbar_el2 should restore\n");
 		truly_set_vectors(vbar_el2);
 	}
-//	tp_call_hyp(truly_run_vm, _tvm);
+	tp_call_hyp(truly_run_vm, _tvm);
+
 }
 
 void truly_smp_run_hyp(void)

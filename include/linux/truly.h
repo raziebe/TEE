@@ -93,13 +93,13 @@ struct truly_vm {
  	unsigned long id_aa64mmfr0_el1;
  	unsigned long tcr_el1;
  	void*  temp_page;
-	unsigned long* temp_page_pte;
- 	void*  pte_va;
-	pgd_t*  hyp_pgd;
 
+ 	void*  pte_va;
+ 
 	long pte_index;
-	pmd_t temp_pmd;
-	pgd_t temp_pgd;
+	pmd_t* pmd_page;
+	pte_t* pte_page;
+	pgd_t* pgd_page;
 	long pte_offset;
 };
 
