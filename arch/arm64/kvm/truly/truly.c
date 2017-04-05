@@ -13,6 +13,7 @@
 #include <linux/slab.h>
 #include <asm/page.h>
 
+
 int create_hyp_mappings(void *, void *);
 DECLARE_PER_CPU(struct truly_vm, TVM);
 DEFINE_PER_CPU(struct truly_vm, TVM);
@@ -86,27 +87,29 @@ static void walk_on_hyp_pages(struct truly_vm *tvm, unsigned long addr)
 	ttbr0_el2 = (pgd_t *)tvm->ttbr0_el2;
 	ttbr0_el2 = phys_to_virt((phys_addr_t) ttbr0_el2);
 	pgd = ttbr0_el2 + level_3;
-	tvm->pgd_page = pgd;
+	tvm->pgd_page = (unsigned long)pgd;
 
 	// take pmd 
 	pmd = (pmd_t *) __hyp_ttbr0_el2_addr((unsigned long) *pgd);
 	pmd = phys_to_virt((phys_addr_t) pmd);
-	tvm->pmd_page = pmd;
+	tvm->pmd_page = (unsigned long)pmd;
 	pmd = (pmd_t *) (pmd + level_2);	// pmd value
 	// take pte
 	pte = (pte_t *) __hyp_ttbr0_el2_addr((unsigned long) *pmd);
 	pte = phys_to_virt((phys_addr_t) pte);
-	tvm->pte_page = pte;
+	tvm->pte_page = (unsigned long)pte;
 	pte = (pte_t *) (pte + level_1);	// pte value
-	tvm->pte_index = level_1;
+	tvm->pte_index = level_1 * 8;	// save offset in bytes
 
 	tp_info("L1=%lx L2=%lx L3=%lx\n"
 		"TTBR0_EL2=%llx *PGD=%llx "
-		"*PMD=%llx *PTE=%llx\n",
+		"*PMD=%llx PTE=%lx *PTE=%llx\n",
 		level_1, level_2, level_3,
 		(unsigned long long) ttbr0_el2,
 		(unsigned long long) *pgd,
-		(unsigned long long) *pmd, (unsigned long long) *pte);
+		(unsigned long long) *pmd,
+		tvm->pte_page,
+		(unsigned long long) *pte);
 }
 
 struct truly_vm *get_tvm(void)
@@ -347,11 +350,11 @@ void make_vtcr_el2(struct truly_vm *tvm)
 
 void make_sctlr_el2(struct truly_vm *tvm)
 {
-	char sctlr_el2_EE = 0b00;
+	char sctlr_el2_EE = 0b00;//0x30C5181F
 	char sctlr_el2_M = 0b01;	// enable MMU
 	char sctlr_el2_SA = 0b1;	// SP alignment check
 	char sctlr_el2_A = 0b1;	//  alignment check
-
+    char sctrl_el2_WXN = 0b00;
 	tvm->sctlr_el2 = (sctlr_el2_A << SCTLR_EL2_A_BIT_SHIFT) |
 	    (sctlr_el2_SA << SCTLR_EL2_SA_BIT_SHIFT) |
 	    (sctlr_el2_EE << SCTLR_EL2_EE_BIT_SHIFT) |
@@ -448,7 +451,7 @@ int truly_init(void)
 	memset(_tvm, 0x00, sizeof(*_tvm));
 	tp_create_pg_tbl(_tvm);
 	make_vtcr_el2(_tvm);
-	make_sctlr_el2(_tvm);
+	//make_sctlr_el2(_tvm);
 	make_hcr_el2(_tvm);
 	make_mdcr_el2(_tvm);
 	_tvm->temp_page = kmalloc(sz, GFP_ATOMIC);
@@ -496,23 +499,34 @@ void truly_map_tvm(void *d)
 	tv->initialized = 1;
 	mb();
 	walk_on_hyp_pages(tv, (unsigned long) tv->temp_page);
-	map_translation_table_el2(tv);
 }
 
 void tp_run_vm(void *x)
 {
+	struct truly_vm t;
 	struct truly_vm *_tvm = this_cpu_ptr(&TVM);
 	unsigned long vbar_el2;
 	unsigned long vbar_el2_current =
 	    (unsigned long) (KERN_TO_HYP(__truly_vectors));
 
+	_tvm->marker_start = 0xAAAAAAAA;
+	_tvm->marker_end   = 0xEEEEEEEE;
 	truly_map_tvm(NULL);
 	vbar_el2 = truly_get_vectors();
 	if (vbar_el2 != vbar_el2_current) {
 		tp_info("vbar_el2 should restore\n");
 		truly_set_vectors(vbar_el2);
 	}
+	t = *_tvm;
+	tp_info("About to run VM sizeof(tvm)=%ld\n",sizeof(t));
 	tp_call_hyp(truly_run_vm, _tvm);
+	// the vm is reset after the mmu is set
+	*_tvm = t;
+
+
+	map_translation_table_el2(_tvm);
+	tp_info("4. calling brk %lx pte index %ld\n",
+			_tvm->pte_page,_tvm->pte_index);
 	asm ("brk #3"); // testing only
 }
 

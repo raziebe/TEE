@@ -74,7 +74,8 @@
 #define HCR_TRULY_FLAGS ( HCR_VM | HCR_RW )
 
 struct truly_vm {
-
+	unsigned long marker_start;
+	unsigned long pte_page;
 	unsigned long hpfar_el2;
 	unsigned long far_el2;
 	unsigned long hcr_el2;
@@ -88,20 +89,19 @@ struct truly_vm {
  	unsigned long mdcr_el2;
  	unsigned int sctlr_el2;
  	unsigned long brk_count_el2;
- 	unsigned long initialized;
- 	void* pg_lvl_one;
+ 	unsigned long initialized; 	
  	unsigned long id_aa64mmfr0_el1;
  	unsigned long tcr_el1;
  	void*  temp_page;
-
- 	void*  pte_va;
  
-	long pte_index;
-	pmd_t* pmd_page;
-	pte_t* pte_page;
-	pgd_t* pgd_page;
+	unsigned long pte_index;
+
+	unsigned long pmd_page;
+	unsigned long pgd_page;
 	long pte_offset;
-};
+	void* pg_lvl_one;
+	unsigned long marker_end;
+} __attribute__ ((aligned (8)));
 
 extern char __truly_vectors[];
 int truly_init(void);

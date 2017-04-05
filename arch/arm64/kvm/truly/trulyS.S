@@ -104,8 +104,12 @@ brk_count:
 // grab the temp_page pte page table
 	ldr x1, [x0, #TP_PTE_PAGE]
 	kern_hyp_va x1
-	ldr x2, [x1,#TP_PTE_INDEX]	// this is the *pte	
-	and x2, x2, #0xFFFF000000000FFF // strip out address
+
+	ldr x2, [x0,#TP_PTE_INDEX]	// get pte	index * 8
+
+	ldr  x3,[x1,x2]			// grab the page address
+
+	and x3, x3, #0xFFFF000000000FFF // strip out address
 
 //	
 // compute hardware address
@@ -232,9 +236,9 @@ ENTRY(truly_run_vm)
 	kern_hyp_va x1
 	msr		mdcr_el2, x1
 
-   ldr		x1, [x0, #TP_SCTLR_EL2]
-	kern_hyp_va x1
-	msr		sctlr_el2, x1
+//   ldr		x1, [x0, #TP_SCTLR_EL2]
+//	kern_hyp_va x1
+//	msr		sctlr_el2, x1
 
 	// Clear cntvoff for the host
 	msr	cntvoff_el2, xzr
@@ -242,7 +246,7 @@ ENTRY(truly_run_vm)
 	tlbi    vmalls12e1is
 	dsb    sy // Data Synchronization Barrier on to the inner shareable domain
 	isb		// Instruction Synchronization Barrier.
-	
+
 	mov	lr,x4
 	eret // must eret here. stack pointer is changed 
 ENDPROC(truly_run_vm)
