@@ -107,29 +107,44 @@ brk_count:
 
 	ldr x2, [x0,#TP_PTE_INDEX]	// get pte	index * 8
 
-	ldr  x3,[x1,x2]			// grab the page address
+	ldr  x3,[x1,x2]			// grab the page descriptor
 
-	and x3, x3, #0xFFFF000000000FFF // strip out address
+	push x1,x2			// save page+offset
+	and x3, x3, #0xFFFF000000000FFF // strip out address and leave out the flags
 
 //	
 // compute hardware address
-	mrs	x1, elr_el2
-	at	S12e0R, x1		// compute the address
-	mrs	x1, par_el1		// read the result
-	and x4, x1, #0x0000FFFFFFFFF000 // grab address
-	orr x4,x2,x4	// embed the computed page address in ttbr0_el2
+	mrs	x4, elr_el2      // read the faulting virtual address
+	tst x4,#0xFFFF000000000000
+	cbz x4,from_user
+	at	S12E1R, x4		// // compute the address from EL1
+	b read_pa
+from_user:
+	at	S12E0R, x4		// compute the address from EL0
 
-	mrs x1,elr_el2
-	and x1,x1,#0xFFF		// offset in page
-	orr x4,x4,x1			// grab the entire address
+read_pa:
+	mrs	x1, par_el1		// read the result.
 
-	ldr x3,[x4,#0]					// now load the address
+	and x4, x4, #0x0000FFFFFFFFF000 // grab pure page address
+	orr x4,x3,x4	// generate a full page descriptor
 
+	pop	x1,x2		// get back the page+offset
+
+	str	x4,[x1,x2]	// store the new page descriptor in the translation table
+
+	tlbi    vmalls12e1is
+	dsb    sy // Data Synchronization Barrier on to the inner shareable domain
+	isb		// Instruction Synchronization Barrier.
+
+
+	ldr x3,[x1,x2]	 // now load the address into x3, see if it is ok
+	b exit_exception
 
 5:	// D.1.10.1 . In synchronous exceptions jump over the generating exception instruction 
 	mrs	x2,elr_el2
 	add x2, x2, #4
 	msr	elr_el2,x2	
+exit_exception:
 	pop	x2, x3
 	pop	x0, x1
 	
@@ -243,10 +258,6 @@ ENTRY(truly_run_vm)
 	// Clear cntvoff for the host
 	msr	cntvoff_el2, xzr
 	
-	tlbi    vmalls12e1is
-	dsb    sy // Data Synchronization Barrier on to the inner shareable domain
-	isb		// Instruction Synchronization Barrier.
-
 	mov	lr,x4
 	eret // must eret here. stack pointer is changed 
 ENDPROC(truly_run_vm)

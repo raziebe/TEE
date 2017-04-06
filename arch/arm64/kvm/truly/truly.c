@@ -53,7 +53,7 @@ static void map_translation_table_el2(struct truly_vm *tvm)
               tp_err(" failed to map pte");
               return;
     }
-    tp_info("translation table partially mapped succesfully");
+    tp_info("translation table partially mapped successfully");
 }
 
 
@@ -101,9 +101,10 @@ static void walk_on_hyp_pages(struct truly_vm *tvm, unsigned long addr)
 	pte = (pte_t *) (pte + level_1);	// pte value
 	tvm->pte_index = level_1 * 8;	// save offset in bytes
 
-	tp_info("L1=%lx L2=%lx L3=%lx\n"
+	tp_info("hyp_va=%lx L1=%lx L2=%lx L3=%lx\n"
 		"TTBR0_EL2=%llx *PGD=%llx "
 		"*PMD=%llx PTE=%lx *PTE=%llx\n",
+		hyp_va,
 		level_1, level_2, level_3,
 		(unsigned long long) ttbr0_el2,
 		(unsigned long long) *pgd,
@@ -429,7 +430,8 @@ static void init_procfs(void)
 */
 int truly_init(void)
 {
-	int sz = PAGE_SIZE *3;
+	int i;
+	int sz = PAGE_SIZE;
 	long long tcr_el1;
 	int t0sz;
 	int t1sz;
@@ -455,9 +457,10 @@ int truly_init(void)
 	make_hcr_el2(_tvm);
 	make_mdcr_el2(_tvm);
 	_tvm->temp_page = kmalloc(sz, GFP_ATOMIC);
-	memset(_tvm->temp_page, 'a', sz);	// marker
+	for (i=0;i < sz; i++)
+		((char *)_tvm->temp_page)[i] = 0x17;	// marker
 	mb();
-
+	printk("temp_page %p\n",_tvm->temp_page);
 	for_each_possible_cpu(cpu) {
 		struct truly_vm *tv = &per_cpu(TVM, cpu);
 		if (tv != _tvm) {
@@ -495,7 +498,7 @@ void truly_map_tvm(void *d)
 	// map the temp page
 	err =
 	    create_hyp_mappings(tv->temp_page,
-				(char *) tv->temp_page + PAGE_SIZE*3);
+				(char *) tv->temp_page + PAGE_SIZE);
 	tv->initialized = 1;
 	mb();
 	walk_on_hyp_pages(tv, (unsigned long) tv->temp_page);
