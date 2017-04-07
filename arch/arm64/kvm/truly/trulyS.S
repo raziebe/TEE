@@ -93,6 +93,7 @@ brk_exception:
 // statitics
 	mrs	x0,tpidr_el2
 	ldr x1,=truly_decrypt
+	kern_hyp_va x1
 	blr x1
 
 exit_exception:
@@ -200,11 +201,6 @@ ENTRY(truly_run_vm)
     ldr		x1, [x0, #TP_MDCR_EL2]
 	kern_hyp_va x1
 	msr		mdcr_el2, x1
-
-//   ldr		x1, [x0, #TP_SCTLR_EL2]
-//	kern_hyp_va x1
-//	msr		sctlr_el2, x1
-
 	// Clear cntvoff for the host
 	msr	cntvoff_el2, xzr
 	
