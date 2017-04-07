@@ -21,7 +21,7 @@ DEFINE_PER_CPU(struct truly_vm, TVM);
 #define __hyp_text __section(.hyp.text) notrace
 
 
-void truly_decrypt(struct truly_vm *tvm)
+void __hyp_text truly_decrypt(struct truly_vm *tvm)
 {
 	int i;
 	int size;

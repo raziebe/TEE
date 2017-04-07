@@ -42,7 +42,7 @@ void map_user_space_data(void *umem,int size,int encrypted)
     	tp_info("INSANE: failed to get user pages");
     	return;
     }
-
+    tp_err(" pid %d size=%d nr %d %d\n",current->pid,size,nr,nr_pages);
 	//
 	// break the address to pages and map
 	// each page to hypervisor
@@ -54,8 +54,9 @@ void map_user_space_data(void *umem,int size,int encrypted)
 				tp_err(" failed to map ttbr0_el2");
 				return;
 		}
+		tp_err("kaddr %p %p\n",kaddr,(char *)umem + i*4096);
 	}
-	tp_err(" pid %d mapped ok umem=%p kaddr %p size=%d\n",current->pid, umem, kaddr,size);
+
 
 // bug here. I assume a single page. Must must change to dynamic size
 	for_each_possible_cpu(cpu) {
