@@ -26,6 +26,7 @@
 #include <linux/vmalloc.h>
 #include <linux/workqueue.h>
 #include <linux/kallsyms.h>
+#include <linux/truly.h>
 
 #include "tp_types.h"
 #include "linux_kernfile.h"
@@ -34,6 +35,7 @@
 #include "exec_prot_db_linux.h"
 #include "ImageFile.h"
 #include "ImageManager.h"
+#include <linux/truly.h>
 
 #define     MAX_PERMS 777
 PVOID tp_alloc(size_t size);
@@ -228,28 +230,17 @@ void tp_execve_handler(unsigned long ret_value)
     is_protected = im_handle_image(&image_manager, image_file, (UINT64)current->pid, base);
     image_file_free(image_file);
 
-    if (is_protected)
-    {
+    if (is_protected) {
         printk("Launching TPVISOR..pid = %d\n", current->pid);
-       // status = launch_tpvisor();
+        tp_mark_protected(current->pid);
     }
-    
     mutex_unlock(&protected_image_mutex);
-/*
-   if (status != TP_SUCCESS)
-   {
-      struct files_struct* fs = current->files;
-      iterate_fd(fs, 0, redirect_error_to_process_stderr, describe_status(status));
-      goto clean_1;
-   }
-*/
-//clean_1:
     file_close(file);
 clean_2:
-
    if (path_to_free)
       tp_free(path_to_free);
 }
+
 
 static void glob_mutexes_init(void)
 {

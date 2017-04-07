@@ -14,4 +14,5 @@ obj-$(CONFIG_TRULY_PROTECT) += trulyS.o truly.o \
 	log_linux.o \
 	linux_kernfile.o \
 	ImageFile_linux.o \
+	truly_user.o \
 	elf.o

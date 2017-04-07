@@ -73,9 +73,15 @@
 
 #define HCR_TRULY_FLAGS ( HCR_VM | HCR_RW )
 
+struct userspace_desc {
+	void *uaddr;
+	void *kaddr;
+	int  size;
+};
+
 struct truly_vm {
-	unsigned long marker_start;
-	unsigned long pte_page;
+	int protected_pid;
+
 	unsigned long hpfar_el2;
 	unsigned long far_el2;
 	unsigned long hcr_el2;
@@ -92,15 +98,12 @@ struct truly_vm {
  	unsigned long initialized; 	
  	unsigned long id_aa64mmfr0_el1;
  	unsigned long tcr_el1;
- 	void*  temp_page;
- 
-	unsigned long pte_index;
 
-	unsigned long pmd_page;
-	unsigned long pgd_page;
-	long pte_offset;
-	void* pg_lvl_one;
-	unsigned long marker_end;
+ 	struct userspace_desc padd;
+ 	struct userspace_desc encrypt;
+
+ 	void* pg_lvl_one;
+
 } __attribute__ ((aligned (8)));
 
 extern char __truly_vectors[];
@@ -108,7 +111,7 @@ int truly_init(void);
 void truly_clone_vm(void *);
 void truly_smp_run_hyp(void);
 void truly_clone_vm(void *d);
-struct truly_vm* get_tvm(void);
+struct truly_vm* getTVM(void);
 int vhe_exec_el1(struct truly_vm* cxt);
 void tp_run_vm(void *);
 void truly_run_vm(void *);
@@ -118,7 +121,7 @@ unsigned long truly_get_hcr_el2(void);
 unsigned long tp_get_ttbr0_el2(void);
 void truly_set_vectors(unsigned long vbar_el2);
 unsigned long truly_get_vectors(void);
-
+void tp_mark_protected(int pid);
 #define HYP_PAGE_OFFSET_SHIFT   VA_BITS
 #define HYP_PAGE_OFFSET_MASK    ((UL(1) << HYP_PAGE_OFFSET_SHIFT) - 1)
 #define HYP_PAGE_OFFSET         (PAGE_OFFSET & HYP_PAGE_OFFSET_MASK)

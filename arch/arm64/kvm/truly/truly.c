@@ -15,107 +15,47 @@
 
 
 int create_hyp_mappings(void *, void *);
-DECLARE_PER_CPU(struct truly_vm, TVM);
+
 DEFINE_PER_CPU(struct truly_vm, TVM);
 
 #define __hyp_text __section(.hyp.text) notrace
-#define __hyp			// a marker to show that this code is non-mmu
-
-#define	HYP_TTBR0_EL2_FLAGS_MASK 	0xFFFF000000000FFF
-#define HYP_TTBR0_EL2_ADDR_MASK 	0x0000FFFFFFFFF000
-#define HYP_TTBR0_EL0_ADDR_MASK 	0x0000FFFFFFFFF000
-
-#define  __hyp_ttbr0_el0_addr(addr) 	(HYP_TTBR0_EL0_ADDR_MASK & addr)
-#define  __hyp_ttbr0_el0_flags(addr) 	(HYP_TTBR0_EL0_FLAGS_MASK & addr)
-#define  __hyp_ttbr0_el2_addr(addr)	(HYP_TTBR0_EL2_ADDR_MASK & addr)
 
 
-
-static void map_translation_table_el2(struct truly_vm *tvm)
+void truly_decrypt(struct truly_vm *tvm)
 {
-	int err;
+	int i;
+	int size;
+	char* user_pad_hyp;
+//	void* user_encr_hyp;
 
-	// map ttbr0_el2 to ttbr0_el2 map
-    err = create_hyp_mappings((void*)tvm->pgd_page,(void*) (tvm->pgd_page + 4096));
-    if (err){
-             tp_err(" failed to map ttbr0_el2");
-             return;
-    }
+	tvm->brk_count_el2++;
 
-    err = create_hyp_mappings((void *)tvm->pmd_page, (void *)(tvm->pmd_page + 4096));
-    if (err){
-             tp_err(" failed to map pmd");
-             return;
-    }
-
-    err = create_hyp_mappings((void *)tvm->pte_page, (void *)(tvm->pte_page + 4096));
-    if (err){
-              tp_err(" failed to map pte");
-              return;
-    }
-    tp_info("translation table partially mapped successfully");
-}
-
-
+//	user_encr_hyp = hyp_to_va(tvm->encrypt.kaddr);
+	user_pad_hyp = (void *)KERN_TO_HYP(tvm->padd.kaddr);
+	size = tvm->padd.size;
 /*
- Walk on the pages of TTBR0_EL2
- Assume 3 levels
- assume 4096 bytes page size
- called from EL1 context
-*/
-static void walk_on_hyp_pages(struct truly_vm *tvm, unsigned long addr)
-{
-	unsigned long level_3, level_2, level_1;
-	unsigned long hyp_va;
-	pgd_t *ttbr0_el2;
-	pgd_t *pgd;
-	pmd_t *pmd;
-	pte_t *pte;
-
-	tvm->ttbr0_el2 = tp_call_hyp(tp_get_ttbr0_el2);
-
-	// first cast to hyp va
-	hyp_va = KERN_TO_HYP(addr);
-
-	level_3 = pgd_index(hyp_va);
-	level_2 = pmd_index(hyp_va);
-	level_1 = pte_index(hyp_va);
-	//
-	// while the address is in hyp , to access the tables
-	// we need to use kernel virtual address
-	//
-	ttbr0_el2 = (pgd_t *)tvm->ttbr0_el2;
-	ttbr0_el2 = phys_to_virt((phys_addr_t) ttbr0_el2);
-	pgd = ttbr0_el2 + level_3;
-	tvm->pgd_page = (unsigned long)pgd;
-
-	// take pmd 
-	pmd = (pmd_t *) __hyp_ttbr0_el2_addr((unsigned long) *pgd);
-	pmd = phys_to_virt((phys_addr_t) pmd);
-	tvm->pmd_page = (unsigned long)pmd;
-	pmd = (pmd_t *) (pmd + level_2);	// pmd value
-	// take pte
-	pte = (pte_t *) __hyp_ttbr0_el2_addr((unsigned long) *pmd);
-	pte = phys_to_virt((phys_addr_t) pte);
-	tvm->pte_page = (unsigned long)pte;
-	pte = (pte_t *) (pte + level_1);	// pte value
-	tvm->pte_index = level_1 * 8;	// save offset in bytes
-
-	tp_info("hyp_va=%lx L1=%lx L2=%lx L3=%lx\n"
-		"TTBR0_EL2=%llx *PGD=%llx "
-		"*PMD=%llx PTE=%lx *PTE=%llx\n",
-		hyp_va,
-		level_1, level_2, level_3,
-		(unsigned long long) ttbr0_el2,
-		(unsigned long long) *pgd,
-		(unsigned long long) *pmd,
-		tvm->pte_page,
-		(unsigned long long) *pte);
+ *
+  400520:       52801380        mov     w0, #0x9c
+  400524:       d65f03c0        ret
+ *
+ */
+	for ( i = 0 ; i < size;i+=8){
+		// put the simple program of {mov x0,0x156, ret }
+		user_pad_hyp[i++] = 0x52;
+		user_pad_hyp[i++] = 0x80;
+		user_pad_hyp[i++] = 0x13;
+		user_pad_hyp[i++] = 0x80;
+		user_pad_hyp[i++] = 0xd6;
+		user_pad_hyp[i++] = 0x5f;
+		user_pad_hyp[i++] = 0x03;
+		user_pad_hyp[i++] = 0xc0;
+	}
 }
+
 
 struct truly_vm *get_tvm(void)
 {
-	return this_cpu_ptr(&TVM);
+	return &TVM;
 }
 
 long truly_get_elr_el1(void)
@@ -349,20 +289,6 @@ void make_vtcr_el2(struct truly_vm *tvm)
 
 }
 
-void make_sctlr_el2(struct truly_vm *tvm)
-{
-	char sctlr_el2_EE = 0b00;//0x30C5181F
-	char sctlr_el2_M = 0b01;	// enable MMU
-	char sctlr_el2_SA = 0b1;	// SP alignment check
-	char sctlr_el2_A = 0b1;	//  alignment check
-    char sctrl_el2_WXN = 0b00;
-	tvm->sctlr_el2 = (sctlr_el2_A << SCTLR_EL2_A_BIT_SHIFT) |
-	    (sctlr_el2_SA << SCTLR_EL2_SA_BIT_SHIFT) |
-	    (sctlr_el2_EE << SCTLR_EL2_EE_BIT_SHIFT) |
-	    (sctlr_el2_M << SCTLR_EL2_M_BIT_SHIFT);
-
-}
-
 void make_hstr_el2(struct truly_vm *tvm)
 {
 	tvm->hstr_el2 = 0;	// 1 << 15 ; // Trap CP15 Cr=15
@@ -430,8 +356,6 @@ static void init_procfs(void)
 */
 int truly_init(void)
 {
-	int i;
-	int sz = PAGE_SIZE;
 	long long tcr_el1;
 	int t0sz;
 	int t1sz;
@@ -453,14 +377,8 @@ int truly_init(void)
 	memset(_tvm, 0x00, sizeof(*_tvm));
 	tp_create_pg_tbl(_tvm);
 	make_vtcr_el2(_tvm);
-	//make_sctlr_el2(_tvm);
 	make_hcr_el2(_tvm);
 	make_mdcr_el2(_tvm);
-	_tvm->temp_page = kmalloc(sz, GFP_ATOMIC);
-	for (i=0;i < sz; i++)
-		((char *)_tvm->temp_page)[i] = 0x17;	// marker
-	mb();
-	printk("temp_page %p\n",_tvm->temp_page);
 	for_each_possible_cpu(cpu) {
 		struct truly_vm *tv = &per_cpu(TVM, cpu);
 		if (tv != _tvm) {
@@ -495,13 +413,9 @@ void truly_map_tvm(void *d)
 	} else {
 		tp_info("Mapped tvm");
 	}
-	// map the temp page
-	err =
-	    create_hyp_mappings(tv->temp_page,
-				(char *) tv->temp_page + PAGE_SIZE);
 	tv->initialized = 1;
 	mb();
-	walk_on_hyp_pages(tv, (unsigned long) tv->temp_page);
+
 }
 
 void tp_run_vm(void *x)
@@ -512,8 +426,6 @@ void tp_run_vm(void *x)
 	unsigned long vbar_el2_current =
 	    (unsigned long) (KERN_TO_HYP(__truly_vectors));
 
-	_tvm->marker_start = 0xAAAAAAAA;
-	_tvm->marker_end   = 0xEEEEEEEE;
 	truly_map_tvm(NULL);
 	vbar_el2 = truly_get_vectors();
 	if (vbar_el2 != vbar_el2_current) {
@@ -525,12 +437,6 @@ void tp_run_vm(void *x)
 	tp_call_hyp(truly_run_vm, _tvm);
 	// the vm is reset after the mmu is set
 	*_tvm = t;
-
-
-	map_translation_table_el2(_tvm);
-	tp_info("4. calling brk %lx pte index %ld\n",
-			_tvm->pte_page,_tvm->pte_index);
-	asm ("brk #3"); // testing only
 }
 
 void truly_smp_run_hyp(void)
@@ -545,4 +451,3 @@ EXPORT_SYMBOL_GPL(truly_smp_run_hyp);
 EXPORT_SYMBOL_GPL(truly_get_hcr_el2);
 EXPORT_SYMBOL_GPL(tp_call_hyp);
 EXPORT_SYMBOL_GPL(truly_init);
-EXPORT_SYMBOL_GPL(get_tvm);

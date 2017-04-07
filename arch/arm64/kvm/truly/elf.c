@@ -279,7 +279,7 @@ char* get_section_data( void* dest,
 						size_t* size)
 {	
 
-	size_t off, sz, va;
+	size_t off=0, sz=0, va=0;
 	char* section_data;
 
 	if (!__section_data(dest, read, name, &off, &sz, &va))

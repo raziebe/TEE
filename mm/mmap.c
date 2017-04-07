@@ -1408,6 +1408,10 @@ unsigned long do_mmap(struct file *file, unsigned long addr,
 	    ((vm_flags & VM_LOCKED) ||
 	     (flags & (MAP_POPULATE | MAP_NONBLOCK)) == MAP_POPULATE))
 		*populate = len;
+{
+	extern void tp_mmap_handler(void* addr,int len,unsigned long vm_flags);
+	tp_mmap_handler(addr,len,vm_flags);
+}
 	return addr;
 }
 

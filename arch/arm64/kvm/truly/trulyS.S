@@ -71,9 +71,9 @@ el1_trap:
 	b.eq	4f
 	
 	cmp x2, #0x18				// MRC,MRS
-	b.eq	5f
+	b.eq	4f
 	cmp x2, #0x3c					// debug brk command
-	b.eq	brk_count
+	b.eq	brk_exception
 	
 	cmp	x2, #ESR_ELx_EC_DABT_LOW	// ESR_ELx_EC_DABT_LOW = 0x24 = 36d = data abort
 	mov	x0, #ESR_ELx_EC_IABT_LOW	// ESR_ELx_EC_IABT_LOW = 0x20 = 32 instruction abort 
@@ -88,67 +88,17 @@ el1_trap:
 	eret
  
 
-brk_count:
+brk_exception:
 
 // statitics
 	mrs	x0,tpidr_el2
-	ldr	x1, [x0, #TP_BRK_COUNT_EL2]
-	add x1,x1,#1
-	str x1,[x0, #TP_BRK_COUNT_EL2]
+	ldr x1,=truly_decrypt
+	blr x1
 
-// collect syndrome
-	ldr	x1, [x0, #TP_ESR_EL2]
-	add x1,x1,#1
-	str x1,[x0, #TP_ESR_EL2]
-
-// grab the temp_page pte page table
-	ldr x1, [x0, #TP_PTE_PAGE]
-	kern_hyp_va x1
-
-	ldr x2, [x0,#TP_PTE_INDEX]	// get pte	index * 8
-
-	ldr  x3,[x1,x2]			// grab the page descriptor
-
-	push x1,x2			// save page+offset
-	and x3, x3, #0xFFFF000000000FFF // strip out address and leave out the flags
-
-//	
-// compute hardware address
-	mrs	x4, elr_el2      // read the faulting virtual address
-	tst x4,#0xFFFF000000000000
-	cbz x4,from_user
-	at	S12E1R, x4		// // compute the address from EL1
-	b read_pa
-from_user:
-	at	S12E0R, x4		// compute the address from EL0
-
-read_pa:
-	mrs	x1, par_el1		// read the result.
-
-	and x4, x4, #0x0000FFFFFFFFF000 // grab pure page address
-	orr x4,x3,x4	// generate a full page descriptor
-
-	pop	x1,x2		// get back the page+offset
-
-	str	x4,[x1,x2]	// store the new page descriptor in the translation table
-
-	tlbi    vmalls12e1is
-	dsb    sy // Data Synchronization Barrier on to the inner shareable domain
-	isb		// Instruction Synchronization Barrier.
-
-
-	ldr x3,[x1,x2]	 // now load the address into x3, see if it is ok
-	b exit_exception
-
-5:	// D.1.10.1 . In synchronous exceptions jump over the generating exception instruction 
-	mrs	x2,elr_el2
-	add x2, x2, #4
-	msr	elr_el2,x2	
 exit_exception:
 	pop	x2, x3
 	pop	x0, x1
 	
-
 EL1_irq:
 	eret
 ENDPROC(EL1_irq)
