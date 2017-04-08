@@ -34,35 +34,23 @@ phys_addr_t at_el0(unsigned long addr)
 }
 
 
-
 void __hyp_text truly_decrypt(struct truly_vm *tvm)
 {
-	int i;
-//	int size;
-//	char* user_pad_hyp;
-//	void* user_encr_hyp;
+	int i = 0;
+	char* user_pad_hyp = (char *)tvm->elr_el2;
 
 	tvm->brk_count_el2++;
-
-//	user_encr_hyp = hyp_to_va(tvm->encrypt.kaddr);
 /*
  *
   400520:       52801380        mov     w0, #0x9c
   400524:       d65f03c0        ret
- *
- *//*
-	for ( i = 0 ; i < size; i+=8){
+ */
+
 		// put the simple program of {mov x0,0x156, ret }
-		user_pad_hyp[i++] = 0x52;
-		user_pad_hyp[i++] = 0x80;
-		user_pad_hyp[i++] = 0x13;
-		user_pad_hyp[i++] = 0x80;
-		user_pad_hyp[i++] = 0xd6;
-		user_pad_hyp[i++] = 0x5f;
-		user_pad_hyp[i++] = 0x03;
-		user_pad_hyp[i++] = 0xc0;
-	}
-	*/
+		user_pad_hyp[i++] =  0x80;
+		user_pad_hyp[i++] =  0x13;
+		user_pad_hyp[i++] =  0x80;
+		user_pad_hyp[i++] =  0x52;
 }
 
 
@@ -398,7 +386,7 @@ int truly_init(void)
 			memcpy(tv, _tvm, sizeof(*_tvm));
 		}
 	}
-
+/*
 	tp_info("HYP_PAGE_OFFSET_SHIFT=%x "
 			"HYP_PAGE_OFFSET_MASK=%lx "
 			"HYP_PAGE_OFFSET=%lx "
@@ -409,7 +397,7 @@ int truly_init(void)
 			(long) HYP_PAGE_OFFSET,
 			PAGE_MASK,
 			PAGE_OFFSET);
-
+*/
 	init_procfs();
 	return 0;
 }

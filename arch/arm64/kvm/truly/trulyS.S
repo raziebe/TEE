@@ -98,12 +98,10 @@ brk_exception:
 	ldr x1,=truly_decrypt
 	kern_hyp_va x1
 	blr x1
-//
- // D.1.10.1 . In synchronous exceptions we
- // jump over the generating exception instruction
-    mrs     x2,elr_el2
-    add x2, x2, #4
-    msr     elr_el2,x2
+
+	TLBI ALLE1
+	dsb    sy // Data Synchronization Barrier on to the inner shareable domain
+	isb		// Instruction Synchronization Barrier.
 
 exit_exception:
 	pop	x2, x3

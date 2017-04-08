@@ -99,10 +99,7 @@ struct truly_vm {
  	unsigned long id_aa64mmfr0_el1;
  	unsigned long tcr_el1;
 
- 	struct userspace_desc padd;
- 	struct userspace_desc encrypt;
-
- 	void* pg_lvl_one;
+  	void* pg_lvl_one;
 
 } __attribute__ ((aligned (8)));
 
