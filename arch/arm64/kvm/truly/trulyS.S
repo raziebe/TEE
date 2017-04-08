@@ -92,9 +92,18 @@ brk_exception:
 
 // statitics
 	mrs	x0,tpidr_el2
+	mrs  x2,elr_el2
+	str x2,[x0, #TP_ELR_EL2]
+
 	ldr x1,=truly_decrypt
 	kern_hyp_va x1
 	blr x1
+//
+ // D.1.10.1 . In synchronous exceptions we
+ // jump over the generating exception instruction
+    mrs     x2,elr_el2
+    add x2, x2, #4
+    msr     elr_el2,x2
 
 exit_exception:
 	pop	x2, x3

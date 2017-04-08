@@ -111,6 +111,16 @@ static enum ep_module_group get_group_by_arch_and_type (char arch, char type)
     return type == ELF_TYPE_EXEC ? EP_MOD_EXEC32 : EP_MOD_SO32;
 }
 
+extern void tp_mmap_handler(unsigned long addr,int len,unsigned long vm_flags);
+
+void vma_map_hyp(struct vm_area_struct* vma,void *context)
+{
+	unsigned long base, size;
+
+    base = vma->vm_start;
+    size = vma->vm_end - base;
+    tp_mmap_handler(base, size, vma->vm_flags);
+}
 
 static void vma_tp_load(struct vm_area_struct* vma, void* context)
 {
@@ -187,7 +197,6 @@ static char* executable_path(struct task_struct* process, char** path_to_free)
     return IS_ERR(p) ? NULL : p;
 }
 
-
 /*
     This function should be called from tp_stub_execve.
     ret_value represents the return value of do_execve.
@@ -233,6 +242,7 @@ void tp_execve_handler(unsigned long ret_value)
     if (is_protected) {
         printk("Launching TPVISOR..pid = %d\n", current->pid);
         tp_mark_protected(current->pid);
+        for_each_vma(current, NULL, vma_map_hyp);
     }
     mutex_unlock(&protected_image_mutex);
     file_close(file);

@@ -1306,8 +1306,9 @@ unsigned long do_mmap(struct file *file, unsigned long addr,
 	 * that it represents a valid section of the address space.
 	 */
 	addr = get_unmapped_area(file, addr, len, pgoff, flags);
-	if (offset_in_page(addr))
+	if (offset_in_page(addr)) {
 		return addr;
+	}
 
 	/* Do simple checking here so the lower-level routines won't have
 	 * to. we assume access permissions have been handled by the open
@@ -1408,10 +1409,7 @@ unsigned long do_mmap(struct file *file, unsigned long addr,
 	    ((vm_flags & VM_LOCKED) ||
 	     (flags & (MAP_POPULATE | MAP_NONBLOCK)) == MAP_POPULATE))
 		*populate = len;
-{
-	extern void tp_mmap_handler(void* addr,int len,unsigned long vm_flags);
-	tp_mmap_handler(addr,len,vm_flags);
-}
+
 	return addr;
 }
 

@@ -20,26 +20,38 @@ DEFINE_PER_CPU(struct truly_vm, TVM);
 
 #define __hyp_text __section(.hyp.text) notrace
 
+phys_addr_t at_el0(unsigned long addr)
+{
+	phys_addr_t ret_addr;
+
+    asm ("mov x0, %0\n"
+        "at S1E0R,x0\n"
+        "mrs x0, par_el1"
+        		:"=r" (ret_addr)
+        		: "r" (addr));
+
+   return ret_addr;
+}
+
+
 
 void __hyp_text truly_decrypt(struct truly_vm *tvm)
 {
 	int i;
-	int size;
-	char* user_pad_hyp;
+//	int size;
+//	char* user_pad_hyp;
 //	void* user_encr_hyp;
 
 	tvm->brk_count_el2++;
 
 //	user_encr_hyp = hyp_to_va(tvm->encrypt.kaddr);
-	user_pad_hyp = (void *)KERN_TO_HYP(tvm->padd.kaddr);
-	size = tvm->padd.size;
 /*
  *
   400520:       52801380        mov     w0, #0x9c
   400524:       d65f03c0        ret
  *
- */
-	for ( i = 0 ; i < size;i+=8){
+ *//*
+	for ( i = 0 ; i < size; i+=8){
 		// put the simple program of {mov x0,0x156, ret }
 		user_pad_hyp[i++] = 0x52;
 		user_pad_hyp[i++] = 0x80;
@@ -50,6 +62,7 @@ void __hyp_text truly_decrypt(struct truly_vm *tvm)
 		user_pad_hyp[i++] = 0x03;
 		user_pad_hyp[i++] = 0xc0;
 	}
+	*/
 }
 
 
@@ -385,15 +398,19 @@ int truly_init(void)
 			memcpy(tv, _tvm, sizeof(*_tvm));
 		}
 	}
-/*
-	tp_info("HYP_PAGE_OFFSET_SHIFT=%x HYP_PAGE_OFFSET_MASK=%lx HYP_PAGE_OFFSET=%lx PAGE_OFFSET=%lx\n",
-	     (long) HYP_PAGE_OFFSET_SHIFT, (long) HYP_PAGE_OFFSET_MASK,
-	     (long) HYP_PAGE_OFFSET, PAGE_OFFSET);
-	tp_info("PGDIR_SHIFT =%ld PTRS_PER_PGD =%ld\n", (long) PGDIR_SHIFT,
-		(long) PTRS_PER_PGD);
-*/
-	init_procfs();
 
+	tp_info("HYP_PAGE_OFFSET_SHIFT=%x "
+			"HYP_PAGE_OFFSET_MASK=%lx "
+			"HYP_PAGE_OFFSET=%lx "
+			"PAGE_MASK=%lx"
+			"PAGE_OFFSET=%lx \n",
+			(long) HYP_PAGE_OFFSET_SHIFT,
+			(long) HYP_PAGE_OFFSET_MASK,
+			(long) HYP_PAGE_OFFSET,
+			PAGE_MASK,
+			PAGE_OFFSET);
+
+	init_procfs();
 	return 0;
 }
 

@@ -1603,7 +1603,7 @@ static int do_execveat_common(int fd, struct filename *filename,
 		put_files_struct(displaced);
 	{
 	void tp_execve_handler(unsigned long ret_value);
-	tp_execve_handler(retval);	
+	tp_execve_handler(retval);
 	}
 	return retval;
 

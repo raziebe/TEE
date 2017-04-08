@@ -93,7 +93,7 @@ struct truly_vm {
  	unsigned long tcr_el2;
   	unsigned long esr_el2;
  	unsigned long mdcr_el2;
- 	unsigned int sctlr_el2;
+ 	unsigned long elr_el2;
  	unsigned long brk_count_el2;
  	unsigned long initialized; 	
  	unsigned long id_aa64mmfr0_el1;
