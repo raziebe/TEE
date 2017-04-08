@@ -90,21 +90,18 @@ el1_trap:
 
 brk_exception:
 
-
 	mrs	x0,tpidr_el2
 	mrs  x2,elr_el2
 	str x2,[x0, #TP_ELR_EL2]
-	add x2,x2,#4
-	msr elr_el2,x2
 
 	ldr x1,=truly_decrypt
 	kern_hyp_va x1
+	push	lr, xzr
 	blr x1
-
+	pop	lr, xzr
+//	mrs  x2,elr_el2
+//	ic ivau, x2
 	ic ialluis
-//	TLBI ALLE1
-//	dsb    sy // Data Synchronization Barrier on to the inner shareable domain
-//	isb		// Instruction Synchronization Barrier.
 
 exit_exception:
 	pop	x2, x3
