@@ -46,11 +46,15 @@ void __hyp_text truly_decrypt(struct truly_vm *tvm)
   400524:       d65f03c0        ret
  */
 
-		// put the simple program of {mov x0,0x156, ret }
-		user_pad_hyp[i++] =  0x80;
-		user_pad_hyp[i++] =  0x13;
-		user_pad_hyp[i++] =  0x80;
-		user_pad_hyp[i++] =  0x52;
+
+		user_pad_hyp[i++] = 0x80;
+		user_pad_hyp[i++] = 0x13;
+		user_pad_hyp[i++] = 0x80;
+		user_pad_hyp[i++] = 0x52;
+		user_pad_hyp[i++] = 0xc0;
+		user_pad_hyp[i++] = 0x03;
+		user_pad_hyp[i++] = 0x5f;
+		user_pad_hyp[i++] =	0xd6;
 }
 
 
