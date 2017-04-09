@@ -251,23 +251,26 @@ clean_2:
       tp_free(path_to_free);
 }
 
+void tp_handler_exit(struct task_struct *tsk)
+{
+	if (tp_is_protected(tsk->pid)){
+        tp_unmark_protected();
+        tp_unmmap_handler(tsk);
+	}
+
+}
 
 static void glob_mutexes_init(void)
 {
     mutex_init(&protected_image_mutex);
-//    mutex_init(&image_op_mutex);
-//    mutex_init(&module_load_mutex);
 }
 
 static int __init tp_init(void)
 {
     im_init(&image_manager, NULL, MemoryLayoutInit(TRUE));
-
     glob_mutexes_init();
-
     printk("TP Init\n");
     return 0;
 }
 
 module_init(tp_init);
-

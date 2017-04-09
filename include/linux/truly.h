@@ -73,20 +73,16 @@
 
 #define HCR_TRULY_FLAGS ( HCR_VM | HCR_RW )
 
-struct userspace_desc {
-	void *uaddr;
-	void *kaddr;
-	int  size;
-};
 
 struct truly_vm {
-	int protected_pid;
+	pid_t protected_pid;
+	unsigned long brk_count_el2;
 
 	unsigned long hpfar_el2;
 	unsigned long far_el2;
 	unsigned long hcr_el2;
  	unsigned int hstr_el2;
- 	unsigned long long vttbr_el2;
+ 	unsigned long vttbr_el2;
  	unsigned int vtcr_el2;
 	unsigned long ttbr0_el2;
  	unsigned long tpidr_el2;
@@ -94,7 +90,6 @@ struct truly_vm {
   	unsigned long esr_el2;
  	unsigned long mdcr_el2;
  	unsigned long elr_el2;
- 	unsigned long brk_count_el2;
  	unsigned long initialized; 	
  	unsigned long id_aa64mmfr0_el1;
  	unsigned long tcr_el1;
@@ -109,7 +104,7 @@ void truly_clone_vm(void *);
 void truly_smp_run_hyp(void);
 void truly_clone_vm(void *d);
 struct truly_vm* getTVM(void);
-int vhe_exec_el1(struct truly_vm* cxt);
+
 void tp_run_vm(void *);
 void truly_run_vm(void *);
 long tp_call_hyp(void *hyper_func, ...);
@@ -118,7 +113,11 @@ unsigned long truly_get_hcr_el2(void);
 unsigned long tp_get_ttbr0_el2(void);
 void truly_set_vectors(unsigned long vbar_el2);
 unsigned long truly_get_vectors(void);
-void tp_mark_protected(int pid);
+void tp_mark_protected(pid_t pid);
+int tp_is_protected(pid_t pid);
+void tp_unmark_protected(void);
+void tp_unmmap_handler(struct task_struct* task);
+
 #define HYP_PAGE_OFFSET_SHIFT   VA_BITS
 #define HYP_PAGE_OFFSET_MASK    ((UL(1) << HYP_PAGE_OFFSET_SHIFT) - 1)
 #define HYP_PAGE_OFFSET         (PAGE_OFFSET & HYP_PAGE_OFFSET_MASK)

@@ -388,6 +388,7 @@ static void exit_mm(struct task_struct *tsk)
 {
 	struct mm_struct *mm = tsk->mm;
 	struct core_state *core_state;
+	void tp_handler_exit(struct task_struct *tsk);
 
 	mm_release(tsk, mm);
 	if (!mm)
@@ -401,6 +402,7 @@ static void exit_mm(struct task_struct *tsk)
 	 * group with ->mm != NULL.
 	 */
 	down_read(&mm->mmap_sem);
+	tp_handler_exit(tsk);
 	core_state = mm->core_state;
 	if (core_state) {
 		struct core_thread self;

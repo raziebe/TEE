@@ -412,6 +412,7 @@ void free_boot_hyp_pgd(void)
 	mutex_unlock(&kvm_hyp_pgd_mutex);
 }
 
+
 /**
  * free_hyp_pgds - free Hyp-mode page tables
  *
@@ -602,6 +603,11 @@ unsigned long kvm_uaddr_to_pfn(unsigned long uaddr)
 	return pfn;
 }
 
+
+void hyp_user_unmap(unsigned long umem,int size)
+{
+	unmap_range(NULL, hyp_pgd, umem, size);
+}
 /**
  * create_hyp_mappings - duplicate a kernel virtual address range in Hyp mode
  * @from:	The virtual kernel start address of the range
