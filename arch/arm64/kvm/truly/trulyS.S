@@ -103,7 +103,6 @@ brk_exception:
 	ic ivau, x2
 	add x2,x2,#4
 	ic ivau, x2
-//	ic ialluis
 
 exit_exception:
 	pop	x2, x3
