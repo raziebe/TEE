@@ -3,7 +3,7 @@
 #define __AESENCSW_H__
 
 #include "tp_types.h"
-
+/*
 #define	AES128BlockSize		16
 #define	AES128KeyRounds		10
 
@@ -27,15 +27,10 @@ typedef union
 	};
 	UINT64 keyStorage[9 * 2];
 } SW_AUX_BUFFERS;
-
+*/
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-void AESSW_Enc128(SW_AUX_BUFFERS *bufs, PUCHAR in, PUCHAR result, size_t numBlocks, PUCHAR key);
-void AESSW_Enc128KeySched(PUCHAR xored_key, SW_AUX_BUFFERS *bufs);
-void AESSW_Enc128FromKeySched(UCHAR *plainText, UCHAR *cipherText, SW_AUX_BUFFERS *bufs);
-void AESSW_Enc128DestKeySched(SW_AUX_BUFFERS *bufs);
 
 #ifdef __cplusplus
 }

@@ -12,13 +12,11 @@
 #include <linux/proc_fs.h>
 #include <linux/slab.h>
 #include <asm/page.h>
+#include <linux/vmalloc.h>
 
-
-int create_hyp_mappings(void *, void *);
 
 DEFINE_PER_CPU(struct truly_vm, TVM);
 
-#define __hyp_text __section(.hyp.text) notrace
 
 phys_addr_t at_el0(unsigned long addr)
 {
@@ -384,12 +382,18 @@ int truly_init(void)
 	make_vtcr_el2(_tvm);
 	make_hcr_el2(_tvm);
 	make_mdcr_el2(_tvm);
+
+	_tvm->enc = kmalloc(sizeof(struct encrypt_tvm),GFP_ATOMIC);
+
+	encryptInit(_tvm->enc);
+
 	for_each_possible_cpu(cpu) {
 		struct truly_vm *tv = &per_cpu(TVM, cpu);
 		if (tv != _tvm) {
 			memcpy(tv, _tvm, sizeof(*_tvm));
 		}
 	}
+
 /*
 	tp_info("HYP_PAGE_OFFSET_SHIFT=%x "
 			"HYP_PAGE_OFFSET_MASK=%lx "
@@ -430,7 +434,7 @@ void truly_map_tvm(void *d)
 void tp_run_vm(void *x)
 {
 	struct truly_vm t;
-	struct truly_vm *_tvm = this_cpu_ptr(&TVM);
+	struct truly_vm *tvm = this_cpu_ptr(&TVM);
 	unsigned long vbar_el2;
 	unsigned long vbar_el2_current =
 	    (unsigned long) (KERN_TO_HYP(__truly_vectors));
@@ -441,11 +445,11 @@ void tp_run_vm(void *x)
 		tp_info("vbar_el2 should restore\n");
 		truly_set_vectors(vbar_el2);
 	}
-	t = *_tvm;
-	tp_info("About to run VM sizeof(tvm)=%ld\n",sizeof(t));
-	tp_call_hyp(truly_run_vm, _tvm);
-	// the vm is reset after the mmu is set
-	*_tvm = t;
+	t = *tvm;
+	tp_info("About to run VM sizeof(tvm)=%ld\n",sizeof(*tvm));
+	tp_call_hyp(truly_run_vm, tvm);
+
+	*tvm = t;
 }
 
 void truly_smp_run_hyp(void)

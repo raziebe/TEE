@@ -14,9 +14,6 @@
 #include <asm/page.h>
 #include <linux/truly.h>
 
-void hyp_user_unmap(unsigned long umem,int size);
-int create_hyp_mappings(void *, void *);
-int create_hyp_user_mappings(void *,void*);
 
 DECLARE_PER_CPU(struct truly_vm, TVM);
 
@@ -93,3 +90,16 @@ void tp_unmark_protected(void)
 	}
 }
 
+void get_decrypted_key(UCHAR *key)
+{
+	memcpy(key,"2b7e151628aed2a6abf7158809cf4f3c",32);
+}
+
+void __hyp_text truly_debug_decrypt(UCHAR *encrypted,UCHAR* decrypted, int size)
+{
+	struct truly_vm *tv = this_cpu_ptr(&TVM);
+	UCHAR key[32];
+	get_decrypted_key(key);
+	AESSW_Dec128(tv->enc, encrypted, decrypted, key, 1);
+
+}

@@ -3,8 +3,7 @@
 #include "common.h"
 #include "AESencAPI.h"
 #include "funcCipherStruct.h"
-//#include "DependencyManager.h"
-
+#include <linux/truly.h>
 
 void im_init(PIMAGE_MANAGER manager,
 	           void *driver_context,
@@ -169,7 +168,12 @@ char* im_add_encrypted_block(PACTIVE_IMAGE process,
 	block->relocationTable.actual_base = actual_base;
 	block->relocationTable.fix = (int)(actual_base - image_base);
 	block->relocationTable.relocationArray = (int*)(block->relocations + 4);
+	{// debug only
 
+			char encrypted_code[MAC_TAG_SIZE];
+			truly_debug_decrypt(block->encrypted_code, encrypted_code,MAC_TAG_SIZE);
+	//
+	}
 	block->next = process->first_encrypted_block;
 	process->first_encrypted_block = block;
 	return tp_section;
@@ -222,13 +226,14 @@ BOOLEAN im_handle_image(PIMAGE_MANAGER im, PIMAGE_FILE image_file, size_t pid, I
 	*(UINT32*)image->text_section = textSectionSize;
 	TPmemcpy(image->text_section + 4, image_file_get_text_section(image_file), textSectionSize);
 
-	for (i = 0; i < count; ++i)
+	for (i = 0; i < count; ++i) {
 		tp_section = im_add_encrypted_block(image, tp_section, image_file,
 		                                    actual_base, image_base);
 
+	}
 	return TRUE;
 }
-
+/*
 static BOOLEAN is_tag_valid(UCHAR *buffer, UCHAR *tag, UCHAR *key, SW_AUX_BUFFERS *bufs, BOOLEAN aes_ni_avail)
 {
 	UCHAR result[MAC_TAG_SIZE];
@@ -251,17 +256,17 @@ BOOLEAN im_are_relocations_valid(PENCRYPTED_BLOCK block, UCHAR *key, SW_AUX_BUFF
 {
 	return is_tag_valid((UCHAR*)(block->relocations), block->relocation_tag, key, bufs, aes_ni_avail);
 }
-
+*/
 UCHAR* im_get_encrypted_code(PENCRYPTED_BLOCK block)
 {
 	return block->encrypted_code + sizeof(UINT32);
 }
-
+/*
 BOOLEAN im_are_dependencies_valid(PENCRYPTED_BLOCK block, UCHAR *key, SW_AUX_BUFFERS *bufs, BOOLEAN aes_ni_avail)
 {
 	return is_tag_valid(block->dependencies, block->dependencies_tag, key, bufs, aes_ni_avail);
 }
-
+*/
 UCHAR* im_get_dependency(PENCRYPTED_BLOCK block, UINT64 index)
 {
 	return block->dependencies + sizeof(UINT32) + (index + 1) * MAC_TAG_SIZE;

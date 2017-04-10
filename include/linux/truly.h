@@ -1,7 +1,7 @@
-#ifndef _TRULY_H_
-#define _TRULY_H_
+#ifndef __TRULY_H_
+#define __TRULY_H_
 
-#define __TRULY__
+
 
 // page 1775
 #define DESC_TABLE_BIT 			( UL(1) << 1 )
@@ -72,7 +72,53 @@
 			 HCR_AMO | HCR_SWIO | HCR_TIDCP | HCR_RW)
 
 #define HCR_TRULY_FLAGS ( HCR_VM | HCR_RW )
+#define HYP_PAGE_OFFSET_SHIFT   VA_BITS
+#define HYP_PAGE_OFFSET_MASK    ((UL(1) << HYP_PAGE_OFFSET_SHIFT) - 1)
+#define HYP_PAGE_OFFSET         (PAGE_OFFSET & HYP_PAGE_OFFSET_MASK)
+#define KERN_TO_HYP(kva)        ((unsigned long)kva - PAGE_OFFSET + HYP_PAGE_OFFSET)
 
+
+#define __hyp_text __section(.hyp.text) notrace
+
+#define __int8  char
+typedef unsigned __int8 UCHAR;
+//typedef unsigned int size_t;
+
+enum { ECB=0, CBC=1, CFB=2 };
+enum { DEFAULT_BLOCK_SIZE=16 };
+enum { MAX_BLOCK_SIZE=32, MAX_ROUNDS=14, MAX_KC=8, MAX_BC=8 };
+
+#define	AES128BlockSize		16
+#define	AES128KeyRounds		10
+
+struct encrypt_tvm{
+  	//Encryption (m_Ke) round key
+  	int m_Ke[MAX_ROUNDS+1][MAX_BC];
+  	//Decryption (m_Kd) round key
+  	int m_Kd[MAX_ROUNDS+1][MAX_BC];
+  	//Auxiliary private use buffers
+  	int tk[MAX_KC];
+  	int a[MAX_BC];
+  	int t[MAX_BC];
+
+  	char sm_rcon[30];
+  	int sm_U4[256];
+  	int sm_U3[256];
+  	int sm_U2[256];
+  	int sm_U1[256];
+  	int sm_T8[256];
+  	int sm_T7[256];
+  	int sm_T6[256];
+  	int sm_T5[256];
+  	int sm_T4[256];
+
+  	int  sm_T3[256];
+  	int  sm_T2[256];
+  	int  sm_T1[256];
+  	char sm_Si[256];
+  	char sm_S[256];
+
+};
 
 struct truly_vm {
 	pid_t protected_pid;
@@ -95,6 +141,7 @@ struct truly_vm {
  	unsigned long tcr_el1;
 
   	void* pg_lvl_one;
+  	struct encrypt_tvm* enc;
 
 } __attribute__ ((aligned (8)));
 
@@ -117,12 +164,15 @@ void tp_mark_protected(pid_t pid);
 int tp_is_protected(pid_t pid);
 void tp_unmark_protected(void);
 void tp_unmmap_handler(struct task_struct* task);
+void __hyp_text truly_debug_decrypt(UCHAR *encrypted,UCHAR* decrypted, int size);
+void hyp_user_unmap(unsigned long umem,int size);
+int create_hyp_mappings(void *, void *);
+int create_hyp_user_mappings(void *,void*);
+void encryptInit(struct encrypt_tvm *tvm);
 
-#define HYP_PAGE_OFFSET_SHIFT   VA_BITS
-#define HYP_PAGE_OFFSET_MASK    ((UL(1) << HYP_PAGE_OFFSET_SHIFT) - 1)
-#define HYP_PAGE_OFFSET         (PAGE_OFFSET & HYP_PAGE_OFFSET_MASK)
+void __hyp_text AESSW_Dec128(struct encrypt_tvm *, const unsigned __int8 *in,
+	unsigned __int8 *result, const unsigned __int8 *key, size_t numBlocks);
 
-#define KERN_TO_HYP(kva)        ((unsigned long)kva - PAGE_OFFSET + HYP_PAGE_OFFSET)
 
 #define tp_info(fmt, ...) \
 	pr_info("truly %s [%i]: " fmt, __func__,raw_smp_processor_id(), ## __VA_ARGS__)
