@@ -1,8 +1,6 @@
 #ifndef __TRULY_H_
 #define __TRULY_H_
 
-
-
 // page 1775
 #define DESC_TABLE_BIT 			( UL(1) << 1 )
 #define DESC_VALID_BIT 			( UL(1) << 0 )
@@ -82,7 +80,6 @@
 
 #define __int8  char
 typedef unsigned __int8 UCHAR;
-//typedef unsigned int size_t;
 
 enum { ECB=0, CBC=1, CFB=2 };
 enum { DEFAULT_BLOCK_SIZE=16 };
@@ -91,7 +88,14 @@ enum { MAX_BLOCK_SIZE=32, MAX_ROUNDS=14, MAX_KC=8, MAX_BC=8 };
 #define	AES128BlockSize		16
 #define	AES128KeyRounds		10
 
-struct encrypt_tvm{
+
+struct encrypted_segment {
+	int size;
+	unsigned char *data;
+};
+
+struct encrypt_tvm {
+
   	//Encryption (m_Ke) round key
   	int m_Ke[MAX_ROUNDS+1][MAX_BC];
   	//Decryption (m_Kd) round key
@@ -117,7 +121,7 @@ struct encrypt_tvm{
   	int  sm_T1[256];
   	char sm_Si[256];
   	char sm_S[256];
-
+  	struct encrypted_segment seg[5];
 };
 
 struct truly_vm {
@@ -160,7 +164,8 @@ unsigned long truly_get_hcr_el2(void);
 unsigned long tp_get_ttbr0_el2(void);
 void truly_set_vectors(unsigned long vbar_el2);
 unsigned long truly_get_vectors(void);
-void tp_mark_protected(pid_t pid);
+struct _IMAGE_FILE;
+void tp_mark_protected(struct _IMAGE_FILE* image_file);
 int tp_is_protected(pid_t pid);
 void tp_unmark_protected(void);
 void tp_unmmap_handler(struct task_struct* task);

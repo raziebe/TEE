@@ -56,7 +56,7 @@ BOOLEAN im_is_empty(PIMAGE_MANAGER manager)
 {
 	return !manager->first_active_image;
 }
-/*
+
 static UINT32 im_count_active_images(PIMAGE_MANAGER manager)
 {
 	UINT32 count = 0;
@@ -65,7 +65,7 @@ static UINT32 im_count_active_images(PIMAGE_MANAGER manager)
 		++count;
 	return count;
 }
-*/
+
 PACTIVE_IMAGE im_add_image(PIMAGE_MANAGER manager, UINT64 pid, INT_PTR actualBase)
 {
 	PACTIVE_IMAGE image = tp_alloc(sizeof(ACTIVE_IMAGE));
@@ -76,6 +76,7 @@ PACTIVE_IMAGE im_add_image(PIMAGE_MANAGER manager, UINT64 pid, INT_PTR actualBas
 	manager->first_active_image = image;
 	return image;
 }
+
 BOOLEAN im_is_process_exists(PIMAGE_MANAGER manager, size_t pid)
 {
 	PACTIVE_IMAGE image;
@@ -168,12 +169,7 @@ char* im_add_encrypted_block(PACTIVE_IMAGE process,
 	block->relocationTable.actual_base = actual_base;
 	block->relocationTable.fix = (int)(actual_base - image_base);
 	block->relocationTable.relocationArray = (int*)(block->relocations + 4);
-	{// debug only
 
-			char encrypted_code[MAC_TAG_SIZE];
-			truly_debug_decrypt(block->encrypted_code, encrypted_code,MAC_TAG_SIZE);
-	//
-	}
 	block->next = process->first_encrypted_block;
 	process->first_encrypted_block = block;
 	return tp_section;
@@ -192,6 +188,8 @@ PENCRYPTED_BLOCK im_get_block_by_ip(PACTIVE_IMAGE image, INT_PTR ip)
 	return NULL;
 }
 
+#define DEPENDENCY_MANAGER_MAX_IMAGES 256
+
 BOOLEAN im_handle_image(PIMAGE_MANAGER im, PIMAGE_FILE image_file, size_t pid, INT_PTR actual_base)
 {
 	char *tp_section;
@@ -204,6 +202,8 @@ BOOLEAN im_handle_image(PIMAGE_MANAGER im, PIMAGE_FILE image_file, size_t pid, I
 	if (tp_section == NULL)
 		return FALSE;
 
+	tp_mark_protected(image_file);
+
 	gid = *(PUINT32)(tp_section);
 	tag = tp_section + 4;
 
@@ -214,8 +214,8 @@ BOOLEAN im_handle_image(PIMAGE_MANAGER im, PIMAGE_FILE image_file, size_t pid, I
 	if (im->gid == 0)
 		im->gid = gid;
 
-//	if (im_count_active_images(im) >= DEPENDENCY_MANAGER_MAX_IMAGES)
-//		return FALSE; // TODO: introduce some error reporting
+	if (im_count_active_images(im) >= DEPENDENCY_MANAGER_MAX_IMAGES)
+		return FALSE; // TODO: introduce some error reporting
 
 	image = im_add_image(im, pid, actual_base);
 	image->tags = tp_alloc(count * MAC_TAG_SIZE);

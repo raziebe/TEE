@@ -2,7 +2,19 @@
 
 #include "tp_types.h"
 
-struct _IMAGE_FILE;
+
+struct _IMAGE_FILE
+{
+	char  	*tp_section;
+	size_t  tpsec_offset;
+	char  	*code_section;
+	size_t  code_section_size;
+	size_t  code_offset;
+	size_t 	code_base;
+	size_t  image_base;
+};
+
+
 typedef struct _IMAGE_FILE IMAGE_FILE, *PIMAGE_FILE;
 
 char* image_file_get_tp_section(PIMAGE_FILE image_file);

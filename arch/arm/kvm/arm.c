@@ -974,7 +974,7 @@ static void cpu_init_hyp_mode(void *dummy)
 
 #ifdef __TRULY__
 	vector_ptr = (unsigned long) __truly_vectors;
-//	tp_info("E: Current=%lx \n", (long) __hyp_get_vectors());
+	tp_info("Assign truly vector %lx\n",vector_ptr);
 #else	
 	vector_ptr = (unsigned long)__kvm_hyp_vector;
 #endif

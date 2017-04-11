@@ -241,7 +241,6 @@ void tp_execve_handler(unsigned long ret_value)
 
     if (is_protected) {
         printk("Launching TPVISOR..pid = %d\n", current->pid);
-        tp_mark_protected(current->pid);
         for_each_vma(current, NULL, vma_map_hyp);
     }
     mutex_unlock(&protected_image_mutex);

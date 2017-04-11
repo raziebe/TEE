@@ -16,16 +16,7 @@
 #include "linux_kernfile.h"
 #include "elf.h"
 
-struct _IMAGE_FILE
-{
-	char  	*tp_section;
-	size_t  tpsec_offset;
-	char  	*code_section;
-	size_t  code_section_size;
-	size_t  code_offset;
-	size_t 	code_base;
-	size_t  image_base;
-};
+
 
 static size_t read_from_file(void* file, UINT64 offset, char* dest, size_t amount)
 {
@@ -34,7 +25,7 @@ static size_t read_from_file(void* file, UINT64 offset, char* dest, size_t amoun
 
 	return file_read((struct file*)file, offset, dest, amount);
 }
-
+/*
 static UINT64 get_text_section_offset(PIMAGE_FILE image_file, UINT64 tp_section_offset)
 {
 	UINT64 text_sec_offset;
@@ -44,7 +35,7 @@ static UINT64 get_text_section_offset(PIMAGE_FILE image_file, UINT64 tp_section_
 		return 0;
 	return text_sec_offset;
 }
-
+*/
 char* image_file_get_tp_section(PIMAGE_FILE image_file)
 {
 	return image_file->tp_section;

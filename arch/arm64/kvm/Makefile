@@ -3,7 +3,7 @@
 #
 
 ccflags-y += -Iarch/arm64/kvm
-CFLAGS_arm.o := -I.
+CFLAGS_arm.o := -I. -D__TRULY__
 CFLAGS_mmu.o := -I.
 
 KVM=../../../virt/kvm

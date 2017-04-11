@@ -1147,7 +1147,8 @@ void __hyp_text  DefDecryptBlock(struct encrypt_tvm *tvm, const UCHAR *in, UCHAR
 
 
 
-void __hyp_text  AESSW_Enc128(struct encrypt_tvm *tvm, const UCHAR *in, UCHAR *result, size_t numBlocks, const UCHAR *key)
+void __hyp_text  AESSW_Enc128(struct encrypt_tvm *tvm,
+		const UCHAR *in, UCHAR *result, size_t numBlocks, const UCHAR *key)
 {
 		size_t i;
 		const UCHAR *pin;
@@ -1164,7 +1165,8 @@ void __hyp_text  AESSW_Enc128(struct encrypt_tvm *tvm, const UCHAR *in, UCHAR *r
 }
 
 	
-void __hyp_text  AESSW_Dec128(struct encrypt_tvm *tvm, const UCHAR *in, UCHAR *result, const UCHAR *key, size_t numBlocks)
+void __hyp_text  AESSW_Dec128(struct encrypt_tvm *tvm, const UCHAR *in,
+		UCHAR *result, const UCHAR *key, size_t numBlocks)
 {
 		size_t i;
 		const UCHAR *pin;

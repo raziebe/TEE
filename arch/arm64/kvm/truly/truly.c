@@ -32,30 +32,6 @@ phys_addr_t at_el0(unsigned long addr)
 }
 
 
-void __hyp_text truly_decrypt(struct truly_vm *tvm)
-{
-	int i = 0;
-	char* user_pad_hyp = (char *)tvm->elr_el2;
-
-	tvm->brk_count_el2++;
-/*
- *
-  400520:       52801380        mov     w0, #0x9c
-  400524:       d65f03c0        ret
- */
-
-
-		user_pad_hyp[i++] = 0x80;
-		user_pad_hyp[i++] = 0x13;
-		user_pad_hyp[i++] = 0x80;
-		user_pad_hyp[i++] = 0x52;
-		user_pad_hyp[i++] = 0xc0;
-		user_pad_hyp[i++] = 0x03;
-		user_pad_hyp[i++] = 0x5f;
-		user_pad_hyp[i++] =	0xd6;
-}
-
-
 struct truly_vm *get_tvm(void)
 {
 	return &TVM;
@@ -330,11 +306,13 @@ static ssize_t proc_read(struct file *filp, char __user * page,
 
 	if (filp->private_data == 0x00)
 		return 0;
+
 	for_each_possible_cpu(cpu) {
 		struct truly_vm *tv = &per_cpu(TVM, cpu);
 		len += sprintf(page + len, "cpu %d brk count %ld\n", cpu,
 			       tv->brk_count_el2);
 	}
+
 	filp->private_data = 0x00;
 	return len;
 }
@@ -359,6 +337,7 @@ static void init_procfs(void)
 */
 int truly_init(void)
 {
+	int err;
 	long long tcr_el1;
 	int t0sz;
 	int t1sz;
@@ -383,9 +362,17 @@ int truly_init(void)
 	make_hcr_el2(_tvm);
 	make_mdcr_el2(_tvm);
 
-	_tvm->enc = kmalloc(sizeof(struct encrypt_tvm),GFP_ATOMIC);
+	_tvm->enc = kmalloc(sizeof(struct encrypt_tvm), GFP_ATOMIC);
 
 	encryptInit(_tvm->enc);
+
+	err = create_hyp_mappings((char *)_tvm->enc,
+				((char *) _tvm->enc) + sizeof(struct encrypt_tvm));
+	if (err) {
+		tp_err("Failed to map encrypted");
+	} else {
+		tp_info("Mapped encrypted");
+	}
 
 	for_each_possible_cpu(cpu) {
 		struct truly_vm *tv = &per_cpu(TVM, cpu);

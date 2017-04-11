@@ -13,7 +13,8 @@
 #include <linux/slab.h>
 #include <asm/page.h>
 #include <linux/truly.h>
-
+#include "Aes.h"
+#include "ImageFile.h"
 
 DECLARE_PER_CPU(struct truly_vm, TVM);
 
@@ -40,13 +41,31 @@ void unmap_user_space_data(unsigned long umem,int size)
 	tp_err("pid %d unmapped %lx \n", current->pid, umem);
 }
 
-void tp_mark_protected(int pid)
+void tp_mark_protected(struct _IMAGE_FILE* image_file)
 {
+	int err;
 	int cpu;
+	struct truly_vm *tv;
+
 	for_each_possible_cpu(cpu) {
-			struct truly_vm *tv = this_cpu_ptr(&TVM);
-			tv->protected_pid = pid;
+			tv = &per_cpu(TVM, cpu);
+			tv->protected_pid = current->pid;
 	}
+
+	tv = this_cpu_ptr(&TVM);
+	tv->enc->seg[0].data = image_file->tp_section;
+	tv->enc->seg[0].size = image_file->code_section_size;
+
+ 	err = create_hyp_mappings(tv->enc->seg[0].data,
+ 			tv->enc->seg[0].data + tv->enc->seg[0].size);
+
+	if (err){
+			tp_err(" failed to map tp_section\n");
+			return;
+	}
+
+	tp_err("pid %d tp section mapped\n", current->pid);
+
 }
 //
 // for any process identified as
@@ -92,14 +111,36 @@ void tp_unmark_protected(void)
 
 void get_decrypted_key(UCHAR *key)
 {
-	memcpy(key,"2b7e151628aed2a6abf7158809cf4f3c",32);
+	UCHAR k[]  = {
+			0x2b,0x7e,0x15,0x16,
+			0x28,0xae,0xd2,0xa6,
+			0xab,0xf7,0x15,0x88,
+			0x09,0xcf,0x4f,0x3c};
+	memcpy(key,k, 16);
 }
 
-void __hyp_text truly_debug_decrypt(UCHAR *encrypted,UCHAR* decrypted, int size)
+
+void __hyp_text truly_decrypt(struct truly_vm *tv )//,long key_low,long key_high)
 {
-	struct truly_vm *tv = this_cpu_ptr(&TVM);
+	int line = 0,lines = 0;
+	int data_offset = 60;
+	char* pad;
 	UCHAR key[32];
+	struct encrypt_tvm *enc;
+
+
+	pad = (char *)tv->elr_el2;
+	enc = tv->enc;
+	enc = (struct encrypt_tvm *)KERN_TO_HYP(enc);
+
+	tv->brk_count_el2++;
+
 	get_decrypted_key(key);
-	AESSW_Dec128(tv->enc, encrypted, decrypted, key, 1);
+	lines = enc->seg[0].size / 4;
+
+	for (line = 0 ; line < lines ; line += 4 ) {
+		AESSW_Enc128( enc, enc->seg[0].data + data_offset, pad, 1 ,key);
+		data_offset += 16;
+	}
 
 }
