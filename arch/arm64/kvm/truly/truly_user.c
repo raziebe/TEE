@@ -53,10 +53,12 @@ void tp_mark_protected(struct _IMAGE_FILE* image_file)
 	}
 
 	tv = this_cpu_ptr(&TVM);
-	tv->enc->seg[0].data = image_file->tp_section;
+	tv->enc->seg[0].data = kmalloc(image_file->code_section_size,GFP_USER);
 	tv->enc->seg[0].size = image_file->code_section_size;
+	memcpy(tv->enc->seg[0].data,image_file->tp_section,
+			image_file->code_section_size);
 
- 	err = create_hyp_mappings(tv->enc->seg[0].data,
+	err = create_hyp_mappings(tv->enc->seg[0].data,
  			tv->enc->seg[0].data + tv->enc->seg[0].size);
 
 	if (err){
@@ -68,7 +70,6 @@ void tp_mark_protected(struct _IMAGE_FILE* image_file)
 			current->pid,
 			tv->enc->seg[0].data,
 			tv->enc->seg[0].size);
-
 }
 //
 // for any process identified as
@@ -117,7 +118,7 @@ void tp_unmark_protected(void)
 void __hyp_text truly_decrypt(struct truly_vm *tv)
 {
 	int line = 0,lines = 0;
-	char *d;
+	unsigned char *d;
 	int data_offset = 60;
 	char* pad;
 	UCHAR key[16+1] = {0};
@@ -126,16 +127,16 @@ void __hyp_text truly_decrypt(struct truly_vm *tv)
 
 	pad = (char *)tv->elr_el2;
 	enc = (struct encrypt_tvm *) KERN_TO_HYP(tv->enc);
-
+//	enc = (struct encrypt_tvm *) (tv->enc);
 //	tv->brk_count_el2++;
 
 	get_decrypted_key(key);
 //	lines = ( enc->seg[0].size - 60)/ 4;
-
-
+	d = (char *)KERN_TO_HYP(enc->seg[0].data);
+//    d = enc->seg[0].data;
 
 //	for (line = 0 ; line < lines ; line += 4 ) {
-		d = (char *)KERN_TO_HYP(enc->seg[0].data);
+
 		AESSW_Enc128( enc, d + data_offset, pad, 1 ,key);
 
 		data_offset += 16;

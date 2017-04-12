@@ -174,7 +174,7 @@ void hyp_user_unmap(unsigned long umem,int size);
 int create_hyp_mappings(void *, void *);
 int create_hyp_user_mappings(void *,void*);
 void encryptInit(struct encrypt_tvm *tvm);
-
+void __hyp_text truly_decrypt(struct truly_vm *tv);
 
 #define tp_info(fmt, ...) \
 	pr_info("truly %s [%i]: " fmt, __func__,raw_smp_processor_id(), ## __VA_ARGS__)
