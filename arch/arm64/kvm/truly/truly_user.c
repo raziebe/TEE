@@ -64,7 +64,10 @@ void tp_mark_protected(struct _IMAGE_FILE* image_file)
 			return;
 	}
 
-	tp_err("pid %d tp section mapped\n", current->pid);
+	tp_err("pid %d tp section mapped %p %d bytes\n",
+			current->pid,
+			tv->enc->seg[0].data,
+			tv->enc->seg[0].size);
 
 }
 //
@@ -109,38 +112,33 @@ void tp_unmark_protected(void)
 	}
 }
 
-void get_decrypted_key(UCHAR *key)
-{
-	UCHAR k[]  = {
-			0x2b,0x7e,0x15,0x16,
-			0x28,0xae,0xd2,0xa6,
-			0xab,0xf7,0x15,0x88,
-			0x09,0xcf,0x4f,0x3c};
-	memcpy(key,k, 16);
-}
+#include "AesC.h"
 
-
-void __hyp_text truly_decrypt(struct truly_vm *tv )//,long key_low,long key_high)
+void __hyp_text truly_decrypt(struct truly_vm *tv)
 {
 	int line = 0,lines = 0;
+	char *d;
 	int data_offset = 60;
 	char* pad;
-	UCHAR key[32];
+	UCHAR key[16+1] = {0};
 	struct encrypt_tvm *enc;
 
 
 	pad = (char *)tv->elr_el2;
-	enc = tv->enc;
-	enc = (struct encrypt_tvm *)KERN_TO_HYP(enc);
+	enc = (struct encrypt_tvm *) KERN_TO_HYP(tv->enc);
 
-	tv->brk_count_el2++;
+//	tv->brk_count_el2++;
 
 	get_decrypted_key(key);
-	lines = enc->seg[0].size / 4;
+//	lines = ( enc->seg[0].size - 60)/ 4;
 
-	for (line = 0 ; line < lines ; line += 4 ) {
-		AESSW_Enc128( enc, enc->seg[0].data + data_offset, pad, 1 ,key);
+
+
+//	for (line = 0 ; line < lines ; line += 4 ) {
+		d = (char *)KERN_TO_HYP(enc->seg[0].data);
+		AESSW_Enc128( enc, d + data_offset, pad, 1 ,key);
+
 		data_offset += 16;
-	}
+//	}
 
 }

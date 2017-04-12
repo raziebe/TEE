@@ -14,11 +14,4 @@
 #include <asm/page.h>
 #include <linux/truly.h>
 
-void __hyp_text AESSW_Dec128(struct encrypt_tvm *, const unsigned __int8 *in,
-	unsigned __int8 *result, const unsigned __int8 *key, size_t numBlocks);
-
-void __hyp_text AESSW_Enc128(struct encrypt_tvm *, const unsigned __int8 *in,
-	unsigned __int8 *result, size_t numBlocks, const unsigned __int8 *key);
-
-void EncryptInit(struct truly_vm *tvm);
 

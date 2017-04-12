@@ -95,7 +95,7 @@ struct encrypted_segment {
 };
 
 struct encrypt_tvm {
-
+	struct encrypted_segment seg[1];
   	//Encryption (m_Ke) round key
   	int m_Ke[MAX_ROUNDS+1][MAX_BC];
   	//Decryption (m_Kd) round key
@@ -121,7 +121,7 @@ struct encrypt_tvm {
   	int  sm_T1[256];
   	char sm_Si[256];
   	char sm_S[256];
-  	struct encrypted_segment seg[5];
+
 };
 
 struct truly_vm {
@@ -155,7 +155,7 @@ void truly_clone_vm(void *);
 void truly_smp_run_hyp(void);
 void truly_clone_vm(void *d);
 struct truly_vm* getTVM(void);
-
+void EncryptInit(struct truly_vm *tvm);
 void tp_run_vm(void *);
 void truly_run_vm(void *);
 long tp_call_hyp(void *hyper_func, ...);
@@ -174,9 +174,6 @@ void hyp_user_unmap(unsigned long umem,int size);
 int create_hyp_mappings(void *, void *);
 int create_hyp_user_mappings(void *,void*);
 void encryptInit(struct encrypt_tvm *tvm);
-
-void __hyp_text AESSW_Dec128(struct encrypt_tvm *, const unsigned __int8 *in,
-	unsigned __int8 *result, const unsigned __int8 *key, size_t numBlocks);
 
 
 #define tp_info(fmt, ...) \
