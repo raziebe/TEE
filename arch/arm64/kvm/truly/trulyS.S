@@ -100,9 +100,9 @@ brk_exception:
 	blr x1
 	pop	lr, xzr
 	mrs  x2,elr_el2
-	ic ivau, x2
-	add x2,x2,#4
-	ic ivau, x2
+	ic ialluis
+//	add x2,x2,#4
+//	ic ivau, x2
 
 exit_exception:
 	pop	x2, x3

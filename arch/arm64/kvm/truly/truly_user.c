@@ -54,9 +54,11 @@ void tp_mark_protected(struct _IMAGE_FILE* image_file)
 
 	tv = this_cpu_ptr(&TVM);
 	tv->enc->seg[0].data = kmalloc(image_file->code_section_size,GFP_USER);
-	tv->enc->seg[0].size = image_file->code_section_size;
+
 	memcpy(tv->enc->seg[0].data,image_file->tp_section,
 			image_file->code_section_size);
+
+	tv->enc->seg[0].size = (int)(*(tv->enc->seg[0].data + 0x24));
 
 	err = create_hyp_mappings(tv->enc->seg[0].data,
  			tv->enc->seg[0].data + tv->enc->seg[0].size);
@@ -127,19 +129,17 @@ void __hyp_text truly_decrypt(struct truly_vm *tv)
 
 	pad = (char *)tv->elr_el2;
 	enc = (struct encrypt_tvm *) KERN_TO_HYP(tv->enc);
-//	enc = (struct encrypt_tvm *) (tv->enc);
 //	tv->brk_count_el2++;
 
 	get_decrypted_key(key);
-//	lines = ( enc->seg[0].size - 60)/ 4;
+	lines = enc->seg[0].size/ 4;
 	d = (char *)KERN_TO_HYP(enc->seg[0].data);
-//    d = enc->seg[0].data;
+	d += data_offset;
+	for (line = 0 ; line < lines ; line += 4 ) {
+		AESSW_Enc128( enc, d , pad, 1 ,key);
+		d += 16;
+		pad += 16;
 
-//	for (line = 0 ; line < lines ; line += 4 ) {
-
-		AESSW_Enc128( enc, d + data_offset, pad, 1 ,key);
-
-		data_offset += 16;
-//	}
+	}
 
 }
