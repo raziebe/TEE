@@ -18,6 +18,14 @@
 
 DECLARE_PER_CPU(struct truly_vm, TVM);
 
+unsigned long truly_get_ttbr0_el1(void)
+{
+	  long ttbr0_el1;
+
+      asm("mrs %0,ttbr0_el1\n":"=r" (ttbr0_el1));
+      return ttbr0_el1;
+}
+
 /*
  * Called from execve context.
  * Map the user
@@ -46,10 +54,11 @@ void tp_mark_protected(struct _IMAGE_FILE* image_file)
 	int err;
 	int cpu;
 	struct truly_vm *tv;
+	unsigned long ttbr0_el1 = truly_get_ttbr0_el1();
 
 	for_each_possible_cpu(cpu) {
 			tv = &per_cpu(TVM, cpu);
-			tv->protected_pid = current->pid;
+			tv->protected_pgd = ttbr0_el1;
 	}
 
 	tv = this_cpu_ptr(&TVM);
@@ -68,10 +77,11 @@ void tp_mark_protected(struct _IMAGE_FILE* image_file)
 			return;
 	}
 
-	tp_err("pid %d tp section mapped %p %d bytes\n",
+	tp_err("pid %d tp section "
+			"mapped %p %d bytes ttbr0_el1=0x%lx\n",
 			current->pid,
 			tv->enc->seg[0].data,
-			tv->enc->seg[0].size);
+			tv->enc->seg[0].size, ttbr0_el1);
 }
 //
 // for any process identified as
@@ -87,6 +97,7 @@ void tp_mmap_handler(unsigned long addr,int len,unsigned long vm_flags)
 void tp_unmmap_handler(struct task_struct* task)
 {
     struct vm_area_struct* p;
+
     if (!(task && task->mm && task->mm->mmap))
         return;
 
@@ -95,7 +106,6 @@ void tp_unmmap_handler(struct task_struct* task)
 
         base = p->vm_start;
         size = p->vm_end - base;
-
     	unmap_user_space_data(base, size);
     }
 }
@@ -103,7 +113,7 @@ void tp_unmmap_handler(struct task_struct* task)
 int tp_is_protected(pid_t pid)
 {
 	struct truly_vm *tv = this_cpu_ptr(&TVM);
-	return tv->protected_pid == pid;
+	return tv->protected_pgd == truly_get_ttbr0_el1();
 }
 
 void tp_unmark_protected(void)
@@ -111,7 +121,7 @@ void tp_unmark_protected(void)
 	int cpu;
 	for_each_possible_cpu(cpu) {
 			struct truly_vm *tv = this_cpu_ptr(&TVM);
-			tv->protected_pid = 0;
+			tv->protected_pgd = 0;
 	}
 }
 
@@ -126,10 +136,12 @@ void __hyp_text truly_decrypt(struct truly_vm *tv)
 	UCHAR key[16+1] = {0};
 	struct encrypt_tvm *enc;
 
+	if (tv->protected_pgd != truly_get_ttbr0_el1())
+			return;
 
 	pad = (char *)tv->elr_el2;
 	enc = (struct encrypt_tvm *) KERN_TO_HYP(tv->enc);
-//	tv->brk_count_el2++;
+	tv->brk_count_el2++;
 
 	get_decrypted_key(key);
 	lines = enc->seg[0].size/ 4;

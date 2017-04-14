@@ -253,8 +253,8 @@ clean_2:
 void tp_handler_exit(struct task_struct *tsk)
 {
 	if (tp_is_protected(tsk->pid)){
-        tp_unmark_protected();
-        tp_unmmap_handler(tsk);
+		tp_unmark_protected();
+		tp_unmmap_handler(tsk);
 	}
 
 }

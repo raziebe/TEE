@@ -55,10 +55,7 @@ void truly_set_elr_el1(long e)
       asm("msr  elr_el1,%0\n":"=r"(e));
 }
 
-void truly_set_vtcr_el2(long vtcr_el2)
-{
-      asm("msr vctr_el2,%0\n":"=r"(vtcr_el2));
-}
+
 
 long truly_get_mfr(void)
 {

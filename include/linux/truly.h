@@ -125,7 +125,7 @@ struct encrypt_tvm {
 };
 
 struct truly_vm {
-	pid_t protected_pid;
+	unsigned long protected_pgd;
 	unsigned long brk_count_el2;
 
 	unsigned long hpfar_el2;
