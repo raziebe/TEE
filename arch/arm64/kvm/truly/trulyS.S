@@ -90,6 +90,7 @@ el1_trap:
 
 brk_exception:
 
+
 	mrs	x0,tpidr_el2
 	mrs  x2,elr_el2
 	str x2,[x0, #TP_ELR_EL2]
@@ -211,7 +212,32 @@ ENTRY(truly_run_vm)
 	msr		mdcr_el2, x1
 	// Clear cntvoff for the host
 	msr	cntvoff_el2, xzr
-	
+
+/*	check here that we storge the keys in the registers.
+			0x2b,0x7e,0x15,0x16,
+			0x28,0xae,0xd2,0xa6,
+			0xab,0xf7,0x15,0x88,
+			0x09,0xcf,0x4f,0x3c};
+	amair_el2  actlr_el2
+
+*/
+	mov		x1, #0
+	mov     x1, #0xd2a6
+    movk    x1, #0x28ae, lsl #16
+    movk    x1, #0x1516, lsl #32
+    movk    x1, #0x2b7e, lsl #48
+
+	msr vmpidr_el2, x1
+
+	mov		x1, #0
+	mov     x1, #0xd2a6
+    movk    x1, #0x28ae, lsl #16
+    movk    x1, #0x1516, lsl #32
+    movk    x1, #0x2b7e, lsl #48
+
+	msr amair_el2, x1
+
+
 	mov	lr,x4
 	eret // must eret here. stack pointer is changed 
 ENDPROC(truly_run_vm)
