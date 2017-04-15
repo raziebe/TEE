@@ -23,6 +23,46 @@
 ENDPROC(\label)
 .endm
 
+
+.macro save_registers
+	push x0,x1
+	push x2,x3
+	push x4,x5
+	push x6,x7
+	push x8,x9
+	push x10,x11
+	push x12,x13
+	push x14,x15
+	push x16,x17
+	push x18,x19
+	push x20,x21
+	push x22,x23
+	push x24,x25
+	push x26,x27
+	push x28,x29
+	push x30,xzr
+.endm
+
+
+.macro restore_registers
+	pop x30,xzr
+	pop x28,x29
+	pop x26,x27
+	pop x24,x25
+	pop x22,x23
+	pop x20,x21
+	pop x18,x19
+	pop x16,x17
+	pop x14,x15
+	pop x12,x13
+	pop x10,x11
+	pop x8,x9
+	pop x6,x7
+	pop x4,x5
+	pop x2,x3
+	pop x0,x1
+.endm
+
 //  code taken from kvm
 
 EL1_sync:
@@ -95,23 +135,36 @@ brk_exception:
 	mrs  x2,elr_el2
 	str x2,[x0, #TP_ELR_EL2]
 
+	save_registers
+
 	ldr x1,=truly_decrypt
 	kern_hyp_va x1
-	push	lr, xzr
+
 	blr x1
-	pop	lr, xzr
+
+	restore_registers
+
 	mrs  x2,elr_el2
 	ic ialluis
-//	add x2,x2,#4
-//	ic ivau, x2
 
-exit_exception:
+//	switch stacks
+
+	mrs x1, spsel
+	and x1,x1,#0xFFFFFFFE
+	msr spsel,x1
+
 	pop	x2, x3
 	pop	x0, x1
+
+
+// branch to user code
+	mrs x2,elr_el2
+	br	x2
 	
 EL1_irq:
 	eret
 ENDPROC(EL1_irq)
+
 
 
 __truly_panic:
@@ -243,10 +296,28 @@ ENTRY(truly_run_vm)
 ENDPROC(truly_run_vm)
 
 
+EL2_sync:
+
+//	switch stack to el0
+	push x1,xzr
+	mrs x1,spsel
+	and x1,x1,#0xFFFFFFFE
+	msr spsel,x1
+// force switch to EL0
+	mrs x1,spsr_el2
+	and x1,x1,0xFFFFFFFC0
+	msr spsr_el2,x1
+	msr spsr_el1,x1
+	pop x1,xzr
+	eret
+ENDPROC(EL2_sync)
+
+
+
 // http://infocenter.arm.com/help/index.jsp?topic=/com.arm.doc.den0024a/CHDEEDDC.html
 .align 11
 ENTRY(__truly_vectors)
-        invalid_vector  EL2_sync,#1                        //Current EL with SP0 
+        ventry EL2_sync                        //Current EL with SP0
         invalid_vector  EL2_irq_invalid,#2                 // IRQ EL2t
         invalid_vector  EL2_fiq_invalid,#3                // FIQ EL2t
         invalid_vector  EL2_error_invalid,#4             // Error EL2t

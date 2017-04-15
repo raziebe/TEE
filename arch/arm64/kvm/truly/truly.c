@@ -223,7 +223,7 @@ unsigned long tp_create_pg_tbl(void *cxt)
 	return tvm->vttbr_el2;
 }
 
-
+/*
 long truly_get_mem_regs(void *cxt)
 {
 	struct truly_vm *vm;
@@ -234,7 +234,7 @@ long truly_get_mem_regs(void *cxt)
 	vm->tcr_el1 = truly_get_tcr_el1();
 	return 0;
 }
-
+*/
 
 // D-2142
 void make_vtcr_el2(struct truly_vm *tvm)
@@ -445,7 +445,7 @@ void truly_smp_run_hyp(void)
 
 
 EXPORT_SYMBOL_GPL(truly_get_vectors);
-EXPORT_SYMBOL_GPL(truly_get_mem_regs);
+//EXPORT_SYMBOL_GPL(truly_get_mem_regs);
 EXPORT_SYMBOL_GPL(truly_smp_run_hyp);
 EXPORT_SYMBOL_GPL(truly_get_hcr_el2);
 EXPORT_SYMBOL_GPL(tp_call_hyp);

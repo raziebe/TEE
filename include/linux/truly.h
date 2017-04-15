@@ -127,26 +127,19 @@ struct encrypt_tvm {
 struct truly_vm {
 	unsigned long protected_pgd;
 	unsigned long brk_count_el2;
+ 	struct encrypt_tvm* enc;
 
-	unsigned long hpfar_el2;
-	unsigned long far_el2;
+	unsigned long sp_el2;
 	unsigned long hcr_el2;
  	unsigned int hstr_el2;
  	unsigned long vttbr_el2;
  	unsigned int vtcr_el2;
-	unsigned long ttbr0_el2;
  	unsigned long tpidr_el2;
- 	unsigned long tcr_el2;
-  	unsigned long esr_el2;
  	unsigned long mdcr_el2;
  	unsigned long elr_el2;
  	unsigned long initialized; 	
  	unsigned long id_aa64mmfr0_el1;
- 	unsigned long tcr_el1;
-
-  	void* pg_lvl_one;
-  	struct encrypt_tvm* enc;
-
+   	void* pg_lvl_one;
 } __attribute__ ((aligned (8)));
 
 extern char __truly_vectors[];
