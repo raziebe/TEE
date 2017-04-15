@@ -149,6 +149,7 @@ brk_exception:
 	pop	x2, x3
 	pop	x0, x1
 
+
 //	force stack to el0
 
 	mrs x1, spsel
@@ -296,17 +297,26 @@ ENDPROC(truly_run_vm)
 
 EL2_sync:
 
+	msr cntvoff_el2 ,x1   //<-- save x1
+// move to previous position
+	mrs x1, elr_el2
+	sub x1,x1,#4
+	msr elr_el2,x1
+
 //	force stack to el0
-	push x1,xzr
 	mrs x1,spsel
 	and w1,w1,#0xFFFFFFFE
 	msr spsel,x1
+
 // force switch to EL0
 	mrs x1,spsr_el2
 	and w1,w1,#0xFFFFFFC0
 	msr spsr_el2,x1
 	msr spsr_el1,x1
-	pop x1,xzr
+
+	mrs x1,cntvoff_el2 // <-- restore x1
+
+
 	eret
 ENDPROC(EL2_sync)
 
