@@ -142,25 +142,23 @@ brk_exception:
 
 	blr x1
 
-	restore_registers
-
 	mrs  x2,elr_el2
 	ic ialluis
 
-//	switch stacks
-
-	mrs x1, spsel
-	and x1,x1,#0xFFFFFFFE
-	msr spsel,x1
-
+	restore_registers
 	pop	x2, x3
 	pop	x0, x1
 
+//	force stack to el0
+
+	mrs x1, spsel
+	and w1,w1,#0xFFFFFFFE
+	msr spsel,x1
 
 // branch to user code
-	mrs x2,elr_el2
-	br	x2
-	
+	mrs x1,elr_el2
+	br	x1
+
 EL1_irq:
 	eret
 ENDPROC(EL1_irq)
@@ -298,14 +296,14 @@ ENDPROC(truly_run_vm)
 
 EL2_sync:
 
-//	switch stack to el0
+//	force stack to el0
 	push x1,xzr
 	mrs x1,spsel
-	and x1,x1,#0xFFFFFFFE
+	and w1,w1,#0xFFFFFFFE
 	msr spsel,x1
 // force switch to EL0
 	mrs x1,spsr_el2
-	and x1,x1,0xFFFFFFFC0
+	and w1,w1,#0xFFFFFFC0
 	msr spsr_el2,x1
 	msr spsr_el1,x1
 	pop x1,xzr
