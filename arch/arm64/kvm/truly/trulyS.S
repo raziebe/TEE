@@ -244,12 +244,6 @@ ENTRY(truly_get_hcr_el2)
        ret
 ENDPROC(truly_get_hcr_el2)
 
-/*
-ENTRY(tp_get_ttbr0_el2)
-       mrs     x0, ttbr0_el2
-       ret
-ENDPROC(tp_get_ttbr0_el2)
-*/
 
 ENTRY(tp_call_hyp)
         hvc	#0
