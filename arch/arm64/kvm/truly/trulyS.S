@@ -129,8 +129,6 @@ el1_trap:
  
 
 brk_exception:
-
-
 	mrs	x0,tpidr_el2
 	//
 	// The exception code take place many times,
@@ -168,11 +166,21 @@ not_first:
 	mrs x1,cntvoff_el2 // <-- restore x1. Must return with the exact same registers
 
 	blr x30			// Execute decrypted in EL2  and then return to next command because of the blr call.
-	//
+
 	// User called ret.
 	// Return from the decrypted routine and then return to the
-	// reconstruced x30.
-	// We use a user's stack
+	// reconstruced x30 as elr_el2
+
+	// first pad back the code
+	save_registers
+	mrs	x0,tpidr_el2
+	mov x1,#0x0
+	str x1,[x0, #TP_SAVE_CMD]
+	ldr x1,=truly_pad
+	kern_hyp_va x1
+	blr x1
+
+	restore_registers
 	//
 	push x0, x1
 	mrs	x0,tpidr_el2
@@ -224,7 +232,6 @@ __hyp_panic_str:
 
 ENTRY(truly_get_tcr_el1)
        mrs     x0, tcr_el1
-       isb
        ret
 ENDPROC(truly_get_tcr_el1)
 
@@ -244,19 +251,16 @@ ENTRY(truly_get_hcr_el2)
        ret
 ENDPROC(truly_get_hcr_el2)
 
-
 ENTRY(tp_call_hyp)
         hvc	#0
         ret
 ENDPROC(tp_call_hyp)
-
 
 ENTRY(truly_has_vhe)
         mrs     x2, id_aa64mmfr1_el1
         ubfx    x2, x2, #8, #4
 		mov	x0,x2 // if zero then no vhe
 ENDPROC(truly_has_vhe)
-
 
 ENTRY(truly_run_vm)
 	
@@ -334,7 +338,7 @@ EL2_sync:
 	mrs x1, elr_el2
 	sub x1,x1,#4
 	mrs	x0,tpidr_el2
-	str x1,[x0, #TP_ELR_EL2]
+	str x1,[x0, #TP_SAVE_CMD]
 	msr elr_el2, x1 // eret will start from here.
 
 	ldr x1,=truly_pad

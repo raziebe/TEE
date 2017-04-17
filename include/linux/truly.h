@@ -131,7 +131,7 @@ struct truly_vm {
  	struct encrypt_tvm* enc;
  	unsigned long elr_el2;
  	unsigned long x30;
-//	unsigned long sp_el2;
+	unsigned long save_cmd;
 	unsigned long hcr_el2;
  	unsigned int hstr_el2;
  	unsigned long vttbr_el2;
