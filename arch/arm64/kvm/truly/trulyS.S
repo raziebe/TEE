@@ -132,9 +132,18 @@ brk_exception:
 
 
 	mrs	x0,tpidr_el2
-	mrs  x2,elr_el2
-	str x2,[x0, #TP_ELR_EL2]
+	//
+	// The exception code take place many times,
+	// We must make sure we feel the caller address only once
+    //
+	ldr x3,[x0, #TP_X30]
+	cmp x3,#0
+	b.ne not_first
 	str x30,[x0, #TP_X30]	// save the caller address
+
+not_first:
+	mrs x2,elr_el2
+	str x2,[x0, #TP_ELR_EL2]
 
 	save_registers
 
@@ -142,8 +151,6 @@ brk_exception:
 	kern_hyp_va x1
 
 	blr x1
-
-	mrs  x2,elr_el2
 	ic ialluis
 
 	restore_registers
@@ -161,14 +168,17 @@ brk_exception:
 	mrs x1,cntvoff_el2 // <-- restore x1. Must return with the exact same registers
 
 	blr x30			// Execute decrypted in EL2  and then return to next command because of the blr call.
+	//
 	// User called ret.
 	// Return from the decrypted routine and then return to the
 	// reconstruced x30.
 	// We use a user's stack
+	//
 	push x0, x1
 	mrs	x0,tpidr_el2
 	// reconstrcted caller
 	ldr x30,[x0, #TP_X30]
+	msr  elr_el2,x30 // we eret, so we must fix the pc in EL0
 	str xzr,[x0, #TP_X30]
 	pop x0,x1
 
@@ -314,7 +324,12 @@ ENTRY(truly_run_vm)
 	eret // must eret here. stack pointer is changed 
 ENDPROC(truly_run_vm)
 
-
+/*
+ We enter this code when the user executed in EL2 and performed an ilegal
+ * command, such as svc or any other.
+ * we pad the code back ,move to program counter ot previous position
+ * and return to EL0
+*/
 EL2_sync:
 
 	save_registers
