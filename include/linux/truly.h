@@ -91,7 +91,8 @@ enum { MAX_BLOCK_SIZE=32, MAX_ROUNDS=14, MAX_KC=8, MAX_BC=8 };
 
 struct encrypted_segment {
 	int size;
-	unsigned char *data;
+	unsigned char *data; // the encrypted data
+	unsigned char* pad_data; // the padding pointer
 };
 
 struct encrypt_tvm {
@@ -128,15 +129,16 @@ struct truly_vm {
 	unsigned long protected_pgd;
 	unsigned long brk_count_el2;
  	struct encrypt_tvm* enc;
-
-	unsigned long sp_el2;
+ 	unsigned long elr_el2;
+ 	unsigned long x30;
+//	unsigned long sp_el2;
 	unsigned long hcr_el2;
  	unsigned int hstr_el2;
  	unsigned long vttbr_el2;
  	unsigned int vtcr_el2;
  	unsigned long tpidr_el2;
  	unsigned long mdcr_el2;
- 	unsigned long elr_el2;
+
  	unsigned long initialized; 	
  	unsigned long id_aa64mmfr0_el1;
    	void* pg_lvl_one;
@@ -159,7 +161,7 @@ void truly_set_vectors(unsigned long vbar_el2);
 unsigned long truly_get_vectors(void);
 struct _IMAGE_FILE;
 void tp_mark_protected(struct _IMAGE_FILE* image_file);
-int tp_is_protected(pid_t pid);
+int __hyp_text truly_is_protected(struct truly_vm *);
 void tp_unmark_protected(void);
 void tp_unmmap_handler(struct task_struct* task);
 void __hyp_text truly_debug_decrypt(UCHAR *encrypted,UCHAR* decrypted, int size);
@@ -167,7 +169,8 @@ void hyp_user_unmap(unsigned long umem,int size);
 int create_hyp_mappings(void *, void *);
 int create_hyp_user_mappings(void *,void*);
 void encryptInit(struct encrypt_tvm *tvm);
-void __hyp_text truly_decrypt(struct truly_vm *tv);
+int __hyp_text truly_decrypt(struct truly_vm *tv);
+int __hyp_text truly_pad(struct truly_vm *tv);
 
 #define tp_info(fmt, ...) \
 	pr_info("truly %s [%i]: " fmt, __func__,raw_smp_processor_id(), ## __VA_ARGS__)

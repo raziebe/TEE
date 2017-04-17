@@ -134,6 +134,7 @@ brk_exception:
 	mrs	x0,tpidr_el2
 	mrs  x2,elr_el2
 	str x2,[x0, #TP_ELR_EL2]
+	str x30,[x0, #TP_X30]	// save the caller address
 
 	save_registers
 
@@ -149,20 +150,37 @@ brk_exception:
 	pop	x2, x3
 	pop	x0, x1
 
+	msr cntvoff_el2 ,x1   //<-- save x1
 
 //	force stack to el0
-
 	mrs x1, spsel
 	and w1,w1,#0xFFFFFFFE
 	msr spsel,x1
 
-// branch to user code
-	mrs x1,elr_el2
-	br	x1
+	mrs x30,elr_el2	   // go back to the next command after the faulted one
+	mrs x1,cntvoff_el2 // <-- restore x1. Must return with the exact same registers
 
-EL1_irq:
+	blr x30			// Execute decrypted in EL2  and then return to next command because of the blr call.
+	// User called ret.
+	// Return from the decrypted routine and then return to the
+	// reconstruced x30.
+	// We use a user's stack
+	push x0, x1
+	mrs	x0,tpidr_el2
+	// reconstrcted caller
+	ldr x30,[x0, #TP_X30]
+	str xzr,[x0, #TP_X30]
+	pop x0,x1
+
+	msr cntvoff_el2 ,x1   //<-- save x1
+	//	force stack back to elX
+	mrs x1, spsel
+	orr w1,w1,#0x1
+	msr spsel,x1
+	mrs x1,cntvoff_el2 // <-- restore x1
+
 	eret
-ENDPROC(EL1_irq)
+ENDPROC(el1_trap)
 
 
 
@@ -210,16 +228,18 @@ ENTRY(truly_set_vectors)
 	ret
 ENDPROC(truly_set_vectors)
 
+
 ENTRY(truly_get_hcr_el2)
        mrs     x0, hcr_el2
        ret
 ENDPROC(truly_get_hcr_el2)
 
+/*
 ENTRY(tp_get_ttbr0_el2)
        mrs     x0, ttbr0_el2
        ret
 ENDPROC(tp_get_ttbr0_el2)
-
+*/
 
 ENTRY(tp_call_hyp)
         hvc	#0
@@ -297,13 +317,28 @@ ENDPROC(truly_run_vm)
 
 EL2_sync:
 
-	msr cntvoff_el2 ,x1   //<-- save x1
-// move to previous position
+	save_registers
+//
+// Move to previous position
+// Note, I must check if all faults here are the same
+//
 	mrs x1, elr_el2
 	sub x1,x1,#4
-	msr elr_el2,x1
+	mrs	x0,tpidr_el2
+	str x1,[x0, #TP_ELR_EL2]
+	msr elr_el2, x1 // eret will start from here.
 
-//	force stack to el0
+	ldr x1,=truly_pad
+	kern_hyp_va x1
+	blr x1
+
+	ic ialluis	// flash the entire cache, TODO here.
+
+	restore_registers
+
+	msr cntvoff_el2 ,x1  //<-- save x1 for the mode switch
+
+//	force stack back to elX
 	mrs x1,spsel
 	and w1,w1,#0xFFFFFFFE
 	msr spsel,x1
@@ -314,8 +349,7 @@ EL2_sync:
 	msr spsr_el2,x1
 	msr spsr_el1,x1
 
-	mrs x1,cntvoff_el2 // <-- restore x1
-
+	mrs x1,cntvoff_el2 // <-- restore x1. We move to EL0
 
 	eret
 ENDPROC(EL2_sync)
@@ -336,7 +370,7 @@ ENTRY(__truly_vectors)
         invalid_vector  EL2_error_invalidELspx,#8               // Error EL2h
 
         ventry  EL1_sync                        			// Synchronous 64-bit EL1
-        ventry  EL1_irq                       				// IRQ 64-bit EL1
+        invalid_vector  EL1_irq,#14                       				// IRQ 64-bit EL1
         invalid_vector  EL1_fiq_invalid ,#9                // FIQ 64-bit EL1
         invalid_vector  EL1_error_invalid  ,#10             // Error 64-bit EL1
 
