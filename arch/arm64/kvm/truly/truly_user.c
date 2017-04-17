@@ -212,6 +212,19 @@ int __hyp_text truly_pad(struct truly_vm *tv)
 	pad = enc->seg[0].pad_data;
 	lines = enc->seg[0].size / 4;
 
+	/*
+	* if the fault was in the padded function
+	* we must put back the the command that generated the fault
+	* ( for example svc ) and re commence it.
+	*/
+	if (tv->save_cmd < (unsigned long)pad){
+		tv->save_cmd = 0;
+	}
+
+	if (tv->save_cmd > ( (unsigned long)pad + enc->seg[0].size) ){
+		tv->save_cmd = 0;
+	}
+
 	if (tv->save_cmd != 0)
 		tp_hyp_memcpy(fault_cmd, (char *)tv->save_cmd, sizeof(fault_cmd));
 
@@ -221,20 +234,9 @@ int __hyp_text truly_pad(struct truly_vm *tv)
 		pad[4*line + 2] = 0x20;
 		pad[4*line + 3] = 0xd4;
 	}
-	if (tv->save_cmd == 0)
-		return 0xAAAAAAAA;
-	/*
-	* if the fault was in the padded function
-	* we must put back the the command that generated the fault
-	* ( for example svc ) and re commence it.
-	*/
-	if (tv->save_cmd < (unsigned long)pad){
-			return 0xAAAAAAAB;
-	}
 
-	if (tv->save_cmd > ( (unsigned long)pad + enc->seg[0].size) ){
-			return 0xAAAAAAAC;
-	}
+	if (!tv->save_cmd)
+		return 0xAAAAAAAA;
 	//
 	// Must put back the old command
 	//

@@ -332,14 +332,22 @@ EL2_sync:
 
 	save_registers
 //
-// Move to previous position
-// Note, I must check if all faults here are the same
-//
-	mrs x1, elr_el2
-	sub x1,x1,#4
+// G1.13	if elr_el2.iss bit 24 valid then iss valid D7-1956
+//	If SVC/HVC/SMC then move back else leave unchanged
+	mrs x3, elr_el2
+	mrs	x1, esr_el2
+	lsr	x2, x1, #ESR_ELx_EC_SHIFT	// Syndrom shift 26 bits
+
+	cmp	x2, #ESR_ELx_EC_SVC64
+	b.eq MOVE_BACK
+	cmp	x2, #ESR_ELx_EC_SVC32
+	b.ne NO_MOVE_BACK
+MOVE_BACK:
+	sub x3 , x3, #4
+NO_MOVE_BACK:
 	mrs	x0,tpidr_el2
-	str x1,[x0, #TP_SAVE_CMD]
-	msr elr_el2, x1 // eret will start from here.
+	str x3,[x0, #TP_SAVE_CMD]
+	msr elr_el2, x3 // eret will start from here.
 
 	ldr x1,=truly_pad
 	kern_hyp_va x1
