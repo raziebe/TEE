@@ -129,7 +129,19 @@ el1_trap:
  
 
 brk_exception:
+
 	mrs	x0,tpidr_el2
+	ldr x3,[x0, #TP_PGD]
+	cmp x3,#0
+	b.ne SAVE_LR
+	mrs x3,elr_el2
+	add x3,x3,#4
+	msr elr_el2,x3
+
+	pop	x2, x3
+	pop	x0, x1
+	eret
+SAVE_LR:
 	//
 	// The exception code take place many times,
 	// We must make sure we feel the caller address only once
@@ -179,6 +191,7 @@ not_first:
 	ldr x1,=truly_pad
 	kern_hyp_va x1
 	blr x1
+	ic ialluis
 
 	restore_registers
 	//

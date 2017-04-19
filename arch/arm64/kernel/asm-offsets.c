@@ -176,6 +176,6 @@ int main(void)
   DEFINE(TP_VTCR_EL2 , offsetof(struct truly_vm,  vtcr_el2));
   DEFINE(TP_MDCR_EL2 , offsetof(struct truly_vm,  mdcr_el2));
   DEFINE(TP_BRK_COUNT_EL2 , offsetof(struct truly_vm,  brk_count_el2));
-
+  DEFINE(TP_PGD, offsetof(struct truly_vm, protected_pgd));
   return 0;
 }
