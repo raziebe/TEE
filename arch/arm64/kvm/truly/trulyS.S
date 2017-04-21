@@ -258,7 +258,6 @@ ENTRY(truly_set_vectors)
 	ret
 ENDPROC(truly_set_vectors)
 
-
 ENTRY(truly_get_hcr_el2)
        mrs     x0, hcr_el2
        ret
@@ -274,6 +273,14 @@ ENTRY(truly_has_vhe)
         ubfx    x2, x2, #8, #4
 		mov	x0,x2 // if zero then no vhe
 ENDPROC(truly_has_vhe)
+
+ENTRY(truly_set_mdcr_el2)
+	mrs	x0,tpidr_el2
+	kern_hyp_va  x0	// grab tvm
+    ldr		x1, [x0, #TP_MDCR_EL2]
+	kern_hyp_va x1
+	msr		mdcr_el2, x1
+ENDPROC(truly_set_mdcr_el2)
 
 ENTRY(truly_run_vm)
 	
@@ -313,7 +320,7 @@ ENTRY(truly_run_vm)
 			0x09,0xcf,0x4f,0x3c};
 	amair_el2  actlr_el2
 
-*/
+
 	mov		x1, #0
 	mov     x1, #0xd2a6
     movk    x1, #0x28ae, lsl #16
@@ -329,7 +336,7 @@ ENTRY(truly_run_vm)
     movk    x1, #0x2b7e, lsl #48
 
 	msr amair_el2, x1
-
+*/
 
 	mov	lr,x4
 	eret // must eret here. stack pointer is changed 

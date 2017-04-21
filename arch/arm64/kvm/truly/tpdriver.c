@@ -242,6 +242,7 @@ void tp_execve_handler(unsigned long ret_value)
     if (is_protected) {
         printk("Launching TPVISOR..pid = %d\n", current->pid);
         for_each_vma(current, NULL, vma_map_hyp);
+        truly_set_trap();
     }
     mutex_unlock(&protected_image_mutex);
     file_close(file);
@@ -255,6 +256,7 @@ void tp_handler_exit(struct task_struct *tsk)
 	if (truly_is_protected(NULL)){
 		tp_unmark_protected();
 		tp_unmmap_handler(tsk);
+		truly_reset_trap();
 	}
 
 }

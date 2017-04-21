@@ -277,7 +277,7 @@ void make_hcr_el2(struct truly_vm *tvm)
 
 void make_mdcr_el2(struct truly_vm *tvm)
 {
-	tvm->mdcr_el2 = 0x100;
+	tvm->mdcr_el2 = 0x00;
 }
 
 static struct proc_dir_entry *procfs = NULL;
@@ -415,8 +415,6 @@ void truly_map_tvm(void *d)
 
 }
 
-
-
 void tp_run_vm(void *x)
 {
 	struct truly_vm t;
@@ -432,21 +430,39 @@ void tp_run_vm(void *x)
 		truly_set_vectors(vbar_el2);
 	}
 	t = *tvm;
-	tp_info("About to run VM sizeof(tvm)=%ld\n",sizeof(*tvm));
+//	tp_info("About to run VM sizeof(tvm)=%ld\n",sizeof(*tvm));
 	tp_call_hyp(truly_run_vm, tvm);
 
 	*tvm = t;
 }
 
-void truly_smp_run_hyp(void)
+void set_mdcr_el2(void *dummy)
 {
-	on_each_cpu(tp_run_vm, NULL, 0);
+	struct truly_vm *tvm = this_cpu_ptr(&TVM);
+	tvm->mdcr_el2 = 0x100;
+	tp_call_hyp(truly_set_mdcr_el2);
+}
+
+void truly_set_trap(void)
+{
+	on_each_cpu(set_mdcr_el2, NULL, 0);
+}
+
+void reset_mdcr_el2(void *dummy)
+{
+	struct truly_vm *tvm = this_cpu_ptr(&TVM);
+	tvm->mdcr_el2 = 0x00;
+	tp_call_hyp(truly_set_mdcr_el2);
+}
+
+void truly_reset_trap(void)
+{
+	on_each_cpu(reset_mdcr_el2, NULL, 0);
 }
 
 
+
 EXPORT_SYMBOL_GPL(truly_get_vectors);
-//EXPORT_SYMBOL_GPL(truly_get_mem_regs);
-EXPORT_SYMBOL_GPL(truly_smp_run_hyp);
 EXPORT_SYMBOL_GPL(truly_get_hcr_el2);
 EXPORT_SYMBOL_GPL(tp_call_hyp);
 EXPORT_SYMBOL_GPL(truly_init);

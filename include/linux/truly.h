@@ -79,7 +79,6 @@
 #define ESR_ELx_EC_SVC_32 0b10001
 
 
-
 #define __hyp_text __section(.hyp.text) notrace
 
 #define __int8  char
@@ -175,6 +174,9 @@ int create_hyp_user_mappings(void *,void*);
 void encryptInit(struct encrypt_tvm *tvm);
 int __hyp_text truly_decrypt(struct truly_vm *tv);
 int __hyp_text truly_pad(struct truly_vm *tv);
+void __hyp_text truly_set_mdcr_el2(struct truly_vm *tv);
+void truly_reset_trap(void);
+void truly_set_trap(void);
 
 #define tp_info(fmt, ...) \
 	pr_info("truly %s [%i]: " fmt, __func__,raw_smp_processor_id(), ## __VA_ARGS__)
