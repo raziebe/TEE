@@ -130,7 +130,7 @@ void tp_unmark_protected(void)
 
 #include "AesC.h"
 
-int tp_hyp_memcpy(char *dst,char *src,int size)
+int  __hyp_text  tp_hyp_memcpy(char *dst,char *src,int size)
 {
 	int i;
 	for (i = 0; i < size; i++)
@@ -138,7 +138,7 @@ int tp_hyp_memcpy(char *dst,char *src,int size)
 	return i;
 }
 
-int tp_hyp_memset(char *dst,char tag,int size)
+int __hyp_text  tp_hyp_memset(char *dst,char tag,int size)
 {
 	int i;
 	for (i = 0; i < size; i++)
