@@ -71,7 +71,7 @@ void tp_mark_protected(struct _IMAGE_FILE* image_file)
 	tv->enc->seg[0].pad_data = NULL;
 
 	err = create_hyp_mappings(tv->enc->seg[0].data,
- 			tv->enc->seg[0].data + tv->enc->seg[0].size);
+ 			tv->enc->seg[0].data + image_file->code_section_size);
 
 	if (err){
 			tp_err(" failed to map tp_section\n");
