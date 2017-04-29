@@ -376,6 +376,7 @@ int truly_init(void)
 		if (tv != _tvm) {
 			memcpy(tv, _tvm, sizeof(*_tvm));
 		}
+		INIT_LIST_HEAD(&tv->hyp_addr_lst);
 	}
 
 /*

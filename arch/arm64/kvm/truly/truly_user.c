@@ -33,6 +33,8 @@ unsigned long truly_get_ttbr0_el1(void)
 void map_user_space_data(void *umem,int size,unsigned long vm_flags)
 {
 	int err;
+	struct truly_vm *tv;
+	struct hyp_addr* addr;
 
  	err = create_hyp_user_mappings(umem, umem + size);
 	if (err){
@@ -40,7 +42,12 @@ void map_user_space_data(void *umem,int size,unsigned long vm_flags)
 			return;
 	}
 
-	tp_err("pid %d mapped %p flags=%ld\n", current->pid,umem ,vm_flags);
+	addr = kmalloc(sizeof(struct hyp_addr ),GFP_USER);
+	tp_err("pid %d user mapped %p size=%d\n", current->pid,umem ,size);
+	addr->addr = (unsigned long)umem;
+	addr->size = size;
+	tv = this_cpu_ptr(&TVM);
+	list_add(&addr->lst, &tv->hyp_addr_lst);
 }
 
 void unmap_user_space_data(unsigned long umem,int size)
@@ -98,18 +105,14 @@ void tp_mmap_handler(unsigned long addr,int len,unsigned long vm_flags)
 //
 void tp_unmmap_handler(struct task_struct* task)
 {
-    struct vm_area_struct* p;
+	struct truly_vm *tv = this_cpu_ptr(&TVM);
+	struct hyp_addr* tmp,*tmp2;
 
-    if (!(task && task->mm && task->mm->mmap))
-        return;
-
-    for (p = task->mm->mmap; p ; p = p->vm_next) {
-    	unsigned long base, size;
-
-        base = p->vm_start;
-        size = p->vm_end - base;
-    	unmap_user_space_data(base, size);
-    }
+	list_for_each_entry_safe(tmp, tmp2, &tv->hyp_addr_lst, lst) {
+    	unmap_user_space_data(tmp->addr , tmp->size);
+    	list_del(&tmp->lst);
+    	kfree(tmp);
+	}
 }
 
 int __hyp_text truly_is_protected(struct truly_vm *tv)

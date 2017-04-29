@@ -128,6 +128,12 @@ struct encrypt_tvm {
 
 };
 
+struct hyp_addr {
+	int size;
+	unsigned long addr;
+	struct list_head lst;
+};
+
 struct truly_vm {
 	unsigned long protected_pgd;
 	unsigned long brk_count_el2;
@@ -145,6 +151,7 @@ struct truly_vm {
  	unsigned long initialized; 	
  	unsigned long id_aa64mmfr0_el1;
    	void* pg_lvl_one;
+   	struct list_head hyp_addr_lst; // A process's hyp address list
 } __attribute__ ((aligned (8)));
 
 extern char __truly_vectors[];
@@ -177,6 +184,7 @@ int __hyp_text truly_pad(struct truly_vm *tv);
 void __hyp_text truly_set_mdcr_el2(struct truly_vm *tv);
 void truly_reset_trap(void);
 void truly_set_trap(void);
+void tp_mmap_handler(unsigned long addr,int len,unsigned long vm_flags);
 
 #define tp_info(fmt, ...) \
 	pr_info("truly %s [%i]: " fmt, __func__,raw_smp_processor_id(), ## __VA_ARGS__)

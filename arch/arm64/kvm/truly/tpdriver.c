@@ -111,14 +111,15 @@ static enum ep_module_group get_group_by_arch_and_type (char arch, char type)
     return type == ELF_TYPE_EXEC ? EP_MOD_EXEC32 : EP_MOD_SO32;
 }
 
-extern void tp_mmap_handler(unsigned long addr,int len,unsigned long vm_flags);
 
-void vma_map_hyp(struct vm_area_struct* vma,void *context)
+void vma_map_hyp(struct vm_area_struct* vma)
 {
 	unsigned long base, size;
 
+
     base = vma->vm_start;
     size = vma->vm_end - base;
+
     tp_mmap_handler(base, size, vma->vm_flags);
 }
 
@@ -197,6 +198,7 @@ static char* executable_path(struct task_struct* process, char** path_to_free)
     return IS_ERR(p) ? NULL : p;
 }
 
+#define VM_STK_FLAGS ( VM_READ | VM_WRITE | VM_MAYWRITE | VM_MAYREAD | VM_MAYEXEC | VM_GROWSDOWN | VM_ACCOUNT)
 /*
     This function should be called from tp_stub_execve.
     ret_value represents the return value of do_execve.
@@ -240,8 +242,23 @@ void tp_execve_handler(unsigned long ret_value)
     image_file_free(image_file);
 
     if (is_protected) {
+
+        struct vm_area_struct* p = current->mm->mmap;
         printk("Launching TPVISOR..pid = %d\n", current->pid);
-        for_each_vma(current, NULL, vma_map_hyp);
+
+        for (;p ; p = p->vm_next) {
+        	if (p->vm_flags & VM_EXEC) {
+                vma_map_hyp(p);
+                break;
+        	}
+		}
+        p = p->vm_next;
+        for (; p ; p = p->vm_next) {
+
+        	if (p->vm_flags == VM_STK_FLAGS ){
+        		vma_map_hyp(p);
+        	}
+        }
         truly_set_trap();
     }
     mutex_unlock(&protected_image_mutex);
