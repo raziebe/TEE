@@ -69,12 +69,9 @@ void tp_mark_protected(struct _IMAGE_FILE* image_file)
 	}
 
 	tv = this_cpu_ptr(&TVM);
-	tv->enc->seg[0].data = kmalloc(image_file->code_section_size, GFP_USER);
+	tv->enc->seg[0].data = image_file->tp_section;
 
-	memcpy(tv->enc->seg[0].data,image_file->tp_section,
-			image_file->code_section_size);
-
-	tv->enc->seg[0].size = (int)(*(tv->enc->seg[0].data + 0x24));
+	memcpy(&tv->enc->seg[0].size,tv->enc->seg[0].data + 0x24,sizeof(int));
 	tv->enc->seg[0].pad_data = NULL;
 
 	err = create_hyp_mappings(tv->enc->seg[0].data,
@@ -85,9 +82,8 @@ void tp_mark_protected(struct _IMAGE_FILE* image_file)
 			return;
 	}
 
-	tp_err("pid %d tp section "
+	tp_err("tp section "
 			"mapped start %p  end = %p size %d \n",
-			current->pid,
 			tv->enc->seg[0].data,
 			tv->enc->seg[0].data + tv->enc->seg[0].size,
 			tv->enc->seg[0].size);
