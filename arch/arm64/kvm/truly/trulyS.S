@@ -120,7 +120,6 @@ el1_trap:
 	ccmp	x2, x0, #4, ne // if and 4 && (x2 and x0 ) then br to 1
 	b.ne	4f		// Not an abort we care about
 
-
 4:
 	pop	x2, x3
 	pop	x0, x1
@@ -201,6 +200,7 @@ not_first:
 	ldr x30,[x0, #TP_X30]
 	msr  elr_el2,x30 // we eret, so we must fix the pc in EL0
 	str xzr,[x0, #TP_X30]
+
 	pop x0,x1
 
 	msr cntvoff_el2 ,x1   //<-- save x1
@@ -208,6 +208,13 @@ not_first:
 	mrs x1, spsel
 	orr w1,w1,#0x1
 	msr spsel,x1
+
+	// force switch to EL0
+	mrs x1,spsr_el2
+	and w1,w1,#0xFFFFFFC0
+//	msr spsr_el2,x1
+	msr spsr_el1,x1
+
 	mrs x1,cntvoff_el2 // <-- restore x1
 
 	eret
