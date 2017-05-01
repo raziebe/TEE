@@ -603,7 +603,6 @@ unsigned long kvm_uaddr_to_pfn(unsigned long uaddr)
 	return pfn;
 }
 
-
 void hyp_user_unmap(unsigned long umem,int size)
 {
 	unmap_range(NULL, hyp_pgd, umem, size);

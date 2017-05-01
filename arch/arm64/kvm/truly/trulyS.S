@@ -129,6 +129,9 @@ el1_trap:
 
 brk_exception:
 
+	mov  x0,#447
+	msr  vmpidr_el2,x0
+
 	mrs	x0,tpidr_el2
 	ldr x3,[x0, #TP_PGD]
 	cmp x3,#0
@@ -159,8 +162,14 @@ not_first:
 	ldr x1,=truly_decrypt
 	kern_hyp_va x1
 
+	mov  x2,#448
+	msr  vmpidr_el2,x2
+
 	blr x1
 	ic ialluis
+
+	mov  x2,#449
+	msr  vmpidr_el2,x2
 
 	restore_registers
 	pop	x2, x3
@@ -192,6 +201,9 @@ not_first:
 	blr x1
 	ic ialluis
 
+	mov  x0,#450
+	msr  vmpidr_el2,x0
+
 	restore_registers
 	//
 	push x0, x1
@@ -212,8 +224,11 @@ not_first:
 	// force switch to EL0
 	mrs x1,spsr_el2
 	and w1,w1,#0xFFFFFFC0
-//	msr spsr_el2,x1
 	msr spsr_el1,x1
+	msr spsr_el2,x1
+
+	mov  x1,#451
+	msr  vmpidr_el2,x1
 
 	mrs x1,cntvoff_el2 // <-- restore x1
 
@@ -282,11 +297,18 @@ ENTRY(truly_has_vhe)
 ENDPROC(truly_has_vhe)
 
 ENTRY(truly_set_mdcr_el2)
+
 	mrs	x0,tpidr_el2
+
 	kern_hyp_va  x0	// grab tvm
     ldr		x1, [x0, #TP_MDCR_EL2]
+
 	kern_hyp_va x1
 	msr		mdcr_el2, x1
+
+	mov  x1,#1
+	msr  vmpidr_el2,x1
+
 ENDPROC(truly_set_mdcr_el2)
 
 ENTRY(truly_run_vm)
@@ -325,25 +347,11 @@ ENTRY(truly_run_vm)
 			0x28,0xae,0xd2,0xa6,
 			0xab,0xf7,0x15,0x88,
 			0x09,0xcf,0x4f,0x3c};
-	amair_el2  actlr_el2
 
-
-	mov		x1, #0
-	mov     x1, #0xd2a6
-    movk    x1, #0x28ae, lsl #16
-    movk    x1, #0x1516, lsl #32
-    movk    x1, #0x2b7e, lsl #48
-
-	msr vmpidr_el2, x1
-
-	mov		x1, #0
-	mov     x1, #0xd2a6
-    movk    x1, #0x28ae, lsl #16
-    movk    x1, #0x1516, lsl #32
-    movk    x1, #0x2b7e, lsl #48
-
-	msr amair_el2, x1
 */
+
+	mov		x1, #44
+	msr vmpidr_el2, x1
 
 	mov	lr,x4
 	eret // must eret here. stack pointer is changed 
@@ -358,6 +366,8 @@ ENDPROC(truly_run_vm)
 EL2_sync:
 
 	save_registers
+	mov  x0,#444
+	msr  vmpidr_el2,x0
 //
 // G1.13	if elr_el2.iss bit 24 valid then iss valid D7-1956
 //	If SVC/HVC/SMC then move back else leave unchanged
@@ -380,6 +390,9 @@ NO_MOVE_BACK:
 	kern_hyp_va x1
 	blr x1
 
+	mov  x0,#445
+	msr  vmpidr_el2,x0
+
 	ic ialluis	// flash the entire cache, TODO here.
 
 	restore_registers
@@ -394,8 +407,11 @@ NO_MOVE_BACK:
 // force switch to EL0
 	mrs x1,spsr_el2
 	and w1,w1,#0xFFFFFFC0
-	msr spsr_el2,x1
 	msr spsr_el1,x1
+	msr spsr_el2,x1
+
+	mov  x1,#446
+	msr  vmpidr_el2,x1
 
 	mrs x1,cntvoff_el2 // <-- restore x1. We move to EL0
 

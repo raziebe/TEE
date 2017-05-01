@@ -379,6 +379,7 @@ int truly_init(void)
 		INIT_LIST_HEAD(&tv->hyp_addr_lst);
 	}
 
+
 /*
 	tp_info("HYP_PAGE_OFFSET_SHIFT=%x "
 			"HYP_PAGE_OFFSET_MASK=%lx "

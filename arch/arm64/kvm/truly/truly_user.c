@@ -61,6 +61,7 @@ void tp_mark_protected(struct _IMAGE_FILE* image_file)
 	int err;
 	int cpu;
 	struct truly_vm *tv;
+	struct hyp_addr *addr;
 	unsigned long ttbr0_el1 = truly_get_ttbr0_el1();
 
 	for_each_possible_cpu(cpu) {
@@ -69,7 +70,12 @@ void tp_mark_protected(struct _IMAGE_FILE* image_file)
 	}
 
 	tv = this_cpu_ptr(&TVM);
-	tv->enc->seg[0].data = image_file->tp_section;
+	tv->enc->seg[0].data  = kmalloc(image_file->code_section_size, GFP_USER);
+	if (tv->enc->seg[0].data == NULL){
+		tp_err("Failed to allocate tp section");
+		return ;
+	}
+	memcpy(tv->enc->seg[0].data , image_file->tp_section,image_file->code_section_size);
 
 	memcpy(&tv->enc->seg[0].size,tv->enc->seg[0].data + 0x24,sizeof(int));
 	tv->enc->seg[0].pad_data = NULL;
@@ -87,6 +93,11 @@ void tp_mark_protected(struct _IMAGE_FILE* image_file)
 			tv->enc->seg[0].data,
 			tv->enc->seg[0].data + tv->enc->seg[0].size,
 			tv->enc->seg[0].size);
+
+	addr = kmalloc(sizeof(struct hyp_addr ),GFP_USER);
+	addr->addr = (unsigned long)tv->enc->seg[0].data;
+	addr->size = image_file->code_section_size;
+	list_add(&addr->lst, &tv->hyp_addr_lst);
 }
 //
 // for any process identified as
@@ -103,9 +114,14 @@ void tp_unmmap_handler(struct task_struct* task)
 {
 	struct truly_vm *tv = this_cpu_ptr(&TVM);
 	struct hyp_addr* tmp,*tmp2;
+	unsigned long is_kernel;
 
 	list_for_each_entry_safe(tmp, tmp2, &tv->hyp_addr_lst, lst) {
-    	unmap_user_space_data(tmp->addr , tmp->size);
+		is_kernel = tmp->addr & 0xFFFF000000000000;
+		if (is_kernel)
+			hyp_user_unmap(tmp->addr, tmp->size);
+		else
+			unmap_user_space_data(tmp->addr , tmp->size);
     	list_del(&tmp->lst);
     	kfree(tmp);
 	}
