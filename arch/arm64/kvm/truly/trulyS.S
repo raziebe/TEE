@@ -160,7 +160,8 @@ not_first:
 	kern_hyp_va x1
 
 	blr x1
-	ic ialluis
+	bl pad_invalidate
+
 
 	restore_registers
 	pop	x2, x3
@@ -190,7 +191,7 @@ not_first:
 	ldr x1,=truly_pad
 	kern_hyp_va x1
 	blr x1
-	ic ialluis
+	bl pad_invalidate
 
 	restore_registers
 	//
@@ -220,7 +221,32 @@ not_first:
 	eret
 ENDPROC(el1_trap)
 
+/*
+ * x0: start
+ * x1: end
+ * cloberred x3,x4
+*/
+ENTRY(pad_invalidate)
 
+	mrs	x1,tpidr_el2
+	kern_hyp_va x1
+	ldr x0,[x1, #TP_ENC ]
+	kern_hyp_va x0
+	ldr x2,[x0, #TP_ENC_SIZE] // size
+	ldr x3,[x0, #TP_PAD_DATA] // pad_data
+
+	mov x0,x3	 // start
+	add x1,x0,x2 // end
+
+start_inv:
+
+	ic ivau, x0
+	add x0,x0,#4
+	cmp x0,x1
+	ble start_inv
+
+	ret
+ENDPROC(pad_invalidate)
 
 __truly_panic:
 	adr	x0, __hyp_panic_str
@@ -362,8 +388,7 @@ NO_MOVE_BACK:
 	ldr x1,=truly_pad
 	kern_hyp_va x1
 	blr x1
-
-	ic ialluis	// flash the entire cache, TODO here.
+	bl pad_invalidate
 
 /*
 * force switch to EL0
