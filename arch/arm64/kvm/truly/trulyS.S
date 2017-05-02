@@ -348,10 +348,11 @@ EL2_sync:
 	b.eq NO_MOVE_BACK
 
 	cmp	x2, #ESR_ELx_EC_SVC64
-	b.eq MOVE_BACK
+	b.ne NO_MOVE_BACK
 
 MOVE_BACK:
 	sub x3 , x3, #4
+
 NO_MOVE_BACK:
 
 	mrs	x0,tpidr_el2
@@ -363,26 +364,38 @@ NO_MOVE_BACK:
 	blr x1
 
 	ic ialluis	// flash the entire cache, TODO here.
-	restore_registers
 
-	msr cntvoff_el2 ,x1  //<-- save x1 for the mode switch
-
-//	force stack back to elX
-	mrs x1,spsel
-	orr w1,w1,#0x3
-	msr spsel,x1
-
-// force switch to EL0
-// spsr is not informative. It is a control register.
-// If we do not set it back to the exception it was taken from
-// we will return to EL2
-//
+/*
+* force switch to EL0
+* spsr is not just informative. It is also a control register.
+* If we do not set it back to the original exception level
+* we will return to EL2
+*/
 	mrs x1,spsr_el2
+	and w1,w1,0xF0000000 // keep NZCV from EL2
+	mrs x0,spsr_el1
+	orr w0,w0,w1
+	msr spsr_el1, x0
+
+// Prepare spsr_el2 to move to ELx
+	mrs  x1,spsr_el2
 	and w1,w1,#0xFFFFFFC0
-//	msr spsr_el1,x1
 	msr spsr_el2,x1
 
-	mrs x1,cntvoff_el2 // <-- restore x1. We move to EL0
+	restore_registers
+//
+//	we can't restore registers after that because we  replace
+// the stack, so we use cntvoff_el2 as a cache
+//
+	msr cntvoff_el2,x1
+
+//	force stack back to elX
+	mov x1,xzr
+	mrs x1,spsel
+	orr w1,w1,#0x1
+	msr spsel,x1
+
+ 	mrs x1,cntvoff_el2  //<-- save x1 for the mode switch
 
 	eret
 ENDPROC(EL2_sync)
