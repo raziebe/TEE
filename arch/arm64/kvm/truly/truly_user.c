@@ -118,11 +118,14 @@ void tp_unmmap_handler(struct task_struct* task)
 
 	list_for_each_entry_safe(tmp, tmp2, &tv->hyp_addr_lst, lst) {
 		is_kernel = tmp->addr & 0xFFFF000000000000;
-		if (is_kernel)
+		if (is_kernel){
 			hyp_user_unmap(tmp->addr, tmp->size);
-		else
+			tp_info("unmapping tp section %lx\n",tmp->addr);
+			kfree((void*)tmp->addr);
+		} else {
 			unmap_user_space_data(tmp->addr , tmp->size);
-    	list_del(&tmp->lst);
+		}
+		list_del(&tmp->lst);
     	kfree(tmp);
 	}
 }

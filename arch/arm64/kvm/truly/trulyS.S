@@ -114,7 +114,7 @@ el1_trap:
 	b.eq	4f
 	cmp x2, #0x3c					// debug brk command
 	b.eq	brk_exception
-	
+
 	cmp	x2, #ESR_ELx_EC_DABT_LOW	// ESR_ELx_EC_DABT_LOW = 0x24 = 36d = data abort
 	mov	x0, #ESR_ELx_EC_IABT_LOW	// ESR_ELx_EC_IABT_LOW = 0x20 = 32 instruction abort 
 	ccmp	x2, x0, #4, ne // if and 4 && (x2 and x0 ) then br to 1
@@ -128,9 +128,6 @@ el1_trap:
  
 
 brk_exception:
-
-	mov  x0,#447
-	msr  vmpidr_el2,x0
 
 	mrs	x0,tpidr_el2
 	ldr x3,[x0, #TP_PGD]
@@ -162,14 +159,8 @@ not_first:
 	ldr x1,=truly_decrypt
 	kern_hyp_va x1
 
-	mov  x2,#448
-	msr  vmpidr_el2,x2
-
 	blr x1
 	ic ialluis
-
-	mov  x2,#449
-	msr  vmpidr_el2,x2
 
 	restore_registers
 	pop	x2, x3
@@ -201,9 +192,6 @@ not_first:
 	blr x1
 	ic ialluis
 
-	mov  x0,#450
-	msr  vmpidr_el2,x0
-
 	restore_registers
 	//
 	push x0, x1
@@ -226,9 +214,6 @@ not_first:
 	and w1,w1,#0xFFFFFFC0
 	msr spsr_el1,x1
 	msr spsr_el2,x1
-
-	mov  x1,#451
-	msr  vmpidr_el2,x1
 
 	mrs x1,cntvoff_el2 // <-- restore x1
 
@@ -306,9 +291,6 @@ ENTRY(truly_set_mdcr_el2)
 	kern_hyp_va x1
 	msr		mdcr_el2, x1
 
-	mov  x1,#1
-	msr  vmpidr_el2,x1
-
 ENDPROC(truly_set_mdcr_el2)
 
 ENTRY(truly_run_vm)
@@ -318,7 +300,6 @@ ENTRY(truly_run_vm)
 	
 	kern_hyp_va  x0	// grab tvm
 	msr	tpidr_el2, x0	// save tvm context
-	
 
 	ldr	x1, [x0, #TP_HCR_EL2]
 	kern_hyp_va x1
@@ -342,17 +323,6 @@ ENTRY(truly_run_vm)
 	// Clear cntvoff for the host
 	msr	cntvoff_el2, xzr
 
-/*	check here that we storge the keys in the registers.
-			0x2b,0x7e,0x15,0x16,
-			0x28,0xae,0xd2,0xa6,
-			0xab,0xf7,0x15,0x88,
-			0x09,0xcf,0x4f,0x3c};
-
-*/
-
-	mov		x1, #44
-	msr vmpidr_el2, x1
-
 	mov	lr,x4
 	eret // must eret here. stack pointer is changed 
 ENDPROC(truly_run_vm)
@@ -366,22 +336,24 @@ ENDPROC(truly_run_vm)
 EL2_sync:
 
 	save_registers
-	mov  x0,#444
-	msr  vmpidr_el2,x0
 //
 // G1.13	if elr_el2.iss bit 24 valid then iss valid D7-1956
-//	If SVC/HVC/SMC then move back else leave unchanged
+//	If SVC/HVC/SMC or then move back else leave unchanged
+
 	mrs x3, elr_el2
 	mrs	x1, esr_el2
 	lsr	x2, x1, #ESR_ELx_EC_SHIFT	// Syndrom shift 26 bits
 
+	cmp x2,#ESR_ELx_EC_DABT_CUR  // 0x25 , MMU abort in EL2
+	b.eq NO_MOVE_BACK
+
 	cmp	x2, #ESR_ELx_EC_SVC64
 	b.eq MOVE_BACK
-	cmp	x2, #ESR_ELx_EC_SVC32
-	b.ne NO_MOVE_BACK
+
 MOVE_BACK:
 	sub x3 , x3, #4
 NO_MOVE_BACK:
+
 	mrs	x0,tpidr_el2
 	str x3,[x0, #TP_SAVE_CMD]
 	msr elr_el2, x3 // eret will start from here.
@@ -390,28 +362,25 @@ NO_MOVE_BACK:
 	kern_hyp_va x1
 	blr x1
 
-	mov  x0,#445
-	msr  vmpidr_el2,x0
-
 	ic ialluis	// flash the entire cache, TODO here.
-
 	restore_registers
 
 	msr cntvoff_el2 ,x1  //<-- save x1 for the mode switch
 
 //	force stack back to elX
 	mrs x1,spsel
-	and w1,w1,#0xFFFFFFFE
+	orr w1,w1,#0x3
 	msr spsel,x1
 
 // force switch to EL0
+// spsr is not informative. It is a control register.
+// If we do not set it back to the exception it was taken from
+// we will return to EL2
+//
 	mrs x1,spsr_el2
 	and w1,w1,#0xFFFFFFC0
-	msr spsr_el1,x1
+//	msr spsr_el1,x1
 	msr spsr_el2,x1
-
-	mov  x1,#446
-	msr  vmpidr_el2,x1
 
 	mrs x1,cntvoff_el2 // <-- restore x1. We move to EL0
 
