@@ -176,6 +176,7 @@ not_first:
 
 	mrs x30,elr_el2	   // go back to the next command after the faulted one
 	mrs x1,cntvoff_el2 // <-- restore x1. Must return with the exact same registers
+	msr cntvoff_el2,xzr
 
 	blr x30			// Execute decrypted in EL2  and then return to next command because of the blr call.
 
@@ -217,6 +218,7 @@ not_first:
 	msr spsr_el2,x1
 
 	mrs x1,cntvoff_el2 // <-- restore x1
+	msr cntvoff_el2,xzr
 
 	eret
 ENDPROC(el1_trap)
@@ -228,6 +230,8 @@ ENDPROC(el1_trap)
 */
 ENTRY(pad_invalidate)
 
+	ic ialluis
+	ret
 	mrs	x1,tpidr_el2
 	kern_hyp_va x1
 	ldr x0,[x1, #TP_ENC ]
@@ -421,6 +425,7 @@ NO_MOVE_BACK:
 	msr spsel,x1
 
  	mrs x1,cntvoff_el2  //<-- save x1 for the mode switch
+	msr cntvoff_el2,xzr
 
 	eret
 ENDPROC(EL2_sync)
