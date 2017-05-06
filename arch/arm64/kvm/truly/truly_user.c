@@ -70,17 +70,17 @@ void tp_mark_protected(struct _IMAGE_FILE* image_file)
 	}
 
 	tv = this_cpu_ptr(&TVM);
-	tv->enc->seg[0].data  = kmalloc(image_file->code_section_size, GFP_USER);
-	if (tv->enc->seg[0].data == NULL){
+	tv->enc->seg[0].enc_data  = kmalloc(image_file->code_section_size, GFP_USER);
+	if (tv->enc->seg[0].enc_data == NULL){
 		tp_err("Failed to allocate tp section");
 		return ;
 	}
 
-	memcpy(tv->enc->seg[0].data , image_file->tp_section,image_file->code_section_size);
-	memcpy(&tv->enc->seg[0].size,tv->enc->seg[0].data + 0x24,sizeof(int));
+	memcpy(tv->enc->seg[0].enc_data , image_file->tp_section,image_file->code_section_size);
+	memcpy(&tv->enc->seg[0].size,tv->enc->seg[0].enc_data + 0x24,sizeof(int));
 
-	err = create_hyp_mappings(tv->enc->seg[0].data,
- 			tv->enc->seg[0].data + tv->enc->seg[0].size);
+	err = create_hyp_mappings(tv->enc->seg[0].enc_data,
+ 			tv->enc->seg[0].enc_data + image_file->code_section_size);
 
 	if (err){
 			tp_err(" failed to map tp_section\n");
@@ -88,14 +88,14 @@ void tp_mark_protected(struct _IMAGE_FILE* image_file)
 	}
 
 	tp_err("tp section "
-			"mapped start %p  end = %p size %d \n",
-			tv->enc->seg[0].data,
-			tv->enc->seg[0].data + tv->enc->seg[0].size,
+			"mapped start %p  size %d but section size is %d\n",
+			tv->enc->seg[0].enc_data,
+			(int)image_file->code_section_size,
 			tv->enc->seg[0].size);
 
 	addr = kmalloc(sizeof(struct hyp_addr ),GFP_USER);
-	addr->addr = (unsigned long)tv->enc->seg[0].data;
-	addr->size = tv->enc->seg[0].size;
+	addr->addr = (unsigned long)tv->enc->seg[0].enc_data;
+	addr->size = image_file->code_section_size;
 	list_add(&addr->lst, &tv->hyp_addr_lst);
 }
 //
@@ -114,7 +114,6 @@ void tp_unmmap_handler(struct task_struct* task)
 	struct truly_vm *tv = this_cpu_ptr(&TVM);
 	struct hyp_addr* tmp,*tmp2;
 	unsigned long is_kernel;
-
 
 	list_for_each_entry_safe(tmp, tmp2, &tv->hyp_addr_lst, lst) {
 		is_kernel = tmp->addr & 0xFFFF000000000000;
@@ -148,21 +147,6 @@ void tp_unmark_protected(void)
 
 #include "AesC.h"
 
-int  __hyp_text  tp_hyp_memcpy(char *dst,char *src,int size)
-{
-	int i;
-	for (i = 0; i < size; i++)
-		dst[i] = src[i];
-	return i;
-}
-
-int __hyp_text  tp_hyp_memset(char *dst,char tag,int size)
-{
-	int i;
-	for (i = 0; i < size; i++)
-		dst[i] = tag;
-	return i;
-}
 
 
 int __hyp_text truly_decrypt(struct truly_vm *tv)
@@ -201,7 +185,7 @@ int __hyp_text truly_decrypt(struct truly_vm *tv)
 		lines++;
 	}
 
-	d = (char *)KERN_TO_HYP(enc->seg[0].data);
+	d = (char *)KERN_TO_HYP(enc->seg[0].enc_data);
 	d += data_offset;
 
 	for (line = 0 ; line < lines ; line += 4 ) {
