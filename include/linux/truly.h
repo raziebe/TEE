@@ -95,7 +95,7 @@ enum { MAX_BLOCK_SIZE=32, MAX_ROUNDS=14, MAX_KC=8, MAX_BC=8 };
 struct encrypted_segment {
 	int size;
 	int pad_func_offset; // offset of function in vma
-	unsigned char *data; // the encrypted data
+	unsigned char *enc_data; // the encrypted data
 	unsigned char* pad_data; // the padding pointer
 };
 
