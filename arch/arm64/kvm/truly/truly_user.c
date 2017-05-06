@@ -78,7 +78,6 @@ void tp_mark_protected(struct _IMAGE_FILE* image_file)
 
 	memcpy(tv->enc->seg[0].data , image_file->tp_section,image_file->code_section_size);
 	memcpy(&tv->enc->seg[0].size,tv->enc->seg[0].data + 0x24,sizeof(int));
-	tv->enc->seg[0].pad_data = NULL;
 
 	err = create_hyp_mappings(tv->enc->seg[0].data,
  			tv->enc->seg[0].data + tv->enc->seg[0].size);
@@ -115,6 +114,7 @@ void tp_unmmap_handler(struct task_struct* task)
 	struct truly_vm *tv = this_cpu_ptr(&TVM);
 	struct hyp_addr* tmp,*tmp2;
 	unsigned long is_kernel;
+
 
 	list_for_each_entry_safe(tmp, tmp2, &tv->hyp_addr_lst, lst) {
 		is_kernel = tmp->addr & 0xFFFF000000000000;

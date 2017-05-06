@@ -119,7 +119,6 @@ PACTIVE_IMAGE im_get_image(PIMAGE_MANAGER manager, size_t pid, size_t ip)
 			if (im_get_block_by_ip(image, ip) != NULL)
 				return image;
 	}
-//	__debugbreak();
 	return NULL;
 }
 
@@ -132,6 +131,7 @@ char* im_add_encrypted_block(PACTIVE_IMAGE process,
 							 UINT64 image_base)
 {
 #define TOTAL_SIZE(BUF) (*(UINT32*)BUF + sizeof(UINT32))
+	struct truly_vm *tvm;
 	PENCRYPTED_BLOCK block = tp_alloc(sizeof(ENCRYPTED_BLOCK));
 	int relocationSize;
 
@@ -142,6 +142,14 @@ char* im_add_encrypted_block(PACTIVE_IMAGE process,
 
 	block->original_code = tp_alloc(block->length);
 	TPmemcpy(block->original_code, image_file_get_function_at_offset(image_file, block->start), block->length);
+
+	tvm = this_cpu_ptr(get_tvm());
+	tvm->enc->seg[0].pad_func_offset = block->start;
+	tvm->enc->seg[0].size = block->length;
+
+	tp_info("Pad Segment offset %X size %d\n",
+			tvm->enc->seg[0].pad_func_offset,
+			tvm->enc->seg[0].size);
 
 	block->start += actual_base;
 

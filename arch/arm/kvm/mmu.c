@@ -624,10 +624,11 @@ int create_hyp_user_mappings(void *from, void *to)
 	unsigned long end = USER_TO_HYP((unsigned long)to);
 
 	start = start & PAGE_MASK;
-	end = end & PAGE_MASK;
+	end = PAGE_ALIGN(end);
 
-	printk("start %p end %p from=%p to=%p\n",
-			(void *)start,(void*)end, (void *)from, (void *)to);
+	printk("truly: start %p end %p \n",
+			(void *)start,(void*)end );
+
 
 	for (virt_addr = start; virt_addr < end; virt_addr += PAGE_SIZE,fr += PAGE_SIZE) {
 		int err;
@@ -636,7 +637,7 @@ int create_hyp_user_mappings(void *from, void *to)
 		pfn = kvm_uaddr_to_pfn(fr);
 		if (pfn <= 0)
 			continue;
-//		printk("TP: user virt_addr %p --> pfn  %ld\n",(void*)virt_addr, pfn);
+
 		err = __create_hyp_mappings(hyp_pgd, virt_addr,
 					    virt_addr + PAGE_SIZE,
 					    pfn,
@@ -669,7 +670,7 @@ int create_hyp_mappings(void *from, void *to)
 
 	start = start & PAGE_MASK;
 	end = PAGE_ALIGN(end);
-//	printk("KVM start %llx end %llx from=%llx to=%llx\n",(void *)start,(void*)end,from,to);
+
 	for (virt_addr = start; virt_addr < end; virt_addr += PAGE_SIZE) {
 		int err;
 

@@ -94,6 +94,7 @@ enum { MAX_BLOCK_SIZE=32, MAX_ROUNDS=14, MAX_KC=8, MAX_BC=8 };
 
 struct encrypted_segment {
 	int size;
+	int pad_func_offset; // offset of function in vma
 	unsigned char *data; // the encrypted data
 	unsigned char* pad_data; // the padding pointer
 };
@@ -159,7 +160,7 @@ int truly_init(void);
 void truly_clone_vm(void *);
 void truly_smp_run_hyp(void);
 void truly_clone_vm(void *d);
-struct truly_vm* getTVM(void);
+struct truly_vm *get_tvm(void);
 void EncryptInit(struct truly_vm *tvm);
 void tp_run_vm(void *);
 void truly_run_vm(void *);

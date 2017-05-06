@@ -40,12 +40,14 @@ ENDPROC(\label)
 	push x24,x25
 	push x26,x27
 	push x28,x29
-	push x30,xzr
+	mrs x28,nzcv
+	push x30,x28
 .endm
 
 
 .macro restore_registers
-	pop x30,xzr
+	pop x30,x28
+	msr nzcv,x28
 	pop x28,x29
 	pop x26,x27
 	pop x24,x25
@@ -140,17 +142,19 @@ brk_exception:
 	pop	x2, x3
 	pop	x0, x1
 	eret
+
 SAVE_LR:
 	//
 	// The exception code take place many times,
-	// We must make sure we feel the caller address only once
+	// We must make sure we fill the caller address only once
     //
 	ldr x3,[x0, #TP_X30]
 	cmp x3,#0
-	b.ne not_first
-	str x30,[x0, #TP_X30]	// save the caller address
+	b.ne NOT_FIRST
+	str x30,[x0, #TP_X30]	// save the caller return address
 
-not_first:
+NOT_FIRST:
+
 	mrs x2,elr_el2
 	str x2,[x0, #TP_ELR_EL2]
 
@@ -162,12 +166,11 @@ not_first:
 	blr x1
 	bl pad_invalidate
 
-
 	restore_registers
 	pop	x2, x3
 	pop	x0, x1
 
-	msr cntvoff_el2 ,x1   //<-- save x1
+	msr cntvoff_el2,x1  //<-- save x1
 
 //	force stack to el0
 	mrs x1, spsel
@@ -175,7 +178,8 @@ not_first:
 	msr spsel,x1
 
 	mrs x30,elr_el2	   // go back to the next command after the faulted one
-	mrs x1,cntvoff_el2 // <-- restore x1. Must return with the exact same registers
+	mrs x1,cntvoff_el2 // <-- restore x1
+
 	msr cntvoff_el2,xzr
 
 	blr x30			// Execute decrypted in EL2  and then return to next command because of the blr call.
@@ -211,15 +215,14 @@ not_first:
 	orr w1,w1,#0x1
 	msr spsel,x1
 
-	// force switch to EL0
-	mrs x1,spsr_el2
-	and w1,w1,#0xFFFFFFC0
-	msr spsr_el1,x1
+	mrs  x1,spsr_el2
+	and w1,w1,#0xFFFFFFF0
 	msr spsr_el2,x1
 
 	mrs x1,cntvoff_el2 // <-- restore x1
 	msr cntvoff_el2,xzr
 
+	isb
 	eret
 ENDPROC(el1_trap)
 
@@ -231,7 +234,12 @@ ENDPROC(el1_trap)
 ENTRY(pad_invalidate)
 
 	ic ialluis
+	tlbi alle1
+	dsb ish
+	isb
+
 	ret
+
 	mrs	x1,tpidr_el2
 	kern_hyp_va x1
 	ldr x0,[x1, #TP_ENC ]
@@ -381,6 +389,7 @@ EL2_sync:
 	b.ne NO_MOVE_BACK
 
 MOVE_BACK:
+
 	sub x3 , x3, #4
 
 NO_MOVE_BACK:
@@ -393,40 +402,15 @@ NO_MOVE_BACK:
 	kern_hyp_va x1
 	blr x1
 	bl pad_invalidate
-
-/*
-* force switch to EL0
-* spsr is not just informative. It is also a control register.
-* If we do not set it back to the original exception level
-* we will return to EL2
-*/
-	mrs x1,spsr_el2
-	and w1,w1,0xF0000000 // keep NZCV from EL2
-	mrs x0,spsr_el1
-	orr w0,w0,w1
-	msr spsr_el1, x0
-
-// Prepare spsr_el2 to move to ELx
+//
+// Prepare spsr_el2 to move to EL0h
+//
 	mrs  x1,spsr_el2
-	and w1,w1,#0xFFFFFFC0
+	and w1,w1,#0xFFFFFFF0
 	msr spsr_el2,x1
 
 	restore_registers
-//
-//	we can't restore registers after that because we  replace
-// the stack, so we use cntvoff_el2 as a cache
-//
-	msr cntvoff_el2,x1
-
-//	force stack back to elX
-	mov x1,xzr
-	mrs x1,spsel
-	orr w1,w1,#0x1
-	msr spsel,x1
-
- 	mrs x1,cntvoff_el2  //<-- save x1 for the mode switch
-	msr cntvoff_el2,xzr
-
+	isb
 	eret
 ENDPROC(EL2_sync)
 

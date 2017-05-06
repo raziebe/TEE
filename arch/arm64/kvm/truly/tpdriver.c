@@ -112,13 +112,16 @@ static enum ep_module_group get_group_by_arch_and_type (char arch, char type)
 }
 
 
-void vma_map_hyp(struct vm_area_struct* vma)
+void vma_map_hyp(struct vm_area_struct* vma,struct _IMAGE_FILE* image_file)
 {
 	unsigned long base, size;
+	struct truly_vm *tv;
 
+	tv = this_cpu_ptr(get_tvm());
 
-    base = vma->vm_start;
-    size = vma->vm_end - base;
+    base = vma->vm_start + tv->enc->seg[0].pad_func_offset;
+    size = tv->enc->seg[0].size;
+    tv->enc->seg[0].pad_data = (char *)base;
 
     tp_mmap_handler(base, size, vma->vm_flags);
 }
@@ -208,7 +211,6 @@ void tp_execve_handler(unsigned long ret_value)
 {
     char* exec_path, *path_to_free = NULL;
     PIMAGE_FILE image_file;
-  //  OSSTATUS status = TP_SUCCESS;
     struct file* file;
     BOOLEAN is_protected;
     unsigned long base, size;
@@ -239,7 +241,6 @@ void tp_execve_handler(unsigned long ret_value)
 
     image_file_init_bases(image_file, base);
     is_protected = im_handle_image(&image_manager, image_file, (UINT64)current->pid, base);
-    image_file_free(image_file);
 
     if (is_protected) {
 
@@ -248,7 +249,7 @@ void tp_execve_handler(unsigned long ret_value)
 
         for (;p ; p = p->vm_next) {
         	if (p->vm_flags & VM_EXEC) {
-                vma_map_hyp(p);
+                vma_map_hyp(p,image_file);
                 break;
         	}
 		}
@@ -256,11 +257,14 @@ void tp_execve_handler(unsigned long ret_value)
         for (; p ; p = p->vm_next) {
 
         	if (p->vm_flags == VM_STK_FLAGS ){
-        		vma_map_hyp(p);
+        		int size = p->vm_end  - p->vm_start;
+        		tp_mmap_handler(p->vm_start, size, p->vm_flags);
         	}
         }
         truly_set_trap();
     }
+    image_file_free(image_file);
+
     mutex_unlock(&protected_image_mutex);
     file_close(file);
 clean_2:
