@@ -605,7 +605,9 @@ unsigned long kvm_uaddr_to_pfn(unsigned long uaddr)
 
 void hyp_user_unmap(unsigned long umem,int size)
 {
-	unmap_range(NULL, hyp_pgd, umem, size);
+	int sz_page = PAGE_ALIGN(size);
+
+	unmap_range(NULL, hyp_pgd, umem, sz_page);
 }
 /**
  * create_hyp_mappings - duplicate a kernel virtual address range in Hyp mode
