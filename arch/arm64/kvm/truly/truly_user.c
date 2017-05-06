@@ -75,13 +75,13 @@ void tp_mark_protected(struct _IMAGE_FILE* image_file)
 		tp_err("Failed to allocate tp section");
 		return ;
 	}
-	memcpy(tv->enc->seg[0].data , image_file->tp_section,image_file->code_section_size);
 
+	memcpy(tv->enc->seg[0].data , image_file->tp_section,image_file->code_section_size);
 	memcpy(&tv->enc->seg[0].size,tv->enc->seg[0].data + 0x24,sizeof(int));
 	tv->enc->seg[0].pad_data = NULL;
 
 	err = create_hyp_mappings(tv->enc->seg[0].data,
- 			tv->enc->seg[0].data + image_file->code_section_size);
+ 			tv->enc->seg[0].data + tv->enc->seg[0].size);
 
 	if (err){
 			tp_err(" failed to map tp_section\n");
@@ -96,7 +96,7 @@ void tp_mark_protected(struct _IMAGE_FILE* image_file)
 
 	addr = kmalloc(sizeof(struct hyp_addr ),GFP_USER);
 	addr->addr = (unsigned long)tv->enc->seg[0].data;
-	addr->size = image_file->code_section_size;
+	addr->size = tv->enc->seg[0].size;
 	list_add(&addr->lst, &tv->hyp_addr_lst);
 }
 //
