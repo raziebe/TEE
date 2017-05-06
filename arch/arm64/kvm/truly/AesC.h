@@ -301,6 +301,22 @@ static inline void __hyp_text  AESSW_Dec128(struct encrypt_tvm *tvm,
 		}
 }
 
+int  __hyp_text  tp_hyp_memcpy(char *dst,char *src,int size)
+{
+	int i;
+	for (i = 0; i < size; i++)
+		dst[i] = src[i];
+	return i;
+}
+
+int __hyp_text  tp_hyp_memset(char *dst,char tag,int size)
+{
+	int i;
+	for (i = 0; i < size; i++)
+		dst[i] = tag;
+	return i;
+}
+
 static inline void get_decrypted_key(UCHAR *key)
 {
 	UCHAR k[]  = {
@@ -308,7 +324,8 @@ static inline void get_decrypted_key(UCHAR *key)
 			0x28,0xae,0xd2,0xa6,
 			0xab,0xf7,0x15,0x88,
 			0x09,0xcf,0x4f,0x3c};
-	memcpy(key,k, 16);
+
+	tp_hyp_memcpy(key,k, 16);
 }
 
 
