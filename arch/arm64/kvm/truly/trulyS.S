@@ -232,6 +232,8 @@ ENDPROC(el1_trap)
  * cloberred x3,x4
 */
 ENTRY(pad_invalidate)
+    ic ialluis
+    ret
 
 	mrs	x1,tpidr_el2
 	kern_hyp_va x1
