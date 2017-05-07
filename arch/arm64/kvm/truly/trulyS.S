@@ -234,10 +234,6 @@ ENDPROC(el1_trap)
 ENTRY(pad_invalidate)
 
 	ic ialluis
-	tlbi alle1
-	dsb ish
-	isb
-
 	ret
 
 	mrs	x1,tpidr_el2
