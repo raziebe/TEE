@@ -233,9 +233,6 @@ ENDPROC(el1_trap)
 */
 ENTRY(pad_invalidate)
 
-	ic ialluis
-	ret
-
 	mrs	x1,tpidr_el2
 	kern_hyp_va x1
 	ldr x0,[x1, #TP_ENC ]
