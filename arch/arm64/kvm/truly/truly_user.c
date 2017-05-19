@@ -173,7 +173,7 @@ void tp_unmark_protected(void)
 
 #include "AesC.h"
 
-
+#define EL1_print if (truly_get_exception_level() == 0x04) printk
 
 int __hyp_text truly_decrypt(struct truly_vm *tv)
 {
@@ -194,25 +194,31 @@ int __hyp_text truly_decrypt(struct truly_vm *tv)
 	enc = (struct encrypt_tvm *) KERN_TO_HYP(tv->enc);
 	if ( truly_get_exception_level() == 0x04)
 				enc = tv->enc;
+	EL1_print ("%s %d %p\n",__func__, __LINE__, enc->seg[0].pad_data);
 
 	if (enc->seg[0].pad_data == NULL) {
+		EL1_print ("%s %d\n",__func__, __LINE__);
 		enc->seg[0].pad_data = (char *)tv->elr_el2;
 	}
+	EL1_print ("%s %d\n",__func__, __LINE__);
 	pad = enc->seg[0].pad_data;
 	tv->brk_count_el2++;
 	get_decrypted_key(key);
 	lines = enc->seg[0].size/ 4;
-
+	EL1_print ("%s %d\n",__func__, __LINE__);
 	extra_offset = (enc->seg[0].size/ 16) * 16;
 	extra = enc->seg[0].size - extra_offset;
+	EL1_print ("%s %d\n",__func__, __LINE__);
 	if ( extra > 0) {
 		// backup extra code
 		tp_hyp_memcpy(extra_lines, pad +  enc->seg[0].size, sizeof(extra_lines) - extra);
 		// pad with zeros
+		EL1_print ("%s %d\n",__func__, __LINE__);
 		tp_hyp_memset(pad + enc->seg[0].size ,(char)0, sizeof(extra_lines) - extra );
 		lines++;
+		EL1_print ("%s %d\n",__func__, __LINE__);
 	}
-
+	EL1_print ("%s %d\n",__func__, __LINE__);
 	d = (char *)KERN_TO_HYP(enc->seg[0].enc_data);
 	if ( truly_get_exception_level() == 0x04)
 				d = enc->seg[0].enc_data;
