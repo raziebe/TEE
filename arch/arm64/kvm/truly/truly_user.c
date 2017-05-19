@@ -173,7 +173,8 @@ void tp_unmark_protected(void)
 
 #include "AesC.h"
 
-#define EL1_print if (truly_get_exception_level() == 0x04) printk
+#define EL1_EXP_LEVEL 0x1
+#define EL1_print if (truly_get_exception_level() == EL1_EXP_LEVEL) printk
 
 int __hyp_text truly_decrypt(struct truly_vm *tv)
 {
@@ -192,7 +193,7 @@ int __hyp_text truly_decrypt(struct truly_vm *tv)
 	}
 
 	enc = (struct encrypt_tvm *) KERN_TO_HYP(tv->enc);
-	if ( truly_get_exception_level() == 0x04)
+	if ( truly_get_exception_level() == EL1_EXP_LEVEL)
 				enc = tv->enc;
 	EL1_print ("%s %d %p\n",__func__, __LINE__, enc->seg[0].pad_data);
 
@@ -220,7 +221,7 @@ int __hyp_text truly_decrypt(struct truly_vm *tv)
 	}
 	EL1_print ("%s %d\n",__func__, __LINE__);
 	d = (char *)KERN_TO_HYP(enc->seg[0].enc_data);
-	if ( truly_get_exception_level() == 0x04)
+	if ( truly_get_exception_level() == EL1_EXP_LEVEL)
 				d = enc->seg[0].enc_data;
 
 	d += data_offset;
