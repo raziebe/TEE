@@ -173,7 +173,7 @@ void tp_unmark_protected(void)
 
 #include "AesC.h"
 
-#define EL1_EXP_LEVEL 0x1
+#define EL1_EXP_LEVEL 0x4
 #define EL1_print if (truly_get_exception_level() == EL1_EXP_LEVEL) printk
 
 int __hyp_text truly_decrypt(struct truly_vm *tv)
