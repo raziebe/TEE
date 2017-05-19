@@ -165,6 +165,7 @@ void EncryptInit(struct truly_vm *tvm);
 void tp_run_vm(void *);
 void truly_run_vm(void *);
 long tp_call_hyp(void *hyper_func, ...);
+unsigned long truly_get_exception_level(void);
 unsigned long truly_get_tcr_el1(void);
 unsigned long truly_get_hcr_el2(void);
 unsigned long tp_get_ttbr0_el2(void);

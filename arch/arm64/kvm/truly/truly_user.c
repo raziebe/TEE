@@ -13,6 +13,7 @@
 #include <linux/slab.h>
 #include <asm/page.h>
 #include <linux/truly.h>
+#include <linux/delay.h>
 #include "Aes.h"
 #include "ImageFile.h"
 
@@ -25,6 +26,14 @@ unsigned long truly_get_ttbr0_el1(void)
       asm("mrs %0,ttbr0_el1\n":"=r" (ttbr0_el1));
       return ttbr0_el1;
 }
+
+unsigned long  truly_get_exception_level(void)
+{
+	long el;
+	asm ("mrs	%0, CurrentEl\n":"=r"(el));
+	return el;
+}
+
 
 /*
  * Called from execve context.
@@ -97,6 +106,23 @@ void tp_mark_protected(struct _IMAGE_FILE* image_file)
 	addr->addr = (unsigned long)tv->enc->seg[0].enc_data;
 	addr->size = image_file->code_section_size;
 	list_add(&addr->lst, &tv->hyp_addr_lst);
+
+#define	 __TEST_DECRYPTION_DURATION__
+#ifdef __TEST_DECRYPTION_DURATION__
+	{
+	struct timeval t1,t2;
+	int us;
+
+	do_gettimeofday(&t1);
+	truly_decrypt(tv);
+	do_gettimeofday(&t2);
+
+	us = (t2.tv_sec  - t1.tv_sec )/1000000 + ( t2.tv_usec - t1.tv_usec);
+	printk("Decrypt duration is %d\n",us);
+	msleep(10);
+	}
+#endif
+
 }
 //
 // for any process identified as
@@ -161,11 +187,13 @@ int __hyp_text truly_decrypt(struct truly_vm *tv)
 	UCHAR key[16+1] = {0};
 	struct encrypt_tvm *enc;
 
-	if (tv->protected_pgd != truly_get_ttbr0_el1()){
+	if (tv->protected_pgd != truly_get_ttbr0_el1()) {
 			return -1;
 	}
 
 	enc = (struct encrypt_tvm *) KERN_TO_HYP(tv->enc);
+	if ( truly_get_exception_level() == 0x04)
+				enc = tv->enc;
 
 	if (enc->seg[0].pad_data == NULL) {
 		enc->seg[0].pad_data = (char *)tv->elr_el2;
@@ -186,6 +214,9 @@ int __hyp_text truly_decrypt(struct truly_vm *tv)
 	}
 
 	d = (char *)KERN_TO_HYP(enc->seg[0].enc_data);
+	if ( truly_get_exception_level() == 0x04)
+				d = enc->seg[0].enc_data;
+
 	d += data_offset;
 
 	for (line = 0 ; line < lines ; line += 4 ) {
