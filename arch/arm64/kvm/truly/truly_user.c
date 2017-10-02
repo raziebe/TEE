@@ -21,7 +21,7 @@ DECLARE_PER_CPU(struct truly_vm, TVM);
 
 unsigned long truly_get_ttbr0_el1(void)
 {
-	  long ttbr0_el1;
+	long ttbr0_el1;
 
       asm("mrs %0,ttbr0_el1\n":"=r" (ttbr0_el1));
       return ttbr0_el1;
@@ -55,7 +55,7 @@ void map_user_space_data(void *umem,int size,unsigned long vm_flags)
 	tp_err("pid %d user mapped %p size=%d\n", current->pid,umem ,size);
 	addr->addr = (unsigned long)umem;
 	addr->size = size;
-	tv = this_cpu_ptr(&TVM);
+	tv = get_tvm();
 	list_add(&addr->lst, &tv->hyp_addr_lst);
 }
 
@@ -78,7 +78,7 @@ void tp_mark_protected(struct _IMAGE_FILE* image_file)
 			tv->protected_pgd = ttbr0_el1;
 	}
 
-	tv = this_cpu_ptr(&TVM);
+	tv =  get_tvm();
 	tv->enc->seg[0].enc_data  = kmalloc(image_file->code_section_size, GFP_USER);
 	if (tv->enc->seg[0].enc_data == NULL){
 		tp_err("Failed to allocate tp section");
@@ -137,7 +137,7 @@ void tp_mmap_handler(unsigned long addr,int len,unsigned long vm_flags)
 //
 void tp_unmmap_handler(struct task_struct* task)
 {
-	struct truly_vm *tv = this_cpu_ptr(&TVM);
+	struct truly_vm *tv = get_tvm();
 	struct hyp_addr* tmp,*tmp2;
 	unsigned long is_kernel;
 
@@ -166,7 +166,7 @@ void tp_unmark_protected(void)
 {
 	int cpu;
 	for_each_possible_cpu(cpu) {
-			struct truly_vm *tv = this_cpu_ptr(&TVM);
+			struct truly_vm *tv = get_tvm();
 			tv->protected_pgd = 0;
 	}
 }
