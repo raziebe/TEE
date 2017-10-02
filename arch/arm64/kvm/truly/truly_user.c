@@ -158,7 +158,7 @@ void tp_unmmap_handler(struct task_struct* task)
 int __hyp_text truly_is_protected(struct truly_vm *tv)
 {
 	if (tv == NULL)
-		tv = this_cpu_ptr(&TVM);
+		tv = get_tvm();
 	return tv->protected_pgd == truly_get_ttbr0_el1();
 }
 

@@ -34,7 +34,12 @@ phys_addr_t at_el0(unsigned long addr)
 
 struct truly_vm *get_tvm(void)
 {
-	return &TVM;
+	struct truly_vm *tvm;
+
+	preempt_disable();
+	tvm = this_cpu_ptr(&TVM);
+	preempt_enable();
+	return tvm;
 }
 
 long truly_get_elr_el1(void)
@@ -352,7 +357,7 @@ int truly_init(void)
 	ips = (tcr_el1 >> 32) & 0b111;
 	pa_range = id_aa64mmfr0_el1 & 0b1111;
 
-	_tvm = this_cpu_ptr(&TVM);
+	_tvm = get_tvm();
 	memset(_tvm, 0x00, sizeof(*_tvm));
 	tp_create_pg_tbl(_tvm);
 	make_vtcr_el2(_tvm);
@@ -401,7 +406,7 @@ int truly_init(void)
 void truly_map_tvm(void *d)
 {
 	int err;
-	struct truly_vm *tv = this_cpu_ptr(&TVM);
+	struct truly_vm *tv = get_tvm();
 
 	if (tv->initialized)
 		return;
@@ -420,7 +425,7 @@ void truly_map_tvm(void *d)
 void tp_run_vm(void *x)
 {
 	struct truly_vm t;
-	struct truly_vm *tvm = this_cpu_ptr(&TVM);
+	struct truly_vm *tvm = get_tvm();
 	unsigned long vbar_el2;
 	unsigned long vbar_el2_current =
 	    (unsigned long) (KERN_TO_HYP(__truly_vectors));
@@ -440,7 +445,7 @@ void tp_run_vm(void *x)
 
 void set_mdcr_el2(void *dummy)
 {
-	struct truly_vm *tvm = this_cpu_ptr(&TVM);
+	struct truly_vm *tvm = get_tvm();
 	tvm->mdcr_el2 = 0x100;
 	tp_call_hyp(truly_set_mdcr_el2);
 }
@@ -452,7 +457,9 @@ void truly_set_trap(void)
 
 void reset_mdcr_el2(void *dummy)
 {
-	struct truly_vm *tvm = this_cpu_ptr(&TVM);
+	struct truly_vm *tvm ;
+
+	tvm = get_tvm();
 	tvm->mdcr_el2 = 0x00;
 	tp_call_hyp(truly_set_mdcr_el2);
 }
