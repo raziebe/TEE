@@ -1,4 +1,7 @@
 *.o
+*.out
+*.mod.c
+*.ko
 *.cmd.*
 .*.cmd.*
 *.built-in.o.cmd
