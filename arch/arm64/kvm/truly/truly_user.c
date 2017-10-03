@@ -107,7 +107,7 @@ void tp_mark_protected(struct _IMAGE_FILE* image_file)
 	addr->size = image_file->code_section_size;
 	list_add(&addr->lst, &tv->hyp_addr_lst);
 
-#define	 __TEST_DECRYPTION_DURATION__
+//#define	 __TEST_DECRYPTION_DURATION__
 #ifdef __TEST_DECRYPTION_DURATION__
 	{
 	struct timeval t1,t2;

@@ -288,31 +288,26 @@ ENTRY(truly_get_tcr_el1)
        ret
 ENDPROC(truly_get_tcr_el1)
 
-// This procedure calls the default hypervisor vector and
-// and sets truly vector. This is because when the cpu drops
-// Linux calls smc and vbar_el2 reseets.
+/* This procedure calls the default hypervisor vector and
+ * and sets truly vector. This is because when the cpu drops
+ * Linux calls smc and vbar_el2 reseets.
+*/
 ENTRY(truly_get_vectors)
-	mov	x0,xzr
+	mov	x0, xzr
 ENTRY(truly_set_vectors)
 	hvc #0
 	ret
 ENDPROC(truly_set_vectors)
 
 ENTRY(truly_get_hcr_el2)
-       mrs     x0, hcr_el2
-       ret
+    mrs     x0, hcr_el2
+    ret
 ENDPROC(truly_get_hcr_el2)
 
 ENTRY(tp_call_hyp)
         hvc	#0
         ret
 ENDPROC(tp_call_hyp)
-
-ENTRY(truly_has_vhe)
-        mrs     x2, id_aa64mmfr1_el1
-        ubfx    x2, x2, #8, #4
-		mov	x0,x2 // if zero then no vhe
-ENDPROC(truly_has_vhe)
 
 ENTRY(truly_set_mdcr_el2)
 
@@ -323,8 +318,9 @@ ENTRY(truly_set_mdcr_el2)
 
 	kern_hyp_va x1
 	msr		mdcr_el2, x1
-
+	ret
 ENDPROC(truly_set_mdcr_el2)
+
 
 ENTRY(truly_run_vm)
 	
