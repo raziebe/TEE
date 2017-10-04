@@ -65,7 +65,7 @@ void truly_set_elr_el1(long e)
 long truly_get_mfr(void)
 {
 	long e = 0;
-      asm("mrs %0,id_aa64mmfr0_el1\n":"=r"(e));
+    asm("mrs %0,id_aa64mmfr0_el1\n":"=r"(e));
 	return e;
 }
 
@@ -228,18 +228,6 @@ unsigned long tp_create_pg_tbl(void *cxt)
 	return tvm->vttbr_el2;
 }
 
-/*
-long truly_get_mem_regs(void *cxt)
-{
-	struct truly_vm *vm;
-
-	vm = (struct truly_vm *) cxt;
-
-	vm->id_aa64mmfr0_el1 = truly_get_mfr();
-	vm->tcr_el1 = truly_get_tcr_el1();
-	return 0;
-}
-*/
 
 // D-2142
 void make_vtcr_el2(struct truly_vm *tvm)
