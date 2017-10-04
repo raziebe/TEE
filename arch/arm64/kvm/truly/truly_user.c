@@ -71,7 +71,11 @@ void tp_mark_protected(struct _IMAGE_FILE* image_file)
 	int cpu;
 	struct truly_vm *tv;
 	struct hyp_addr *addr;
-	unsigned long ttbr0_el1 = truly_get_ttbr0_el1();
+	unsigned long ttbr0_el1;
+
+	preempt_disable();
+	ttbr0_el1 = truly_get_ttbr0_el1();
+	preempt_enable();
 
 	for_each_possible_cpu(cpu) {
 			tv = &per_cpu(TVM, cpu);

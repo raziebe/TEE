@@ -143,7 +143,7 @@ char* im_add_encrypted_block(PACTIVE_IMAGE process,
 	block->original_code = tp_alloc(block->length);
 	TPmemcpy(block->original_code, image_file_get_function_at_offset(image_file, block->start), block->length);
 
-	tvm = this_cpu_ptr(get_tvm());
+	tvm = get_tvm();
 	tvm->enc->seg[0].pad_func_offset = block->start;
 	tvm->enc->seg[0].size = block->length;
 

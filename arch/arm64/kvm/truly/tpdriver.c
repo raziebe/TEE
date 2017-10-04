@@ -117,7 +117,7 @@ void vma_map_hyp(struct vm_area_struct* vma,struct _IMAGE_FILE* image_file)
 	unsigned long base, size;
 	struct truly_vm *tv;
 
-	tv = this_cpu_ptr(get_tvm());
+	tv = get_tvm();
 
     base = vma->vm_start + tv->enc->seg[0].pad_func_offset;
     size = tv->enc->seg[0].size;
