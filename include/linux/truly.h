@@ -135,6 +135,9 @@ struct hyp_addr {
 	struct list_head lst;
 };
 
+#define TVM_PROCESS_INIT		0x1
+#define TVM_SHOULD_DECRYPT		0x2
+
 struct truly_vm {
 	unsigned long protected_pgd;
 	unsigned long brk_count_el2;
@@ -149,7 +152,7 @@ struct truly_vm {
  	unsigned long tpidr_el2;
  	unsigned long mdcr_el2;
 
- 	unsigned long initialized; 	
+ 	unsigned long flags; 	
  	unsigned long id_aa64mmfr0_el1;
    	void* pg_lvl_one;
    	struct list_head hyp_addr_lst; // A process's hyp address list

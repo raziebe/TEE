@@ -108,7 +108,7 @@ el1_trap:
 	 * x2: ESR_EC
 	 */
 
-	/* Guest accessed VFP/SIMD registers, save host, restore Guest */
+	/* Should remeove Guest accessed VFP/SIMD registers, save host, restore Guest */
 	cmp	x2, #ESR_ELx_EC_FP_ASIMD		// 0x7
 	b.eq	4f
 	
@@ -357,7 +357,7 @@ ENTRY(truly_run_vm)
 ENDPROC(truly_run_vm)
 
 /*
- We enter this code when the user executed in EL2 and performed an ilegal
+ * We enter this code when the user executed in EL2 and performed an ilegal
  * command, such as svc or any other.
  * we pad the code back ,move to program counter ot previous position
  * and return to EL0

@@ -396,7 +396,7 @@ void truly_map_tvm(void *d)
 	int err;
 	struct truly_vm *tv = get_tvm();
 
-	if (tv->initialized)
+	if (tv->flags & TVM_PROCESS_INIT)
 		return;
 
 	err = create_hyp_mappings(tv, tv + 1);
@@ -405,7 +405,7 @@ void truly_map_tvm(void *d)
 	} else {
 		tp_info("Mapped tvm");
 	}
-	tv->initialized = 1;
+	tv->flags = TVM_PROCESS_INIT ; // | TVM_SHOULD_DECRYPT;
 	mb();
 
 }

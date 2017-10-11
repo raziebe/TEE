@@ -111,22 +111,6 @@ void tp_mark_protected(struct _IMAGE_FILE* image_file)
 	addr->size = image_file->code_section_size;
 	list_add(&addr->lst, &tv->hyp_addr_lst);
 
-//#define	 __TEST_DECRYPTION_DURATION__
-#ifdef __TEST_DECRYPTION_DURATION__
-	{
-	struct timeval t1,t2;
-	int us;
-
-	do_gettimeofday(&t1);
-	truly_decrypt(tv);
-	do_gettimeofday(&t2);
-
-	us = (t2.tv_sec  - t1.tv_sec )/1000000 + ( t2.tv_usec - t1.tv_usec);
-	printk("Decrypt duration is %d\n",us);
-	msleep(10);
-	}
-#endif
-
 }
 //
 // for any process identified as
@@ -195,35 +179,36 @@ int __hyp_text truly_decrypt(struct truly_vm *tv)
 	if (tv->protected_pgd != truly_get_ttbr0_el1()) {
 			return -1;
 	}
+//
+//	if (!(tv->flags & TVM_SHOULD_DECRYPT))
+//		return 0;
+
+	tv->flags &=  ~TVM_SHOULD_DECRYPT;
 
 	enc = (struct encrypt_tvm *) KERN_TO_HYP(tv->enc);
 	if ( truly_get_exception_level() == EL1_EXP_LEVEL)
 				enc = tv->enc;
-	EL1_print ("%s %d %p\n",__func__, __LINE__, enc->seg[0].pad_data);
 
 	if (enc->seg[0].pad_data == NULL) {
-		EL1_print ("%s %d\n",__func__, __LINE__);
 		enc->seg[0].pad_data = (char *)tv->elr_el2;
 	}
-	EL1_print ("%s %d\n",__func__, __LINE__);
+
 	pad = enc->seg[0].pad_data;
 	tv->brk_count_el2++;
 	get_decrypted_key(key);
 	lines = enc->seg[0].size/ 4;
-	EL1_print ("%s %d\n",__func__, __LINE__);
+
 	extra_offset = (enc->seg[0].size/ 16) * 16;
 	extra = enc->seg[0].size - extra_offset;
-	EL1_print ("%s %d\n",__func__, __LINE__);
+
 	if ( extra > 0) {
 		// backup extra code
 		tp_hyp_memcpy(extra_lines, pad +  enc->seg[0].size, sizeof(extra_lines) - extra);
 		// pad with zeros
-		EL1_print ("%s %d\n",__func__, __LINE__);
 		tp_hyp_memset(pad + enc->seg[0].size ,(char)0, sizeof(extra_lines) - extra );
 		lines++;
-		EL1_print ("%s %d\n",__func__, __LINE__);
 	}
-	EL1_print ("%s %d\n",__func__, __LINE__);
+
 	d = (char *)KERN_TO_HYP(enc->seg[0].enc_data);
 	if ( truly_get_exception_level() == EL1_EXP_LEVEL)
 				d = enc->seg[0].enc_data;
@@ -250,6 +235,10 @@ int __hyp_text truly_pad(struct truly_vm *tv)
 	int line = 0,lines = 0;
 	unsigned char *pad;
 	struct encrypt_tvm *enc;
+
+//	if (!(tv->flags & TVM_SHOULD_DECRYPT))
+//		return 0;
+
 
 	enc = (struct encrypt_tvm *) KERN_TO_HYP(tv->enc);
 
