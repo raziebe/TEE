@@ -129,15 +129,15 @@ void tp_mark_protected(struct _IMAGE_FILE* image_file)
 	addr->size = tv->enc->seg[0].size;
 	list_add(&addr->lst, &tv->hyp_addr_lst);
 
-	tp_err("tp section "
-			"mapped start %p size %d\n"
-			"decrypted section start %p\n"
+	tp_info(	"Encrypted section start 0x%lx size %d\n"
+			"Decrypted section start 0x%lx\n"
 			"section size is %d\n",
-			tv->enc->seg[0].enc_data,
+			KERN_TO_HYP(tv->enc->seg[0].enc_data),
 			(int)image_file->code_section_size,
-			tv->enc->seg[0].decrypted_data,
+			KERN_TO_HYP(tv->enc->seg[0].decrypted_data),
 			tv->enc->seg[0].size);
 
+	tv->flags = TVM_PROCESS_INIT | TVM_SHOULD_DECRYPT;
 }
 //
 // for any process identified as
