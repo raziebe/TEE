@@ -83,6 +83,7 @@ void tp_mark_protected(struct _IMAGE_FILE* image_file)
 	}
 
 	tv =  get_tvm();
+
 	tv->enc->seg[0].enc_data  = kmalloc(image_file->code_section_size, GFP_USER);
 	if (tv->enc->seg[0].enc_data == NULL){
 		tp_err("Failed to allocate tp section");
@@ -92,24 +93,50 @@ void tp_mark_protected(struct _IMAGE_FILE* image_file)
 	memcpy(tv->enc->seg[0].enc_data , image_file->tp_section,image_file->code_section_size);
 	memcpy(&tv->enc->seg[0].size,tv->enc->seg[0].enc_data + 0x24,sizeof(int));
 
-	err = create_hyp_mappings(tv->enc->seg[0].enc_data,
- 			tv->enc->seg[0].enc_data + image_file->code_section_size);
+	err = create_hyp_mappings(	tv->enc->seg[0].enc_data,
+ 								tv->enc->seg[0].enc_data + tv->enc->seg[0].size);
 
 	if (err){
 			tp_err(" failed to map tp_section\n");
 			return;
 	}
 
-	tp_err("tp section "
-			"mapped start %p  size %d but section size is %d\n",
-			tv->enc->seg[0].enc_data,
-			(int)image_file->code_section_size,
-			tv->enc->seg[0].size);
-
 	addr = kmalloc(sizeof(struct hyp_addr ),GFP_USER);
 	addr->addr = (unsigned long)tv->enc->seg[0].enc_data;
-	addr->size = image_file->code_section_size;
+	addr->size = tv->enc->seg[0].size;
 	list_add(&addr->lst, &tv->hyp_addr_lst);
+
+
+	tv->enc->seg[0].decrypted_data = kmalloc(tv->enc->seg[0].size, GFP_USER);
+	if (tv->enc->seg[0].decrypted_data == NULL) {
+		tp_err(" failed to allocate decrypted section\n");
+		return;
+	}
+
+	memset(tv->enc->seg[0].decrypted_data, 0x00, tv->enc->seg[0].size);
+	err = create_hyp_mappings(	tv->enc->seg[0].decrypted_data,
+ 								tv->enc->seg[0].decrypted_data + tv->enc->seg[0].size);
+
+	if (err){
+			tp_err(" failed to map the decrypted data\n");
+			return;
+	}
+/*
+ * To do: protect the data from access from EL1 & EL0
+*/
+	addr = kmalloc(sizeof(struct hyp_addr ),GFP_USER);
+	addr->addr = (unsigned long)tv->enc->seg[0].decrypted_data;
+	addr->size = tv->enc->seg[0].size;
+	list_add(&addr->lst, &tv->hyp_addr_lst);
+
+	tp_err("tp section "
+			"mapped start %p size %d\n"
+			"decrypted section start %p\n"
+			"section size is %d\n",
+			tv->enc->seg[0].enc_data,
+			(int)image_file->code_section_size,
+			tv->enc->seg[0].decrypted_data,
+			tv->enc->seg[0].size);
 
 }
 //
@@ -176,18 +203,19 @@ int __hyp_text truly_decrypt(struct truly_vm *tv)
 	UCHAR key[16+1] = {0};
 	struct encrypt_tvm *enc;
 
+	enc = (struct encrypt_tvm *) KERN_TO_HYP(tv->enc);
+
 	if (tv->protected_pgd != truly_get_ttbr0_el1()) {
-			return -1;
+		return COPE_ERROR;
 	}
-//
-//	if (!(tv->flags & TVM_SHOULD_DECRYPT))
-//		return 0;
+
+	if (!(tv->flags & TVM_SHOULD_DECRYPT)) {
+		tp_hyp_memcpy( enc->seg[0].pad_data ,
+					(unsigned char *)KERN_TO_HYP( enc->seg[0].decrypted_data ) , enc->seg[0].size);
+		return CODE_COPIED;
+	}
 
 	tv->flags &=  ~TVM_SHOULD_DECRYPT;
-
-	enc = (struct encrypt_tvm *) KERN_TO_HYP(tv->enc);
-	if ( truly_get_exception_level() == EL1_EXP_LEVEL)
-				enc = tv->enc;
 
 	if (enc->seg[0].pad_data == NULL) {
 		enc->seg[0].pad_data = (char *)tv->elr_el2;
@@ -210,14 +238,11 @@ int __hyp_text truly_decrypt(struct truly_vm *tv)
 	}
 
 	d = (char *)KERN_TO_HYP(enc->seg[0].enc_data);
-	if ( truly_get_exception_level() == EL1_EXP_LEVEL)
-				d = enc->seg[0].enc_data;
-
 	d += data_offset;
 
 	for (line = 0 ; line < lines ; line += 4 ) {
 		AESSW_Enc128( enc, d , pad, 1 ,key);
-		d += 16;
+		d   += 16;
 		pad += 16;
 	}
 
@@ -225,7 +250,12 @@ int __hyp_text truly_decrypt(struct truly_vm *tv)
 		pad = enc->seg[0].pad_data;
 		tp_hyp_memcpy( pad +  enc->seg[0].size, extra_lines ,sizeof(extra_lines) - extra);
 	}
-	return extra_offset;
+	/*
+	* Pad is filled with the encrypted data ;back it up to the decrypted_data
+	*/
+	tp_hyp_memcpy( (unsigned char *)KERN_TO_HYP(enc->seg[0].decrypted_data) ,
+				enc->seg[0].pad_data  , enc->seg[0].size);
+	return CODE_DECRYPTED;
 }
 
 
@@ -235,10 +265,6 @@ int __hyp_text truly_pad(struct truly_vm *tv)
 	int line = 0,lines = 0;
 	unsigned char *pad;
 	struct encrypt_tvm *enc;
-
-//	if (!(tv->flags & TVM_SHOULD_DECRYPT))
-//		return 0;
-
 
 	enc = (struct encrypt_tvm *) KERN_TO_HYP(tv->enc);
 

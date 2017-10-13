@@ -405,9 +405,9 @@ void truly_map_tvm(void *d)
 	} else {
 		tp_info("Mapped tvm");
 	}
-	tv->flags = TVM_PROCESS_INIT ; // | TVM_SHOULD_DECRYPT;
-	mb();
 
+	tv->flags = TVM_PROCESS_INIT | TVM_SHOULD_DECRYPT;
+	mb();
 }
 
 void tp_run_vm(void *x)

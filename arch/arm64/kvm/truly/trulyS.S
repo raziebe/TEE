@@ -373,7 +373,10 @@ EL2_sync:
 	mrs	x1, esr_el2
 	lsr	x2, x1, #ESR_ELx_EC_SHIFT	// Syndrom shift 26 bits
 
-	cmp x2,#ESR_ELx_EC_DABT_CUR  // 0x25 , MMU abort in EL2
+	cmp x2,#ESR_ELx_EC_DABT_CUR  // 0x25 , MMU data abort in EL2
+	b.eq NO_MOVE_BACK
+
+	cmp x2,#ESR_ELx_EC_IABT_CUR  // 0x21 , MMU instruction abort in EL2
 	b.eq NO_MOVE_BACK
 
 	cmp	x2, #ESR_ELx_EC_SVC64
