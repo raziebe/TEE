@@ -222,7 +222,6 @@ NOT_FIRST:
 	mrs x1,cntvoff_el2 // <-- restore x1
 	msr cntvoff_el2,xzr
 
-	isb
 	eret
 ENDPROC(el1_trap)
 
@@ -402,7 +401,7 @@ NO_MOVE_BACK:
 	msr spsr_el2,x1
 
 	restore_registers
-	isb
+
 	eret
 ENDPROC(EL2_sync)
 
