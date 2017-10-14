@@ -234,7 +234,7 @@ ENTRY(pad_invalidate)
 	ldr x0,[x1, #TP_ENC]
 	kern_hyp_va x0
 	mov x2,xzr
-	mov x3,xzr // remove this line
+
 	ldr w2,[x0, #TP_ENC_SIZE] // size
 	ldr x3,[x0, #TP_PAD_DATA] // pad_data
 
