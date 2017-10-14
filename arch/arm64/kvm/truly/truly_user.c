@@ -206,7 +206,7 @@ int __hyp_text truly_decrypt(struct truly_vm *tv)
 	enc = (struct encrypt_tvm *) KERN_TO_HYP(tv->enc);
 
 	if (tv->protected_pgd != truly_get_ttbr0_el1()) {
-		return COPE_ERROR;
+		return CODE_ERROR;
 	}
 
 	if (!(tv->flags & TVM_SHOULD_DECRYPT)) {

@@ -91,7 +91,7 @@ enum { MAX_BLOCK_SIZE=32, MAX_ROUNDS=14, MAX_KC=8, MAX_BC=8 };
 #define	AES128BlockSize		16
 #define	AES128KeyRounds		10
 
-#define COPE_ERROR		-1
+#define CODE_ERROR		-1
 #define CODE_DECRYPTED	0x3
 #define CODE_COPIED		0x5
 

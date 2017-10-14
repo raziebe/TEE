@@ -226,29 +226,25 @@ NOT_FIRST:
 	eret
 ENDPROC(el1_trap)
 
-/*
- * x0: start
- * x1: end
- * cloberred x3,x4
-*/
+
 ENTRY(pad_invalidate)
-    ic ialluis
-    ret
 
 	mrs	x1,tpidr_el2
 	kern_hyp_va x1
-	ldr x0,[x1, #TP_ENC ]
+	ldr x0,[x1, #TP_ENC]
 	kern_hyp_va x0
-	ldr x2,[x0, #TP_ENC_SIZE] // size
+	mov x2,xzr
+	mov x3,xzr // remove this line
+	ldr w2,[x0, #TP_ENC_SIZE] // size
 	ldr x3,[x0, #TP_PAD_DATA] // pad_data
 
-	mov x0,x3	 // start
-	add x1,x0,x2 // end
+	mov x0, x3	  // start
+	add x1, x0,x2 // end
 
 start_inv:
 
 	ic ivau, x0
-	add x0,x0,#4
+	add x0,x0,#64
 	cmp x0,x1
 	ble start_inv
 
