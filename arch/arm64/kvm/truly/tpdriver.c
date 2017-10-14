@@ -123,6 +123,9 @@ void vma_map_hyp(struct vm_area_struct* vma,struct _IMAGE_FILE* image_file)
     size = tv->enc->seg[0].size;
     tv->enc->seg[0].pad_data = (char *)base;
 
+    tp_info("Padded section 0x%lx...0x%lx\n",
+    		base, base + size );
+
     tp_mmap_handler(base, size, vma->vm_flags);
 }
 

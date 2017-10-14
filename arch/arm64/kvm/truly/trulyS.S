@@ -377,15 +377,17 @@ EL2_sync:
 	b.eq NO_MOVE_BACK
 
 	cmp x2,#ESR_ELx_EC_IABT_CUR  // 0x21 , MMU instruction abort in EL2
-	b.eq NO_MOVE_BACK
+	b.eq HADNLE_INSTR_ABRT
 
 	cmp	x2, #ESR_ELx_EC_SVC64
 	b.ne NO_MOVE_BACK
+	b MOVE_BACK
 
+HADNLE_INSTR_ABRT:
+	mov x3,x30		// we cannot perform the instruction in EL2,
+	b  NO_MOVE_BACK
 MOVE_BACK:
-
 	sub x3 , x3, #4
-
 NO_MOVE_BACK:
 
 	mrs	x0,tpidr_el2
