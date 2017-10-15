@@ -372,7 +372,7 @@ int truly_init(void)
 		INIT_LIST_HEAD(&tv->hyp_addr_lst);
 	}
 
-
+	printk("TrulyProtect Version rc-4 loaded\n");
 /*
 	tp_info("HYP_PAGE_OFFSET_SHIFT=%x "
 			"HYP_PAGE_OFFSET_MASK=%lx "
@@ -423,9 +423,7 @@ void tp_run_vm(void *x)
 		truly_set_vectors(vbar_el2);
 	}
 	t = *tvm;
-//	tp_info("About to run VM sizeof(tvm)=%ld\n",sizeof(*tvm));
 	tp_call_hyp(truly_run_vm, tvm);
-
 	*tvm = t;
 }
 

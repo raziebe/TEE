@@ -196,10 +196,19 @@ void truly_reset_trap(void);
 void truly_set_trap(void);
 void tp_mmap_handler(unsigned long addr,int len,unsigned long vm_flags);
 
+#ifdef __TRULY_DEBUG__
+
 #define tp_info(fmt, ...) \
 	pr_info("truly %s [%i]: " fmt, __func__,raw_smp_processor_id(), ## __VA_ARGS__)
 
 #define tp_err(fmt, ...) \
 	pr_err("truly [%i]: " fmt, raw_smp_processor_id(), ## __VA_ARGS__)
+
+#else
+
+#define tp_info(fmt, ...)
+#define tp_err(fmt, ...)
+
+#endif
 
 #endif
