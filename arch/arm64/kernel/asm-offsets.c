@@ -171,6 +171,7 @@ int main(void)
   DEFINE(TP_ELR_EL2, offsetof(struct truly_vm,  elr_el2));
   DEFINE(TP_HSTR_EL2 , offsetof(struct truly_vm,  hstr_el2));
   DEFINE(TP_X30 , offsetof(struct truly_vm,  x30));
+  DEFINE(TP_MAIR_EL2 , offsetof(struct truly_vm, mair_el2) );
   DEFINE(TP_SAVE_CMD , offsetof(struct truly_vm,  save_cmd));
   DEFINE(TP_VTTBR_EL2 , offsetof(struct truly_vm,  vttbr_el2));
   DEFINE(TP_VTCR_EL2 , offsetof(struct truly_vm,  vtcr_el2));

@@ -227,7 +227,7 @@ ENDPROC(el1_trap)
 
 
 ENTRY(pad_invalidate)
-
+	ret
 	mrs	x1,tpidr_el2
 	kern_hyp_va x1
 	ldr x0,[x1, #TP_ENC]
@@ -344,6 +344,11 @@ ENTRY(truly_run_vm)
     ldr		x1, [x0, #TP_MDCR_EL2]
 	kern_hyp_va x1
 	msr		mdcr_el2, x1
+
+	ldr	x1, [x0, #TP_MAIR_EL2]
+	kern_hyp_va x1
+	msr		mair_el2, x1
+
 	// Clear cntvoff for the host
 	msr	cntvoff_el2, xzr
 

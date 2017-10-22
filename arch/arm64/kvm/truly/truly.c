@@ -258,6 +258,14 @@ void make_vtcr_el2(struct truly_vm *tvm)
 
 }
 
+/*
+ *the page us using attr_ind 4
+ */
+void make_mair_el2(struct truly_vm *tvm)
+{
+	tvm->mair_el2 = 0b00111100L << 32;
+}
+
 void make_hstr_el2(struct truly_vm *tvm)
 {
 	tvm->hstr_el2 = 0;	// 1 << 15 ; // Trap CP15 Cr=15
@@ -351,7 +359,8 @@ int truly_init(void)
 	make_vtcr_el2(_tvm);
 	make_hcr_el2(_tvm);
 	make_mdcr_el2(_tvm);
-
+	make_mair_el2(_tvm);
+	_tvm->poison = 0xDEADBEAF;
 	_tvm->enc = kmalloc(sizeof(struct encrypt_tvm), GFP_ATOMIC);
 
 	encryptInit(_tvm->enc);
@@ -424,13 +433,15 @@ void tp_run_vm(void *x)
 	}
 	t = *tvm;
 	tp_call_hyp(truly_run_vm, tvm);
+	tp_info("RUN VM.....\n");
 	*tvm = t;
 }
 
 void set_mdcr_el2(void *dummy)
 {
 	struct truly_vm *tvm = get_tvm();
-	tvm->mdcr_el2 = 0x100;
+	tvm->mdcr_el2 = 0x100L;
+	tp_info("mdcr_el2 %lx\n",tvm->mdcr_el2);
 	tp_call_hyp(truly_set_mdcr_el2);
 }
 

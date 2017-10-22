@@ -156,6 +156,8 @@ struct truly_vm {
  	unsigned int vtcr_el2;
  	unsigned long tpidr_el2;
  	unsigned long mdcr_el2;
+ 	unsigned int  poison;
+ 	unsigned long mair_el2;
 
  	unsigned long flags; 	
  	unsigned long id_aa64mmfr0_el1;

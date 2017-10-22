@@ -1,4 +1,6 @@
 *.o
+*.so
+*.*.d
 *.out
 *.mod.c
 *.ko

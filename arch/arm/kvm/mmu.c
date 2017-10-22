@@ -460,6 +460,8 @@ static void create_hyp_pte_mappings(pmd_t *pmd, unsigned long start,
 	do {
 		pte = pte_offset_kernel(pmd, addr);
 		kvm_set_pte(pte, pfn_pte(pfn, prot));
+//		pte_val(*pte) = pte_val(*pte) | HYP_PTE_WRITEBACK;
+//		printk("attr indx %zd\n", (pte_val(*pte) & 0b11100) >> 2);
 		get_page(virt_to_page(pte));
 		kvm_flush_dcache_to_poc(pte, sizeof(*pte));
 		pfn++;
