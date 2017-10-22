@@ -269,8 +269,6 @@ void make_mair_el2(struct truly_vm *tvm)
 	mair_el2 = tp_call_hyp(read_mair_el2);
 	tvm->mair_el2 = mair_el2 & 0xFFFFFFFFFFFF00FFL;
 	tvm->mair_el2 = mair_el2 | 0x0000000000003C00L;
-//	tvm->mair_el2 = 0b00111100L << 32;
-//	tvm->mair_el2 = 0b10111011L << 32;
 }
 
 void make_hstr_el2(struct truly_vm *tvm)
@@ -366,9 +364,6 @@ int truly_init(void)
 	make_vtcr_el2(_tvm);
 	make_hcr_el2(_tvm);
 	make_mdcr_el2(_tvm);
-
-
-	_tvm->poison = 0xDEADBEAF;
 	_tvm->enc = kmalloc(sizeof(struct encrypt_tvm), GFP_ATOMIC);
 
 	encryptInit(_tvm->enc);
