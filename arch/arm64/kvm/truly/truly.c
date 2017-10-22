@@ -1,5 +1,4 @@
 #include <linux/module.h>
-#include <linux/truly.h>
 #include <linux/linkage.h>
 #include <linux/init.h>
 #include <linux/gfp.h>
@@ -14,6 +13,8 @@
 #include <asm/page.h>
 #include <linux/vmalloc.h>
 
+#define __TRULY_DEBUG__
+#include <linux/truly.h>
 
 DEFINE_PER_CPU(struct truly_vm, TVM);
 
@@ -263,7 +264,13 @@ void make_vtcr_el2(struct truly_vm *tvm)
  */
 void make_mair_el2(struct truly_vm *tvm)
 {
-	tvm->mair_el2 = 0b00111100L << 32;
+	unsigned long mair_el2;
+
+	mair_el2 = tp_call_hyp(read_mair_el2);
+	tvm->mair_el2 = mair_el2 & 0xFFFFFFFFFFFF00FFL;
+	tvm->mair_el2 = mair_el2 | 0x0000000000003C00L;
+//	tvm->mair_el2 = 0b00111100L << 32;
+//	tvm->mair_el2 = 0b10111011L << 32;
 }
 
 void make_hstr_el2(struct truly_vm *tvm)
@@ -359,7 +366,8 @@ int truly_init(void)
 	make_vtcr_el2(_tvm);
 	make_hcr_el2(_tvm);
 	make_mdcr_el2(_tvm);
-	make_mair_el2(_tvm);
+
+
 	_tvm->poison = 0xDEADBEAF;
 	_tvm->enc = kmalloc(sizeof(struct encrypt_tvm), GFP_ATOMIC);
 
@@ -432,6 +440,7 @@ void tp_run_vm(void *x)
 		truly_set_vectors(vbar_el2);
 	}
 	t = *tvm;
+	make_mair_el2(tvm);
 	tp_call_hyp(truly_run_vm, tvm);
 	tp_info("RUN VM.....\n");
 	*tvm = t;

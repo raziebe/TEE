@@ -227,7 +227,7 @@ ENDPROC(el1_trap)
 
 
 ENTRY(pad_invalidate)
-	ret
+
 	mrs	x1,tpidr_el2
 	kern_hyp_va x1
 	ldr x0,[x1, #TP_ENC]
@@ -294,6 +294,11 @@ ENTRY(truly_set_vectors)
 	ret
 ENDPROC(truly_set_vectors)
 
+ENTRY(read_mair_el2)
+		mrs x0,mair_el2
+        ret
+ENDPROC(read_mair_el2)
+
 ENTRY(truly_get_hcr_el2)
     mrs     x0, hcr_el2
     ret
@@ -303,6 +308,7 @@ ENTRY(tp_call_hyp)
         hvc	#0
         ret
 ENDPROC(tp_call_hyp)
+
 
 ENTRY(truly_set_mdcr_el2)
 
