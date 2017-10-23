@@ -611,6 +611,8 @@ void hyp_user_unmap(unsigned long umem,int size)
 
 	unmap_range(NULL, hyp_pgd, umem, sz_page);
 }
+
+#define PAGE_HYP_USER	( PROT_DEFAULT | PTE_ATTRINDX(MT_NORMAL_WT) )
 /**
  * create_hyp_mappings - duplicate a kernel virtual address range in Hyp mode
  * @from:	The virtual kernel start address of the range
@@ -645,7 +647,7 @@ int create_hyp_user_mappings(void *from, void *to)
 		err = __create_hyp_mappings(hyp_pgd, virt_addr,
 					    virt_addr + PAGE_SIZE,
 					    pfn,
-					    PAGE_HYP);
+						PAGE_HYP_USER);
 		if (err) {
 			printk("TP: Failed to map %p\n",(void *)virt_addr);
 			return err;

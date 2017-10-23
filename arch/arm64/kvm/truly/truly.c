@@ -267,8 +267,8 @@ void make_mair_el2(struct truly_vm *tvm)
 	unsigned long mair_el2;
 
 	mair_el2 = tp_call_hyp(read_mair_el2);
-	tvm->mair_el2 = mair_el2 & 0xFFFFFFFFFFFF00FFL;
-	tvm->mair_el2 = mair_el2 | 0x0000000000003C00L;
+	tvm->mair_el2 = mair_el2 & 0xFFFF00FFFFFFFFFFL;
+	tvm->mair_el2 = mair_el2 | 0x00003C0000000000L;
 }
 
 void make_hstr_el2(struct truly_vm *tvm)
@@ -445,7 +445,6 @@ void set_mdcr_el2(void *dummy)
 {
 	struct truly_vm *tvm = get_tvm();
 	tvm->mdcr_el2 = 0x100L;
-	tp_info("mdcr_el2 %lx\n",tvm->mdcr_el2);
 	tp_call_hyp(truly_set_mdcr_el2);
 }
 
