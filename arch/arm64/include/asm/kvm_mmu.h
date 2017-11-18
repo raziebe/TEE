@@ -73,7 +73,7 @@
 
 #define KERN_TO_HYP(kva)	((unsigned long)kva - PAGE_OFFSET + HYP_PAGE_OFFSET)
 #define USER_PAGE_OFFSET    (PAGE_OFFSET & 0x0000FFFFFFFFFFFF) // mask out the negatives
-#define USER_TO_HYP(uva)	(uva)
+
 /*
  * We currently only support a 40bit IPA.
  */

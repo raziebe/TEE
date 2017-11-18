@@ -1776,6 +1776,7 @@ void update_wall_time(void)
 
 #ifdef CONFIG_ARCH_USES_GETTIMEOFFSET
 	offset = real_tk->cycle_interval;
+	dd
 #else
 	offset = clocksource_delta(tk->tkr_mono.read(tk->tkr_mono.clock),
 				   tk->tkr_mono.cycle_last, tk->tkr_mono.mask);
@@ -1801,6 +1802,7 @@ void update_wall_time(void)
 	/* Bound shift to one less than what overflows tick_length */
 	maxshift = (64 - (ilog2(ntp_tick_length())+1)) - 1;
 	shift = min(shift, maxshift);
+	printk("interval %zd %d\n",tk->cycle_interval,offset);
 	while (offset >= tk->cycle_interval) {
 		offset = logarithmic_accumulation(tk, offset, shift,
 							&clock_set);

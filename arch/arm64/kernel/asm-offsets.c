@@ -169,8 +169,12 @@ int main(void)
 
   DEFINE(TP_HCR_EL2, offsetof(struct truly_vm,  hcr_el2));
   DEFINE(TP_ELR_EL2, offsetof(struct truly_vm,  elr_el2));
+  DEFINE(TP_ESR_EL2, offsetof(struct truly_vm,  esr_el2));
+  DEFINE(TP_SPSR_EL2, offsetof(struct truly_vm,  spsr_el2));
+
+  DEFINE(TP_FAR_EL2, offsetof(struct truly_vm,  far_el2));
   DEFINE(TP_HSTR_EL2 , offsetof(struct truly_vm,  hstr_el2));
-  DEFINE(TP_X30 , offsetof(struct truly_vm,  x30));
+  DEFINE(TP_FIRST_LR , offsetof(struct truly_vm,  first_lr));
   DEFINE(TP_MAIR_EL2 , offsetof(struct truly_vm, mair_el2) );
   DEFINE(TP_SAVE_CMD , offsetof(struct truly_vm,  save_cmd));
   DEFINE(TP_VTTBR_EL2 , offsetof(struct truly_vm,  vttbr_el2));
@@ -179,6 +183,7 @@ int main(void)
   DEFINE(TP_BRK_COUNT_EL2 , offsetof(struct truly_vm,  brk_count_el2));
   DEFINE(TP_PGD, offsetof(struct truly_vm, protected_pgd));
   DEFINE(TP_ENC, offsetof(struct truly_vm, enc));
+  DEFINE(TP_SP_EL2, offsetof(struct truly_vm, sp_el2));
   DEFINE(TP_ENC_SIZE , offsetof(struct encrypted_segment, size));
   DEFINE(TP_PAD_DATA , offsetof(struct encrypted_segment, pad_data));
   return 0;

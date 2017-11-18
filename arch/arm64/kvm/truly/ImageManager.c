@@ -131,6 +131,7 @@ char* im_add_encrypted_block(PACTIVE_IMAGE process,
 							 UINT64 image_base)
 {
 #define TOTAL_SIZE(BUF) (*(UINT32*)BUF + sizeof(UINT32))
+	unsigned long code_base;
 	struct truly_vm *tvm;
 	PENCRYPTED_BLOCK block = tp_alloc(sizeof(ENCRYPTED_BLOCK));
 	int relocationSize;
@@ -144,10 +145,12 @@ char* im_add_encrypted_block(PACTIVE_IMAGE process,
 	TPmemcpy(block->original_code, image_file_get_function_at_offset(image_file, block->start), block->length);
 
 	tvm = get_tvm();
+	code_base = image_file->code_base + tvm->enc->seg[0].pad_func_offset;
 	tvm->enc->seg[0].pad_func_offset = block->start;
 	tvm->enc->seg[0].size = block->length;
 
-	tp_info("Pad Segment offset %X size %d\n",
+	tp_info("Pad Segment starts %lx offset %d size %d\n",
+			code_base,
 			tvm->enc->seg[0].pad_func_offset,
 			tvm->enc->seg[0].size);
 
@@ -210,7 +213,7 @@ BOOLEAN im_handle_image(PIMAGE_MANAGER im, PIMAGE_FILE image_file, size_t pid, I
 	if (tp_section == NULL)
 		return FALSE;
 
-	tp_mark_protected(image_file);
+	tp_prepare_process(image_file);
 
 	gid = *(PUINT32)(tp_section);
 	tag = tp_section + 4;

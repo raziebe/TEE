@@ -13,8 +13,10 @@
 #include <asm/page.h>
 #include <linux/vmalloc.h>
 
+
 #define __TRULY_DEBUG__
 #include <linux/truly.h>
+#include <linux/tp_mmu.h>
 
 DEFINE_PER_CPU(struct truly_vm, TVM);
 
@@ -43,6 +45,11 @@ struct truly_vm *get_tvm(void)
 	return tvm;
 }
 
+struct truly_vm *get_tvm_per_cpu(int cpu)
+{
+	return &per_cpu(TVM, cpu);
+}
+
 long truly_get_elr_el1(void)
 {
 	long e;
@@ -61,202 +68,11 @@ void truly_set_elr_el1(long e)
       asm("msr  elr_el1,%0\n":"=r"(e));
 }
 
-
-
 long truly_get_mfr(void)
 {
 	long e = 0;
     asm("mrs %0,id_aa64mmfr0_el1\n":"=r"(e));
 	return e;
-}
-
-//
-// alloc 512 * 4096  = 2MB 
-//
-void create_level_three(struct page *pg, long *addr)
-{
-	int i;
-	long *l3_descriptor;
-
-	l3_descriptor = (long *) kmap(pg);
-	if (l3_descriptor == NULL) {
-		printk("%s desc NULL\n", __func__);
-		return;
-	}
-
-	for (i = 0; i < PAGE_SIZE / sizeof(long long); i++) {
-		/*
-		 * see page 1781 for details
-		 */
-		l3_descriptor[i] = (DESC_AF) |
-			(0b11 << DESC_SHREABILITY_SHIFT) |
-			(0b11 << DESC_S2AP_SHIFT) | (0b1111 << 2) |	/* leave stage 1 un-changed see 1795 */
-		   	 DESC_TABLE_BIT | DESC_VALID_BIT | (*addr);
-
-		(*addr) += PAGE_SIZE;
-	}
-	kunmap(pg);
-}
-
-// 1GB
-void create_level_two(struct page *pg, long *addr)
-{
-	int i;
-	long *l2_descriptor;
-	struct page *pg_lvl_three;
-
-	l2_descriptor = (long *) kmap(pg);
-	if (l2_descriptor == NULL) {
-		printk("%s desc NULL\n", __func__);
-		return;
-	}
-
-	pg_lvl_three = alloc_pages(GFP_KERNEL | __GFP_ZERO, 9);
-	if (pg_lvl_three == NULL) {
-		printk("%s alloc page NULL\n", __func__);
-		return;
-	}
-
-	for (i = 0; i < PAGE_SIZE / (sizeof(long)); i++) {
-		// fill an entire 2MB of mappings
-		create_level_three(pg_lvl_three + i, addr);
-		// calc the entry of this table
-		l2_descriptor[i] =
-		    (page_to_phys(pg_lvl_three + i)) | DESC_TABLE_BIT |
-		    DESC_VALID_BIT;
-
-		//tp_info("L2 IPA %lx\n", l2_descriptor[i]);
-	}
-
-	kunmap(pg);
-}
-
-void create_level_one(struct page *pg, long *addr)
-{
-	int i;
-	long *l1_descriptor;
-	struct page *pg_lvl_two;
-
-	l1_descriptor = (long *) kmap(pg);
-	if (l1_descriptor == NULL) {
-		printk("%s desc NULL\n", __func__);
-		return;
-	}
-
-	pg_lvl_two = alloc_pages(GFP_KERNEL | __GFP_ZERO, 3);
-	if (pg_lvl_two == NULL) {
-		printk("%s alloc page NULL\n", __func__);
-		return;
-	}
-
-	for (i = 0; i < 8; i++) {
-		get_page(pg_lvl_two + i);
-		create_level_two(pg_lvl_two + i, addr);
-		l1_descriptor[i] =
-		    (page_to_phys(pg_lvl_two + i)) | DESC_TABLE_BIT |
-		    DESC_VALID_BIT;
-
-	}
-	kunmap(pg);
-}
-
-void create_level_zero(struct truly_vm *tvm, struct page *pg, long *addr)
-{
-	struct page *pg_lvl_one;
-	long *l0_descriptor;;
-
-	pg_lvl_one = alloc_page(GFP_KERNEL | __GFP_ZERO);
-	if (pg_lvl_one == NULL) {
-		printk("%s alloc page NULL\n", __func__);
-		return;
-	}
-
-	get_page(pg_lvl_one);
-	create_level_one(pg_lvl_one, addr);
-
-	l0_descriptor = (long *) kmap(pg);
-	if (l0_descriptor == NULL) {
-		printk("%s desc NULL\n", __func__);
-		return;
-	}
-
-	memset(l0_descriptor, 0x00, PAGE_SIZE);
-
-	l0_descriptor[0] =
-	    (page_to_phys(pg_lvl_one)) | DESC_TABLE_BIT | DESC_VALID_BIT;
-
-	tvm->pg_lvl_one = (void *) pg_lvl_one;
-
-	tp_info("L0 IPA %lx\n", l0_descriptor[0]);
-
-	kunmap(pg);
-
-}
-
-unsigned long tp_create_pg_tbl(void *cxt)
-{
-	struct truly_vm *tvm = (struct truly_vm *) cxt;
-	long addr = 0;
-	long vmid = 012;
-	struct page *pg_lvl_zero;
-	int starting_level = 1;
-/*
- tosz = 25 --> 39bits 64GB
-	0-11
-2       12-20   :512 * 4096 = 2MB per entry
-1	21-29	: 512 * 2MB = per page 
-0	30-35 : 2^5 entries	, each points to 32 pages in level 1
- 	pa range = 1 --> 36 bits 64GB
-
-*/
-	pg_lvl_zero = alloc_page(GFP_KERNEL | __GFP_ZERO);
-	if (pg_lvl_zero == NULL) {
-		printk("%s alloc page NULL\n", __func__);
-		return 0x00;
-	}
-
-	get_page(pg_lvl_zero);
-	create_level_zero(tvm, pg_lvl_zero, &addr);
-
-	if (starting_level == 0)
-		tvm->vttbr_el2 = page_to_phys(pg_lvl_zero) | (vmid << 48);
-	else
-		tvm->vttbr_el2 =
-		    page_to_phys((struct page *) tvm->pg_lvl_one) | (vmid
-								     <<
-								     48);
-
-	return tvm->vttbr_el2;
-}
-
-
-// D-2142
-void make_vtcr_el2(struct truly_vm *tvm)
-{
-	long vtcr_el2_t0sz;
-	long vtcr_el2_sl0;
-	long vtcr_el2_irgn0;
-	long vtcr_el2_orgn0;
-	long vtcr_el2_sh0;
-	long vtcr_el2_tg0;
-	long vtcr_el2_ps;
-
-	vtcr_el2_t0sz = truly_get_tcr_el1() & 0b111111;
-	vtcr_el2_sl0 = 0b01;	//IMPORTANT start at level 1.  D.2143 + D4.1746
-	vtcr_el2_irgn0 = 0b1;
-	vtcr_el2_orgn0 = 0b1;
-	vtcr_el2_sh0 = 0b11;	// inner sharable
-	vtcr_el2_tg0 = (truly_get_tcr_el1() & 0xc000) >> 14;
-	vtcr_el2_ps = (truly_get_tcr_el1() & 0x700000000) >> 32;
-
-	tvm->vtcr_el2 = (vtcr_el2_t0sz) |
-	    (vtcr_el2_sl0 << VTCR_EL2_SL0_BIT_SHIFT) |
-	    (vtcr_el2_irgn0 << VTCR_EL2_IRGN0_BIT_SHIFT) |
-	    (vtcr_el2_orgn0 << VTCR_EL2_ORGN0_BIT_SHIFT) |
-	    (vtcr_el2_sh0 << VTCR_EL2_SH0_BIT_SHIFT) |
-	    (vtcr_el2_tg0 << VTCR_EL2_TG0_BIT_SHIFT) |
-	    (vtcr_el2_ps << VTCR_EL2_PS_BIT_SHIFT);
-
 }
 
 /*
@@ -267,7 +83,7 @@ void make_mair_el2(struct truly_vm *tvm)
 	unsigned long mair_el2;
 
 	mair_el2 = tp_call_hyp(read_mair_el2);
-	tvm->mair_el2 = ( mair_el2 & 0xFFFF00FFFFFFFFFFL ) | 0x0000FF0000000000L; // RW11
+	tvm->mair_el2 = (mair_el2 & 0x000000FF00000000L ) | 0x000000FF00000000L; //
 }
 
 void make_hstr_el2(struct truly_vm *tvm)
@@ -290,6 +106,13 @@ static struct proc_dir_entry *procfs = NULL;
 static ssize_t proc_write(struct file *file, const char __user * buffer,
 			  size_t count, loff_t * dummy)
 {
+	int cpu;
+	for_each_possible_cpu(cpu) {
+		struct truly_vm *tv = &per_cpu(TVM, cpu);
+		tv->brk_count_el2 = 0;
+		tv->copy_time = 0;
+		tv->decrypt_time = 0;
+	}
 
 	return count;
 }
@@ -311,8 +134,15 @@ static ssize_t proc_read(struct file *filp, char __user * page,
 
 	for_each_possible_cpu(cpu) {
 		struct truly_vm *tv = &per_cpu(TVM, cpu);
-		len += sprintf(page + len, "cpu %d brk count %ld\n", cpu,
-			       tv->brk_count_el2);
+		len += sprintf(page + len, "cpu %d brk count %ld"
+					" decrypt time=%ld "
+					 "pad time =%ld"
+					 "copy_time = %ld \n",
+					cpu,
+			       tv->brk_count_el2,
+				   tv->decrypt_time,
+				   tv->pad_time,
+				   tv->copy_time);
 	}
 
 	filp->private_data = 0x00;
@@ -363,16 +193,16 @@ int truly_init(void)
 	make_vtcr_el2(_tvm);
 	make_hcr_el2(_tvm);
 	make_mdcr_el2(_tvm);
-	_tvm->enc = kmalloc(sizeof(struct encrypt_tvm), GFP_ATOMIC);
 
+	_tvm->enc = kmalloc(sizeof(struct encrypt_tvm), GFP_ATOMIC);
 	encryptInit(_tvm->enc);
 
 	err = create_hyp_mappings((char *)_tvm->enc,
 				((char *) _tvm->enc) + sizeof(struct encrypt_tvm));
 	if (err) {
-		tp_err("Failed to map encrypted");
+		tp_err("Failed to map encrypted\n");
 	} else {
-		tp_info("Mapped encrypted");
+		tp_info("Mapped encrypted\n");
 	}
 
 	for_each_possible_cpu(cpu) {
@@ -381,9 +211,10 @@ int truly_init(void)
 			memcpy(tv, _tvm, sizeof(*_tvm));
 		}
 		INIT_LIST_HEAD(&tv->hyp_addr_lst);
+		mutex_init(&tv->sync);
 	}
 
-	printk("TrulyProtect Version rc-4 loaded\n");
+	printk("TrulyProtect Version cache_decr rc-1.0-rc9 loaded\n");
 /*
 	tp_info("HYP_PAGE_OFFSET_SHIFT=%x "
 			"HYP_PAGE_OFFSET_MASK=%lx "
@@ -407,7 +238,7 @@ void truly_map_tvm(void *d)
 	int err;
 	struct truly_vm *tv = get_tvm();
 
-	if (tv->flags & TVM_PROCESS_INIT)
+	if (tv->tv_flags & TVM_PROCESS_INIT)
 		return;
 
 	err = create_hyp_mappings(tv, tv + 1);
@@ -421,7 +252,6 @@ void truly_map_tvm(void *d)
 
 void tp_run_vm(void *x)
 {
-	struct truly_vm t;
 	struct truly_vm *tvm = get_tvm();
 	unsigned long vbar_el2;
 	unsigned long vbar_el2_current =
@@ -433,11 +263,32 @@ void tp_run_vm(void *x)
 		tp_info("vbar_el2 should restore\n");
 		truly_set_vectors(vbar_el2);
 	}
-	t = *tvm;
-	make_mair_el2(tvm);
+//	make_mair_el2(tvm);
 	tp_call_hyp(truly_run_vm, tvm);
 	tp_info("RUN VM.....\n");
-	*tvm = t;
+
+	printk("TrulyProtect hcr_el2=%lX mair_el2=%lX vtcr_el2=%X  vttbr_el2=%lX sp_el2=%lx\n",
+				tvm->hcr_el2,
+				tvm->mair_el2,
+				tvm->vtcr_el2,
+				tvm->vttbr_el2, tvm->sp_el2 );
+
+}
+
+
+unsigned long __hyp_text truly_get_ttbr0_el1(void)
+{
+	long ttbr0_el1;
+
+      asm("mrs %0,ttbr0_el1\n":"=r" (ttbr0_el1));
+      return ttbr0_el1;
+}
+
+unsigned long  truly_get_exception_level(void)
+{
+	long el;
+	asm ("mrs	%0, CurrentEl\n":"=r"(el));
+	return el;
 }
 
 void set_mdcr_el2(void *dummy)
@@ -457,6 +308,7 @@ void reset_mdcr_el2(void *dummy)
 	struct truly_vm *tvm ;
 
 	tvm = get_tvm();
+
 	tvm->mdcr_el2 = 0x00;
 	tp_call_hyp(truly_set_mdcr_el2);
 }
@@ -464,6 +316,50 @@ void reset_mdcr_el2(void *dummy)
 void truly_reset_trap(void)
 {
 	on_each_cpu(reset_mdcr_el2, NULL, 0);
+}
+
+
+int  __hyp_text  tp_hyp_memcpy(unsigned char *dst,unsigned char *src,int size)
+{
+	int i = 0;
+
+	// check for an alignment
+	//
+	if (( (long)dst & 0b11) != (long)dst)
+			goto bytes_copy;
+
+	if (( (long)src & 0b11) != (long)src)
+			goto bytes_copy;
+
+	if (size >= sizeof(long))  {
+
+		int sz8 = (size>>3) << 3;
+		long *d = (long *)dst;
+		long *s = (long *)src;
+
+		for (i = 0; i < sz8; i += sizeof(long)) {
+			*d = *s;
+			d++;
+			s++;
+		}
+	}
+
+	if (i == size)
+		return i;
+
+bytes_copy:
+	for (; i < size; i++) {
+		dst[i] = src[i];
+	}
+	return i;
+}
+
+int __hyp_text  tp_hyp_memset(char *dst,char tag,int size)
+{
+	int i;
+	for (i = 0; i < size; i++)
+		dst[i] = tag;
+	return i;
 }
 
 

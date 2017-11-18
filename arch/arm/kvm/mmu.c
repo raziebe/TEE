@@ -34,7 +34,7 @@
 extern char  __hyp_idmap_text_start[], __hyp_idmap_text_end[];
 
 static pgd_t *boot_hyp_pgd;
-static pgd_t *hyp_pgd;
+pgd_t *hyp_pgd;
 static pgd_t *merged_hyp_pgd;
 static DEFINE_MUTEX(kvm_hyp_pgd_mutex);
 
@@ -536,7 +536,7 @@ static int create_hyp_pud_mappings(pgd_t *pgd, unsigned long start,
 	return 0;
 }
 
-static int __create_hyp_mappings(pgd_t *pgdp,
+int __create_hyp_mappings(pgd_t *pgdp,
 				 unsigned long start, unsigned long end,
 				 unsigned long pfn, pgprot_t prot)
 {
@@ -584,77 +584,11 @@ static phys_addr_t kvm_kaddr_to_phys(void *kaddr)
 	}
 }
 
-unsigned long kvm_uaddr_to_pfn(unsigned long uaddr)
-{
-	unsigned long pfn;
-	struct page *pages[1];
-	int nr;
-
-	nr = get_user_pages(current,
-	                     current->mm,
-	                    uaddr,
-	                      1, 0,     /* write */
-	                      1,  /* force */
-	                    (struct page **)&pages, 0);
-	if (nr <= 0){
-	       printk("TP: INSANE: failed to get user pages %p\n",(void *)uaddr);
-	       return 0x00;
-	}
-	pfn = page_to_pfn(pages[0]);
-	page_cache_release(pages[0]);
-	return pfn;
-}
-
 void hyp_user_unmap(unsigned long umem,int size)
 {
 	int sz_page = PAGE_ALIGN(size);
 
 	unmap_range(NULL, hyp_pgd, umem, sz_page);
-}
-
-#define PAGE_HYP_USER	( PROT_DEFAULT | PTE_ATTRINDX(MT_NORMAL_WT) )
-/**
- * create_hyp_mappings - duplicate a kernel virtual address range in Hyp mode
- * @from:	The virtual kernel start address of the range
- * @to:		The virtual kernel end address of the range (exclusive)
- *
- * The same virtual address as the kernel virtual address is also used
- * in Hyp-mode mapping (modulo HYP_PAGE_OFFSET) to the same underlying
- * physical pages.
- */
-int create_hyp_user_mappings(void *from, void *to)
-{
-	unsigned long virt_addr;
-	unsigned long fr = (unsigned long)from;
-	unsigned long start = USER_TO_HYP((unsigned long)from);
-	unsigned long end = USER_TO_HYP((unsigned long)to);
-
-	start = start & PAGE_MASK;
-	end = PAGE_ALIGN(end);
-
-	printk("truly: start %p end %p \n",
-			(void *)start,(void*)end );
-
-
-	for (virt_addr = start; virt_addr < end; virt_addr += PAGE_SIZE,fr += PAGE_SIZE) {
-		int err;
-		unsigned long pfn;
-
-		pfn = kvm_uaddr_to_pfn(fr);
-		if (pfn <= 0)
-			continue;
-
-		err = __create_hyp_mappings(hyp_pgd, virt_addr,
-					    virt_addr + PAGE_SIZE,
-					    pfn,
-						PAGE_HYP_USER);
-		if (err) {
-			printk("TP: Failed to map %p\n",(void *)virt_addr);
-			return err;
-		}
-	}
-
-	return 0;
 }
 
 

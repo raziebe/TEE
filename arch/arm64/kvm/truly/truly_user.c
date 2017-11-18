@@ -19,156 +19,7 @@
 
 DECLARE_PER_CPU(struct truly_vm, TVM);
 
-unsigned long truly_get_ttbr0_el1(void)
-{
-	long ttbr0_el1;
 
-      asm("mrs %0,ttbr0_el1\n":"=r" (ttbr0_el1));
-      return ttbr0_el1;
-}
-
-unsigned long  truly_get_exception_level(void)
-{
-	long el;
-	asm ("mrs	%0, CurrentEl\n":"=r"(el));
-	return el;
-}
-
-
-/*
- * Called from execve context.
- * Map the user
- */
-void map_user_space_data(void *umem,int size,unsigned long vm_flags)
-{
-	int err;
-	struct truly_vm *tv;
-	struct hyp_addr* addr;
-
- 	err = create_hyp_user_mappings(umem, umem + size);
-	if (err){
-			tp_err(" failed to map ttbr0_el2\n");
-			return;
-	}
-
-	addr = kmalloc(sizeof(struct hyp_addr ),GFP_USER);
-	tp_err("pid %d user mapped %p size=%d\n", current->pid,umem ,size);
-	addr->addr = (unsigned long)umem;
-	addr->size = size;
-	tv = get_tvm();
-	list_add(&addr->lst, &tv->hyp_addr_lst);
-}
-
-void unmap_user_space_data(unsigned long umem,int size)
-{
-	hyp_user_unmap(umem,  size);
-	tp_err("pid %d unmapped %lx \n", current->pid, umem);
-}
-
-void tp_mark_protected(struct _IMAGE_FILE* image_file)
-{
-	int err;
-	int cpu;
-	struct truly_vm *tv;
-	struct hyp_addr *addr;
-	unsigned long ttbr0_el1;
-
-	preempt_disable();
-	ttbr0_el1 = truly_get_ttbr0_el1();
-	preempt_enable();
-
-	for_each_possible_cpu(cpu) {
-			tv = &per_cpu(TVM, cpu);
-			tv->protected_pgd = ttbr0_el1;
-	}
-
-	tv =  get_tvm();
-
-	tv->enc->seg[0].enc_data  = kmalloc(image_file->code_section_size, GFP_USER);
-	if (tv->enc->seg[0].enc_data == NULL){
-		tp_err("Failed to allocate tp section");
-		return ;
-	}
-
-	memcpy(tv->enc->seg[0].enc_data , image_file->tp_section,image_file->code_section_size);
-	memcpy(&tv->enc->seg[0].size,tv->enc->seg[0].enc_data + 0x24,sizeof(int));
-
-	err = create_hyp_mappings(	tv->enc->seg[0].enc_data,
- 								tv->enc->seg[0].enc_data + tv->enc->seg[0].size);
-
-	if (err){
-			tp_err(" failed to map tp_section\n");
-			return;
-	}
-
-	addr = kmalloc(sizeof(struct hyp_addr ),GFP_USER);
-	addr->addr = (unsigned long)tv->enc->seg[0].enc_data;
-	addr->size = tv->enc->seg[0].size;
-	list_add(&addr->lst, &tv->hyp_addr_lst);
-
-
-	tv->enc->seg[0].decrypted_data = kmalloc(tv->enc->seg[0].size, GFP_USER);
-	if (tv->enc->seg[0].decrypted_data == NULL) {
-		tp_err(" failed to allocate decrypted section\n");
-		return;
-	}
-
-	memset(tv->enc->seg[0].decrypted_data, 0x00, tv->enc->seg[0].size);
-	err = create_hyp_mappings(	tv->enc->seg[0].decrypted_data,
- 								tv->enc->seg[0].decrypted_data + tv->enc->seg[0].size);
-
-	if (err){
-			tp_err(" failed to map the decrypted data\n");
-			return;
-	}
-/*
- * To do: protect the data from access from EL1 & EL0
-*/
-	addr = kmalloc(sizeof(struct hyp_addr ),GFP_USER);
-	addr->addr = (unsigned long)tv->enc->seg[0].decrypted_data;
-	addr->size = tv->enc->seg[0].size;
-	list_add(&addr->lst, &tv->hyp_addr_lst);
-
-	tp_info(	"Encrypted section start 0x%lx size %d\n"
-			"Decrypted section start 0x%lx\n"
-			"section size is %d\n",
-			KERN_TO_HYP(tv->enc->seg[0].enc_data),
-			(int)image_file->code_section_size,
-			KERN_TO_HYP(tv->enc->seg[0].decrypted_data),
-			tv->enc->seg[0].size);
-
-	tv->flags = TVM_PROCESS_INIT | TVM_SHOULD_DECRYPT;
-}
-//
-// for any process identified as
-//
-void tp_mmap_handler(unsigned long addr,int len,unsigned long vm_flags)
-{
-	map_user_space_data((void*)addr, len, vm_flags);
-}
-
-//
-// for any process identified as
-//
-void tp_unmmap_handler(struct task_struct* task)
-{
-	struct truly_vm *tv = get_tvm();
-	struct hyp_addr* tmp,*tmp2;
-	unsigned long is_kernel;
-
-	list_for_each_entry_safe(tmp, tmp2, &tv->hyp_addr_lst, lst) {
-		is_kernel = tmp->addr & 0xFFFF000000000000;
-		if (is_kernel){
-			hyp_user_unmap(tmp->addr, tmp->size);
-			tp_info("unmapping tp section %lx\n",tmp->addr);
-			kfree((void*)tmp->addr);
-		} else {
-			unmap_user_space_data(tmp->addr , tmp->size);
-		}
-		list_del(&tmp->lst);
-    	kfree(tmp);
-	}
-}
 
 int __hyp_text truly_is_protected(struct truly_vm *tv)
 {
@@ -177,19 +28,23 @@ int __hyp_text truly_is_protected(struct truly_vm *tv)
 	return tv->protected_pgd == truly_get_ttbr0_el1();
 }
 
-void tp_unmark_protected(void)
+void tp_reset_tvm(void)
 {
 	int cpu;
 	for_each_possible_cpu(cpu) {
-			struct truly_vm *tv = get_tvm();
+			struct truly_vm *tv = get_tvm_per_cpu(cpu);
 			tv->protected_pgd = 0;
+			tv->tv_flags = 0;
+			tv->elr_el2  = 0;
+			tv->first_lr = 0;
+			tv->elr_el2  = 0;
+			tv->esr_el2  = 0;
+			tv->spsr_el2  = 0;
+			tv->brk_count_el2 = 0;
 	}
 }
 
 #include "AesC.h"
-
-#define EL1_EXP_LEVEL 0x4
-#define EL1_print if (truly_get_exception_level() == EL1_EXP_LEVEL) printk
 
 int __hyp_text truly_decrypt(struct truly_vm *tv)
 {
@@ -202,6 +57,7 @@ int __hyp_text truly_decrypt(struct truly_vm *tv)
 	int data_offset = 60;
 	UCHAR key[16+1] = {0};
 	struct encrypt_tvm *enc;
+	long t1;
 
 	enc = (struct encrypt_tvm *) KERN_TO_HYP(tv->enc);
 
@@ -209,13 +65,16 @@ int __hyp_text truly_decrypt(struct truly_vm *tv)
 		return CODE_ERROR;
 	}
 
-	if (!(tv->flags & TVM_SHOULD_DECRYPT)) {
+	if (!(tv->tv_flags & TVM_SHOULD_DECRYPT)) {
+		tv->brk_count_el2++;
+		t1 = cycles();
 		tp_hyp_memcpy( enc->seg[0].pad_data ,
 					(unsigned char *)KERN_TO_HYP( enc->seg[0].decrypted_data ) , enc->seg[0].size);
+		tv->copy_time  = cycles() - t1;
 		return CODE_COPIED;
 	}
 
-	tv->flags &=  ~TVM_SHOULD_DECRYPT;
+	tv->tv_flags &=  ~TVM_SHOULD_DECRYPT;
 
 	if (enc->seg[0].pad_data == NULL) {
 		enc->seg[0].pad_data = (char *)tv->elr_el2;
@@ -226,6 +85,7 @@ int __hyp_text truly_decrypt(struct truly_vm *tv)
 	get_decrypted_key(key);
 	lines = enc->seg[0].size/ 4;
 
+	// AES is in a 16 bytes blocks
 	extra_offset = (enc->seg[0].size/ 16) * 16;
 	extra = enc->seg[0].size - extra_offset;
 
@@ -240,11 +100,13 @@ int __hyp_text truly_decrypt(struct truly_vm *tv)
 	d = (char *)KERN_TO_HYP(enc->seg[0].enc_data);
 	d += data_offset;
 
+	t1 = cycles();
 	for (line = 0 ; line < lines ; line += 4 ) {
 		AESSW_Enc128( enc, d , pad, 1 ,key);
 		d   += 16;
 		pad += 16;
 	}
+	tv->decrypt_time  = cycles() - t1;
 
 	if (extra > 0) {
 		pad = enc->seg[0].pad_data;
@@ -265,7 +127,9 @@ int __hyp_text truly_pad(struct truly_vm *tv)
 	int line = 0,lines = 0;
 	unsigned char *pad;
 	struct encrypt_tvm *enc;
+	long t1;
 
+	t1 = cycles();
 	enc = (struct encrypt_tvm *) KERN_TO_HYP(tv->enc);
 
 	pad = enc->seg[0].pad_data;
@@ -288,17 +152,16 @@ int __hyp_text truly_pad(struct truly_vm *tv)
 		tp_hyp_memcpy(fault_cmd, (char *)tv->save_cmd, sizeof(fault_cmd));
 
 	for (line = 0 ; line < lines ; line++ ) {
-		pad[4*line + 0] = 0x60;
-		pad[4*line + 1] = 0x00;
-		pad[4*line + 2] = 0x20;
-		pad[4*line + 3] = 0xd4;
+		int* p = (int*)&pad[4*line];
+		*p  = 0xd4200060;
 	}
-
+	tv->pad_time = cycles() - t1;
 	if (!tv->save_cmd)
-		return 0xAAAAAAAA;
+		return 0xA;
 	//
 	// Must put back the old command
 	//
 	tp_hyp_memcpy((char *)tv->save_cmd, fault_cmd, sizeof(fault_cmd));
-	return lines;
+
+	return 0xB;
 }

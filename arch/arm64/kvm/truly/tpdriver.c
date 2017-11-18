@@ -35,7 +35,9 @@
 #include "exec_prot_db_linux.h"
 #include "ImageFile.h"
 #include "ImageManager.h"
+
 #include <linux/truly.h>
+#include <linux/tp_mmu.h>
 
 #define     MAX_PERMS 777
 PVOID tp_alloc(size_t size);
@@ -112,23 +114,6 @@ static enum ep_module_group get_group_by_arch_and_type (char arch, char type)
 }
 
 
-void vma_map_hyp(struct vm_area_struct* vma,struct _IMAGE_FILE* image_file)
-{
-	unsigned long base, size;
-	struct truly_vm *tv;
-
-	tv = get_tvm();
-
-    base = vma->vm_start + tv->enc->seg[0].pad_func_offset;
-    size = tv->enc->seg[0].size;
-    tv->enc->seg[0].pad_data = (char *)base;
-
-    tp_info("Padded section 0x%lx...0x%lx\n",
-    		base, base + size );
-
-    tp_mmap_handler(base, size, vma->vm_flags);
-}
-
 static void vma_tp_load(struct vm_area_struct* vma, void* context)
 {
     char* path, *path_to_free;
@@ -147,8 +132,7 @@ static void vma_tp_load(struct vm_area_struct* vma, void* context)
         char arch, type;
         enum ep_module_group grp_type;
 
-        if ((file = file_open(path, O_RDONLY, MAX_PERMS)) == NULL)
-        {
+        if ((file = file_open(path, O_RDONLY, MAX_PERMS)) == NULL) {
             file = vma->vm_file;
         }
 
@@ -177,6 +161,7 @@ clean:
 void for_each_vma(struct task_struct* task, void* context, void (*callback)(struct vm_area_struct*, void*))
 {
     struct vm_area_struct* p;
+
     if (!(task && task->mm && task->mm->mmap))
         return;
     for (p = task->mm->mmap; p ; p = p->vm_next)
@@ -204,7 +189,7 @@ static char* executable_path(struct task_struct* process, char** path_to_free)
     return IS_ERR(p) ? NULL : p;
 }
 
-#define VM_STK_FLAGS ( VM_READ | VM_WRITE | VM_MAYWRITE | VM_MAYREAD | VM_MAYEXEC | VM_GROWSDOWN | VM_ACCOUNT)
+
 /*
     This function should be called from tp_stub_execve.
     ret_value represents the return value of do_execve.
@@ -215,7 +200,7 @@ void tp_execve_handler(unsigned long ret_value)
     char* exec_path, *path_to_free = NULL;
     PIMAGE_FILE image_file;
     struct file* file;
-    BOOLEAN is_protected;
+    int is_protected;
     unsigned long base, size;
 
 // Ignore if execve failed
@@ -246,39 +231,31 @@ void tp_execve_handler(unsigned long ret_value)
     is_protected = im_handle_image(&image_manager, image_file, (UINT64)current->pid, base);
 
     if (is_protected) {
-
-        struct vm_area_struct* p = current->mm->mmap;
-        printk("Launching TPVISOR..pid = %d\n", current->pid);
-
-        for (;p ; p = p->vm_next) {
-        	if (p->vm_flags & VM_EXEC) {
-                vma_map_hyp(p,image_file);
-                break;
-        	}
-		}
-        p = p->vm_next;
-        for (; p ; p = p->vm_next) {
-
-        	if (p->vm_flags == VM_STK_FLAGS ){
-        		int size = p->vm_end  - p->vm_start;
-        		tp_mmap_handler(p->vm_start, size, p->vm_flags);
-        	}
-        }
+    	tp_map_vmas(image_file);
         truly_set_trap();
     }
     image_file_free(image_file);
-
     mutex_unlock(&protected_image_mutex);
     file_close(file);
+
 clean_2:
    if (path_to_free)
       tp_free(path_to_free);
 }
 
+
+
 void tp_handler_exit(struct task_struct *tsk)
 {
+	extern IMAGE_MANAGER image_manager;
+
+	if (!im_is_process_exists(&image_manager,tsk->pid))
+			return;
+
+	im_remove_process(&image_manager,tsk->pid);
+
 	if (truly_is_protected(NULL)){
-		tp_unmark_protected();
+		tp_reset_tvm();
 		tp_unmmap_handler(tsk);
 		truly_reset_trap();
 	}

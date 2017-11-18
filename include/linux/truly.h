@@ -144,12 +144,25 @@ struct hyp_addr {
 #define TVM_SHOULD_DECRYPT		0x2
 
 struct truly_vm {
+
+	unsigned long first_lr;
+	struct encrypt_tvm* enc;
+ 	unsigned long elr_el2;
+ 	unsigned long esr_el2;
+ 	unsigned long sp_el2;
+ 	unsigned long far_el2;
+	unsigned long save_cmd;
+
+//
+	unsigned long spsr_el2;
+ 	unsigned long tv_flags;
+ 	unsigned long copy_time;
 	unsigned long protected_pgd;
 	unsigned long brk_count_el2;
- 	struct encrypt_tvm* enc;
- 	unsigned long elr_el2;
- 	unsigned long x30;
-	unsigned long save_cmd;
+
+// cold
+	unsigned long decrypt_time;
+	unsigned long pad_time;
 	unsigned long hcr_el2;
  	unsigned int hstr_el2;
  	unsigned long vttbr_el2;
@@ -158,10 +171,10 @@ struct truly_vm {
  	unsigned long mdcr_el2;
  	unsigned long mair_el2;
 
- 	unsigned long flags; 	
  	unsigned long id_aa64mmfr0_el1;
    	void* pg_lvl_one;
    	struct list_head hyp_addr_lst; // A process's hyp address list
+   	struct mutex sync;
 } __attribute__ ((aligned (8)));
 
 extern char __truly_vectors[];
@@ -182,21 +195,29 @@ unsigned long read_mair_el2(void);
 void truly_set_vectors(unsigned long vbar_el2);
 unsigned long truly_get_vectors(void);
 struct _IMAGE_FILE;
-void tp_mark_protected(struct _IMAGE_FILE* image_file);
+void tp_prepare_process(struct _IMAGE_FILE* image_file);
 int __hyp_text truly_is_protected(struct truly_vm *);
-void tp_unmark_protected(void);
-void tp_unmmap_handler(struct task_struct* task);
+struct truly_vm *get_tvm_per_cpu(int cpu);
 void __hyp_text truly_debug_decrypt(UCHAR *encrypted,UCHAR* decrypted, int size);
-void hyp_user_unmap(unsigned long umem,int size);
-int create_hyp_mappings(void *, void *);
-int create_hyp_user_mappings(void *,void*);
+unsigned long truly_get_ttbr0_el1(void);
 void encryptInit(struct encrypt_tvm *tvm);
 int __hyp_text truly_decrypt(struct truly_vm *tv);
 int __hyp_text truly_pad(struct truly_vm *tv);
 void __hyp_text truly_set_mdcr_el2(struct truly_vm *tv);
+void el2_mmu_fault_bh(void);
 void truly_reset_trap(void);
 void truly_set_trap(void);
-void tp_mmap_handler(unsigned long addr,int len,unsigned long vm_flags);
+unsigned long  truly_get_exception_level(void);
+int is_addr_mapped(long addr,struct truly_vm *tv);
+
+static inline long cycles(void)
+{
+        long cval;
+        asm volatile ("mrs %0, cntvct_el0" : "=r" (cval));
+        return cval;
+}
+
+#define __TRULY_DEBUG__
 
 #ifdef __TRULY_DEBUG__
 

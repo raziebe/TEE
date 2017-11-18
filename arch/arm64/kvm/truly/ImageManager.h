@@ -68,4 +68,4 @@ UCHAR* im_get_dependency(PENCRYPTED_BLOCK block, UINT64 index);
 UINT32 im_get_dependencies_count(PENCRYPTED_BLOCK block);
 //BOOLEAN im_check_signature(PACTIVE_IMAGE image, UCHAR *key, SW_AUX_BUFFERS *bufs, BOOLEAN aes_ni_avail);
 //BOOLEAN im_are_relocations_valid(PENCRYPTED_BLOCK block, UCHAR *key, SW_AUX_BUFFERS *bufs, BOOLEAN aes_ni_avail);
-//BOOLEAN im_is_process_exists(PIMAGE_MANAGER manager, size_t pid);
+BOOLEAN im_is_process_exists(PIMAGE_MANAGER manager, size_t pid);

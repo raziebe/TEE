@@ -12,7 +12,7 @@
 #include <asm/cpufeature.h>
 
 .text
-.pushsection	.hyp.text, "ax" // borrow  hyp.text
+.pushsection	.hyp.text, "ax"
 .align	PAGE_SHIFT
 
 .macro invalid_vector   label,num
@@ -25,49 +25,46 @@ ENDPROC(\label)
 
 
 .macro save_registers
-	push x0,x1
-	push x2,x3
-	push x4,x5
-	push x6,x7
-	push x8,x9
-	push x10,x11
-	push x12,x13
-	push x14,x15
-	push x16,x17
-	push x18,x19
-	push x20,x21
-	push x22,x23
-	push x24,x25
-	push x26,x27
-	push x28,x29
-	mrs x28,nzcv
-	push x30,x28
+	push x29, x30
+	push x27, x28
+	push x25, x26
+	push x23, x24
+	push x21, x22
+	push x19, x20
+	push x17, x18
+	push x15, x16
+	push x13, x14
+	push x11, x12
+	push x9,  x10
+	push x7,  x8
+	push x5,  x6
+	push x3,  x4
+	push x1,  x2
+	push x0,  xzr
 .endm
 
 
 .macro restore_registers
-	pop x30,x28
-	msr nzcv,x28
-	pop x28,x29
-	pop x26,x27
-	pop x24,x25
-	pop x22,x23
-	pop x20,x21
-	pop x18,x19
-	pop x16,x17
-	pop x14,x15
-	pop x12,x13
-	pop x10,x11
-	pop x8,x9
-	pop x6,x7
-	pop x4,x5
-	pop x2,x3
-	pop x0,x1
+	pop  x0,  xzr
+	pop  x1,  x2
+	pop  x3,  x4
+	pop  x5,  x6
+	pop  x7,  x8
+	pop  x9,  x10
+	pop  x11, x12
+	pop  x13, x14
+	pop  x15, x16
+	pop  x17, x18
+	pop  x19, x20
+	pop  x21, x22
+	pop  x23, x24
+	pop  x25, x26
+	pop	 x27, x28
+	pop  x29, x30
 .endm
 
-//  code taken from kvm
 
-EL1_sync:
+EL1_sync: // EL1/EL0 --> EL2
 	push	x0, x1
 	push	x2, x3
 
@@ -76,7 +73,6 @@ EL1_sync:
 
 	cmp	x2, #ESR_ELx_EC_HVC64		// If not 10110 then we have a trap
 	b.ne	el1_trap
-
 
 	/* Here, we're pretty sure the host called HVC. */
 	pop	x2, x3
@@ -107,19 +103,14 @@ el1_trap:
 	 * x1: ESR
 	 * x2: ESR_EC
 	 */
-
-	/* Should remeove Guest accessed VFP/SIMD registers, save host, restore Guest */
-	cmp	x2, #ESR_ELx_EC_FP_ASIMD		// 0x7
-	b.eq	4f
-	
 	cmp x2, #0x18				// MRC,MRS
 	b.eq	4f
 	cmp x2, #0x3c					// debug brk command
-	b.eq	brk_exception
+	b.eq	BRK_EXCEPTION
 
 	cmp	x2, #ESR_ELx_EC_DABT_LOW	// ESR_ELx_EC_DABT_LOW = 0x24 = 36d = data abort
 	mov	x0, #ESR_ELx_EC_IABT_LOW	// ESR_ELx_EC_IABT_LOW = 0x20 = 32 instruction abort 
-	ccmp	x2, x0, #4, ne // if and 4 && (x2 and x0 ) then br to 1
+	ccmp	x2, x0, #4, ne //  (x2 and x0 ) & 4
 	b.ne	4f		// Not an abort we care about
 
 4:
@@ -129,11 +120,11 @@ el1_trap:
 	eret
  
 
-brk_exception:
+BRK_EXCEPTION:
 
 	mrs	x0,tpidr_el2
 	ldr x3,[x0, #TP_PGD]
-	cmp x3,#0
+	cmp x3, #0
 	b.ne SAVE_LR
 	mrs x3,elr_el2
 	add x3,x3,#4
@@ -144,35 +135,42 @@ brk_exception:
 	eret
 
 SAVE_LR:
-	//
-	// The exception code take place many times,
-	// We must make sure we fill the caller address only once
-    //
-	ldr x3,[x0, #TP_X30]
-	cmp x3,#0
+	/*
+	* The exception code take place many times,
+	* We must make sure we fill the caller address only once
+    */
+	ldr x2,[x0, #TP_FIRST_LR]
+	cmp x2,#0
 	b.ne NOT_FIRST
-	str x30,[x0, #TP_X30]	// save the caller return address
+	str x30,[x0, #TP_FIRST_LR]	/* save the caller return address */
 
 NOT_FIRST:
 
-	mrs x2,elr_el2
+	mrs x2, elr_el2
 	str x2,[x0, #TP_ELR_EL2]
 
-	save_registers
-
-	ldr x1,=truly_decrypt
-	kern_hyp_va x1
-
-	blr x1
-	bl pad_invalidate
-
-	restore_registers
 	pop	x2, x3
 	pop	x0, x1
 
+
+	save_registers
+
+	mrs	x0,tpidr_el2
+	mrs x2, elr_el2
+	str x2,[x0, #TP_ELR_EL2]
+
+	ldr x1,=truly_decrypt
+	kern_hyp_va x1
+	blr x1
+	bl pad_invalidate
+
+	// now return registers to the state they were when
+	// we entered
+	restore_registers
+
 	msr cntvoff_el2,x1  //<-- save x1
 
-//	force stack to el0
+//	EL2t. Switch stacks
 	mrs x1, spsel
 	and w1,w1,#0xFFFFFFFE
 	msr spsel,x1
@@ -182,17 +180,18 @@ NOT_FIRST:
 
 	msr cntvoff_el2,xzr
 
-	blr x30			// Execute decrypted in EL2  and then return to next command because of the blr call.
+	blr x30	// Execute decrypted in EL2
 
 	// User called ret.
 	// Return from the decrypted routine and then return to the
 	// reconstruced x30 as elr_el2
 
-	// first pad back the code
+	// pad back the code
 	save_registers
 	mrs	x0,tpidr_el2
 	mov x1,#0x0
 	str x1,[x0, #TP_SAVE_CMD]
+
 	ldr x1,=truly_pad
 	kern_hyp_va x1
 	blr x1
@@ -203,17 +202,19 @@ NOT_FIRST:
 	push x0, x1
 	mrs	x0,tpidr_el2
 	// reconstrcted caller
-	ldr x30,[x0, #TP_X30]
+	ldr x30,[x0, #TP_FIRST_LR]
 	msr  elr_el2,x30 // we eret, so we must fix the pc in EL0
-	str xzr,[x0, #TP_X30]
+	str xzr,[x0, #TP_FIRST_LR]
 
 	pop x0,x1
 
 	msr cntvoff_el2 ,x1   //<-- save x1
-	//	force stack back to elX
+
+// select EL0 stack
 	mrs x1, spsel
 	orr w1,w1,#0x1
 	msr spsel,x1
+	//	force stack back to EL2h
 
 	mrs  x1,spsr_el2
 	and w1,w1,#0xFFFFFFF0
@@ -225,29 +226,28 @@ NOT_FIRST:
 	eret
 ENDPROC(el1_trap)
 
-
 ENTRY(pad_invalidate)
-	ret
-	mrs	x1,tpidr_el2
-	kern_hyp_va x1
-	ldr x0,[x1, #TP_ENC]
-	kern_hyp_va x0
-	mov x2,xzr
 
-	ldr w2,[x0, #TP_ENC_SIZE] // size
-	ldr x3,[x0, #TP_PAD_DATA] // pad_data
+        mrs x1,tpidr_el2
+        ldr x0,[x1, #TP_ENC]
 
-	mov x0, x3	  // start
-	add x1, x0,x2 // end
+		kern_hyp_va x0
+		mov x2,xzr
+
+        ldr w2,[x0, #TP_ENC_SIZE] // size
+        ldr x3,[x0, #TP_PAD_DATA] // pad_data
+
+        mov x0, x3        // start
+      	add x1, x0,x2 // end
 
 start_inv:
 
-	ic ivau, x0
-	add x0,x0,#64
-	cmp x0,x1
-	ble start_inv
+        ic ivau, x0
+        add x0,x0,#32
+        cmp x0,x1
+        ble start_inv
 
-	ret
+        ret
 ENDPROC(pad_invalidate)
 
 __truly_panic:
@@ -275,8 +275,8 @@ __truly_panic:
 	.quad	PAGE_OFFSET
 ENDPROC(__truly_panic)
 __hyp_panic_str:
-	.ascii	"Truly panic:\nCode:%08x PC:%016x ESR:%08x\nFAR:%016x" \
-	" HPFAR:%016x RAZDBG:%p\nTrulyCxt:%p\n\0"
+	.ascii	"Truly panic:\nCode:%08x elr_el2:%016x ESR_EL2:%08x\nFAR_EL2:%016x" \
+	" HPFAR:%016x ENTRY:%p\nTrulyCxt:%p\n\0"
 
 ENTRY(truly_get_tcr_el1)
        mrs     x0, tcr_el1
@@ -316,8 +316,6 @@ ENTRY(truly_set_mdcr_el2)
 
 	kern_hyp_va  x0	// grab tvm
     ldr		x1, [x0, #TP_MDCR_EL2]
-
-	kern_hyp_va x1
 	msr		mdcr_el2, x1
 	ret
 ENDPROC(truly_set_mdcr_el2)
@@ -329,31 +327,28 @@ ENTRY(truly_run_vm)
 	mov	x4, lr		// save the link register of EL1 before losing it.
 	
 	kern_hyp_va  x0	// grab tvm
-	msr	tpidr_el2, x0	// save tvm context
+	msr		tpidr_el2, x0	// save tvm context
 
-	ldr	x1, [x0, #TP_HCR_EL2]
-	kern_hyp_va x1
+	ldr		x1, [x0, #TP_HCR_EL2]
     msr     hcr_el2, x1
 	
- 	ldr x1, [x0, #TP_HSTR_EL2]
-	kern_hyp_va x1
-    msr hstr_el2, x1
+ 	ldr 	x1, [x0, #TP_HSTR_EL2]
+    msr 	hstr_el2, x1
 
     ldr		x1, [x0, #TP_VTCR_EL2]
-	kern_hyp_va x1
-	msr	vtcr_el2, x1
+	msr		vtcr_el2, x1
  
     ldr     x1, [x0, #TP_VTTBR_EL2]
-    kern_hyp_va x1
-    msr vttbr_el2, x1
+    kern_hyp_va  x0	// grab tvm
+    msr 	vttbr_el2, x1
 
     ldr		x1, [x0, #TP_MDCR_EL2]
-	kern_hyp_va x1
 	msr		mdcr_el2, x1
 
-	ldr	x1, [x0, #TP_MAIR_EL2]
-	kern_hyp_va x1
-	msr		mair_el2, x1
+//	ldr	x1, [x0, #TP_MAIR_EL2]
+//	msr		mair_el2, x1
+	mov		x1,sp
+	str		x1, [x0, #TP_SP_EL2]
 
 	// Clear cntvoff for the host
 	msr	cntvoff_el2, xzr
@@ -363,59 +358,101 @@ ENTRY(truly_run_vm)
 ENDPROC(truly_run_vm)
 
 /*
- * We enter this code when the user executed in EL2 and performed an ilegal
- * command, such as svc or any other.
+ * We enter here when the user executed in EL2 and performed an ilegal
+ * command, such as svc or mmu abort
  * we pad the code back ,move to program counter ot previous position
  * and return to EL0
 */
 EL2_sync:
 
 	save_registers
-//
-// G1.13	if elr_el2.iss bit 24 valid then iss valid D7-1956
-//	If SVC/HVC/SMC or then move back else leave unchanged
 
 	mrs x3, elr_el2
 	mrs	x1, esr_el2
 	lsr	x2, x1, #ESR_ELx_EC_SHIFT	// Syndrom shift 26 bits
 
-	cmp x2,#ESR_ELx_EC_DABT_CUR  // 0x25 , MMU data abort in EL2
-	b.eq NO_MOVE_BACK
+	cmp x2, #ESR_ELx_EC_DABT_CUR  // 0x25 , MMU data abort in EL2
+	b.eq 1f
+	cmp x2 ,#ESR_ELx_EC_IABT_CUR  // 0x21 , MMU instruction abort in EL2
+	b.eq 1f
+	cmp x2, #ESR_ELx_EC_IABT_LOW
+	b.eq 1f
 
-	cmp x2,#ESR_ELx_EC_IABT_CUR  // 0x21 , MMU instruction abort in EL2
-	b.eq HADNLE_INSTR_ABRT
-
-	cmp	x2, #ESR_ELx_EC_SVC64
-	b.ne NO_MOVE_BACK
-	b MOVE_BACK
-
-HADNLE_INSTR_ABRT:
-	mov x3,x30		// we cannot perform the instruction in EL2,
-	b  NO_MOVE_BACK
-MOVE_BACK:
-	sub x3 , x3, #4
-NO_MOVE_BACK:
-
-	mrs	x0,tpidr_el2
-	str x3,[x0, #TP_SAVE_CMD]
-	msr elr_el2, x3 // eret will start from here.
-
-	ldr x1,=truly_pad
+	cmp x2,#ESR_ELx_EC_SVC64
+	b.ne 1f
+	mrs x3, elr_el2
+	sub x3, x3, #4
+	msr elr_el2, x3
+	b 2f
+1:
+	cmp x3,xzr
+	bne 2f
+	mrs x3, far_el2
+	msr elr_el1, x3 // this was br or bl to an unmapped area
+2:
+	mrs x0, tpidr_el2
+	str x3, [x0, #TP_SAVE_CMD]
+	ldr x1, =truly_pad
 	kern_hyp_va x1
 	blr x1
 	bl pad_invalidate
-//
-// Prepare spsr_el2 to move to EL0h
-//
-	mrs  x1,spsr_el2
-	and w1,w1,#0xFFFFFFF0
-	msr spsr_el2,x1
+
 
 	restore_registers
+
+//
+// SPLx stack
+//
+	msr cntvoff_el2 ,x1
+	mrs x1, spsel
+	orr x1,x1,0x1
+	msr spsel,x1
+//
+// just fix spsr_el2 to EL0t and eret
+
+	mrs x1, spsr_el2
+	and w1,w1,#0xFFFFFFF0
+	msr spsr_el2,x1
+	mrs  x1,cntvoff_el2
+	msr  cntvoff_el2,xzr
 
 	eret
 ENDPROC(EL2_sync)
 
+/*
+ * addresses are mapped, Now try to run again in EL0
+*/
+ENTRY(el2_mmu_fault_bh)
+
+	pop	lr, xzr			// restore stack to its previosu position
+	mrs x0,tpidr_el2
+
+	ldr x1,[x0, #TP_ELR_EL2]
+	msr elr_el2,x1
+
+	ldr x1,[x0, #TP_SPSR_EL2]
+	msr spsr_el2,x1
+
+	restore_registers	// restore EL2_sync
+
+// force EL0 stack
+//
+	msr cntvoff_el2 ,x1
+	mrs x1, spsel
+	and x1,x1,0xFFFFFFFE
+	msr spsel,x1
+
+// just fix spsr_el2 to EL0 and eret
+
+	mrs x1, spsr_el2
+	and w1,w1,#0xFFFFFFF0
+	msr spsr_el2,x1
+
+	mrs  x1,cntvoff_el2
+	msr  cntvoff_el2,xzr
+
+	eret
+ENDPROC(el2_mmu_fault_bh)
 
 
 // http://infocenter.arm.com/help/index.jsp?topic=/com.arm.doc.den0024a/CHDEEDDC.html

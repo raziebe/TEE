@@ -869,6 +869,7 @@ static const char SM_RCON[30] =
 
 void encryptInit(struct encrypt_tvm *tvm)
 {
+	memset(tvm,0x00,sizeof(*tvm));
 	memcpy(&tvm->sm_rcon, &SM_RCON, sizeof(SM_RCON));
 	memcpy(&tvm->sm_U4, &SM_U4, sizeof(SM_U4));
 	memcpy(&tvm->sm_U3, &SM_U3, sizeof(SM_U3));

@@ -52,6 +52,7 @@ __asm__(".arch_extension	virt");
 #endif
 
 static DEFINE_PER_CPU(unsigned long, kvm_arm_hyp_stack_page);
+static int stack_size = PAGE_SIZE  * 2*2*2;
 static kvm_cpu_context_t __percpu *kvm_host_cpu_state;
 static unsigned long hyp_default_vectors;
 
@@ -983,7 +984,7 @@ static void cpu_init_hyp_mode(void *dummy)
 	boot_pgd_ptr = kvm_mmu_get_boot_httbr();
 	pgd_ptr = kvm_mmu_get_httbr();
 	stack_page = __this_cpu_read(kvm_arm_hyp_stack_page);
-	hyp_stack_ptr = stack_page + PAGE_SIZE;
+	hyp_stack_ptr = stack_page + stack_size; // raz
 
 	__cpu_init_hyp_mode(boot_pgd_ptr, pgd_ptr, hyp_stack_ptr, vector_ptr);
 	kvm_arm_init_debug();
@@ -1075,8 +1076,8 @@ static int init_hyp_mode(void)
 	 */
 	for_each_possible_cpu(cpu) {
 		unsigned long stack_page;
-
-		stack_page = __get_free_page(GFP_KERNEL);
+// raz
+		stack_page = __get_free_pages(GFP_KERNEL, 3);
 		if (!stack_page) {
 			err = -ENOMEM;
 			goto out_free_stack_pages;
@@ -1094,12 +1095,13 @@ static int init_hyp_mode(void)
 		goto out_free_mappings;
 	}
 
+
 	/*
 	 * Map the Hyp stack pages
 	 */
 	for_each_possible_cpu(cpu) {
 		char *stack_page = (char *)per_cpu(kvm_arm_hyp_stack_page, cpu);
-		err = create_hyp_mappings(stack_page, stack_page + PAGE_SIZE);
+		err = create_hyp_mappings(stack_page, stack_page + stack_size);
 
 		if (err) {
 			kvm_err("Cannot map hyp stack\n");
