@@ -1802,7 +1802,7 @@ void update_wall_time(void)
 	/* Bound shift to one less than what overflows tick_length */
 	maxshift = (64 - (ilog2(ntp_tick_length())+1)) - 1;
 	shift = min(shift, maxshift);
-	printk("interval %zd %d\n",tk->cycle_interval,offset);
+
 	while (offset >= tk->cycle_interval) {
 		offset = logarithmic_accumulation(tk, offset, shift,
 							&clock_set);
