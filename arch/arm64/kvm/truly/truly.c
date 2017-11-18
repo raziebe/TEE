@@ -214,7 +214,7 @@ int truly_init(void)
 		mutex_init(&tv->sync);
 	}
 
-	printk("TrulyProtect Version cache_decr rc-1.0-rc9 loaded\n");
+	printk("TrulyProtect Version cache_decr rc-1.0-rc10 loaded\n");
 /*
 	tp_info("HYP_PAGE_OFFSET_SHIFT=%x "
 			"HYP_PAGE_OFFSET_MASK=%lx "
