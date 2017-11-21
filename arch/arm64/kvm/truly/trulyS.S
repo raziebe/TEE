@@ -367,54 +367,43 @@ EL2_sync:
 
 	save_registers
 
-	mrs x3, elr_el2
 	mrs	x1, esr_el2
-	lsr	x2, x1, #ESR_ELx_EC_SHIFT	// Syndrom shift 26 bits
-
+	lsr	x2, x1, #ESR_ELx_EC_SHIFT // Syndrom shifts 26 bits
 	cmp x2, #ESR_ELx_EC_DABT_CUR  // 0x25 , MMU data abort in EL2
-	b.eq 1f
-	cmp x2 ,#ESR_ELx_EC_IABT_CUR  // 0x21 , MMU instruction abort in EL2
-	b.eq 1f
+	b.eq 2f
+	cmp x2, #ESR_ELx_EC_IABT_CUR  // 0x21 , MMU instruction abort in EL2
+	b.eq 2f
 	cmp x2, #ESR_ELx_EC_IABT_LOW
-	b.eq 1f
+	b.eq 2f
 
-	cmp x2,#ESR_ELx_EC_SVC64
-	b.ne 1f
+	cmp x2, #ESR_ELx_EC_SVC64
+	b.ne 2f
 	mrs x3, elr_el2
 	sub x3, x3, #4
 	msr elr_el2, x3
-	b 2f
-1:
-	cmp x3,xzr
-	bne 2f
-	mrs x3, far_el2
-	msr elr_el1, x3 // this was br or bl to an unmapped area
 2:
 	mrs x0, tpidr_el2
+	mrs x3, elr_el2
 	str x3, [x0, #TP_SAVE_CMD]
+	str x3, [x0, #TP_ELR_EL2]
+	mrs x3, far_el2
+	str x3, [x0, #TP_FAR_EL2]
 	ldr x1, =truly_pad
 	kern_hyp_va x1
 	blr x1
 	bl pad_invalidate
 
-
-	restore_registers
-
 //
-// SPLx stack
+// exit to EL1 and map the page
 //
-	msr cntvoff_el2 ,x1
-	mrs x1, spsel
-	orr x1,x1,0x1
-	msr spsel,x1
-//
-// just fix spsr_el2 to EL0t and eret
-
-	mrs x1, spsr_el2
+	mrs  x1,spsr_el2
 	and w1,w1,#0xFFFFFFF0
-	msr spsr_el2,x1
-	mrs  x1,cntvoff_el2
-	msr  cntvoff_el2,xzr
+    mov  x0,#5
+   	orr  x1, x1,x0
+    msr  spsr_el2,x1
+	ldr	x1, =el2_mmu_fault_th
+
+	msr	elr_el2, x1
 
 	eret
 ENDPROC(EL2_sync)
@@ -425,8 +414,8 @@ ENDPROC(EL2_sync)
 ENTRY(el2_mmu_fault_bh)
 
 	pop	lr, xzr			// restore stack to its previosu position
-	mrs x0,tpidr_el2
 
+	mrs x0,tpidr_el2
 	ldr x1,[x0, #TP_ELR_EL2]
 	msr elr_el2,x1
 

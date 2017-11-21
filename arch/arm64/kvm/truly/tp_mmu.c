@@ -43,7 +43,7 @@ void tp_map_vmas(struct _IMAGE_FILE* image_file)
 
         for (;vma ; vma = vma->vm_next) {
 
-        	int size = vma->vm_end  -vma->vm_start;
+      //  	int size = vma->vm_end  -vma->vm_start;
 
         	if (is_addr_mapped(vma->vm_start, get_tvm()))
         		continue;
@@ -53,12 +53,8 @@ void tp_map_vmas(struct _IMAGE_FILE* image_file)
                 continue;
         	}
 
-        	//
-        	// we map only faulted addresses. at this phase some pages are not faulted
-        	// yet so we will map them in real time if needed.
-        	// so we map only the stack
-        	if (vma->vm_flags == VM_STACK_FLAGS) {
-        		map_user_space_data((void *)vma->vm_start, size, vma->vm_flags);
+        	if (vma->vm_flags == VM_STCK_FLAGS) {
+        		map_user_space_data((void *)vma->vm_start, PAGE_SIZE);
         	}
         }
 }
@@ -78,17 +74,21 @@ void vma_map_hyp(struct vm_area_struct* vma)
 			tv->enc->seg[0].pad_data,
 			tv->enc->seg[0].pad_data + tv->enc->seg[0].size ,
 			 vma->vm_start,  vma->vm_start + vma_size );
+
+		map_user_space_data((void *)tv->enc->seg[0].pad_data,
+		                       tv->enc->seg[0].size);
+		return;
 	}
-/*
-*  It is tempt-full to map the entire segment, but it harmful.
-*  The reason is that the mapping might change in real time and vmas
-*   rellocate. I get alot things like: ldr x17[x16,some offset] and x17 contains
-*  an address zero. For this reason I rather allocate as small as possible at this phase
-*  and map in real time
-*/
-	map_user_space_data((void *)tv->enc->seg[0].pad_data,
-			tv->enc->seg[0].size,
-			vma->vm_flags);
+
+	/*
+	*  It is tempt-full to map the entire segment, but it harmful.
+	*  The reason is that the mapping might change in real time and vmas
+	*   rellocate. I get alot things like: ldr x17[x16,some offset] and x17 contains
+	*  an address zero. For this reason I rather allocate as small as possible at this phase
+	*  and map in real time
+	*/
+	map_user_space_data((void *)vma->vm_start , vma_size);
+
 }
 
 void unmap_user_space_data(unsigned long umem,int size)
@@ -100,32 +100,46 @@ void unmap_user_space_data(unsigned long umem,int size)
 int mmu_map_vma(unsigned long addr, struct truly_vm *tv)
 {
 	int size;
-	int i;
-	void *buf;
-    struct vm_area_struct* vma = current->mm->mmap;
+    struct vm_area_struct* vma;
 
-    if (is_addr_mapped(addr,tv))
-    	return 0;
+    if (current->mm == NULL) {
+    	printk("Truly insane: no mm\n");
+    	return -1;
+    }
 
-    buf = kmalloc(4096,GFP_USER);
-    for (;vma ; vma = vma->vm_next) {
+    vma = current->mm->mmap;
 
-    	size = vma->vm_end  -vma->vm_start;
-    	if (!(addr > vma->vm_start && addr < vma->vm_end) ){
-    		continue;
-    	}
-    	// fault
-    	for (i = 0; i < size ;i += 4096)
-    		memcpy(buf,(void *)vma->vm_start + i, 4096);
-    	map_user_space_data( (void *)vma->vm_start, size, vma->vm_flags );
-    	kfree(buf);
+    if (is_addr_mapped(addr,tv)){
+    	printk("%lx already mapped\n",addr);
     	return 0;
     }
-    kfree(buf);
-    return -1;
+
+    for (;vma ; vma = vma->vm_next) {
+    	size = vma->vm_end  -vma->vm_start;
+    	if (!(addr >= vma->vm_start && addr <= vma->vm_end) ){
+    		continue;
+    	}
+    	map_user_space_data( (void *)vma->vm_start, size);
+    	return 0;
+    }
+
+    return (-1);
 }
 
+int mmu_map_page(unsigned long addr, struct truly_vm *tv)
+{
+    struct vm_area_struct* vma;
 
+    vma = current->mm->mmap;
+
+    if (is_addr_mapped(addr,tv)){
+    	printk("%lx already mapped\n",addr);
+    	return 0;
+    }
+
+    map_user_space_data( (void *)addr, PAGE_SIZE);
+    return 0;
+}
 /*
  *  handle EL2 mmu fault from EL1.
  *
@@ -135,24 +149,37 @@ int mmu_map_vma(unsigned long addr, struct truly_vm *tv)
 void el2_mmu_fault_th(void)
 {
 	struct truly_vm *tv;
+	int rc = 0;
+	unsigned long elr_el2 = 0;
 
 	tv = get_tvm();
 	if (tv->far_el2 == 0 && tv->elr_el2 == 0)
 		panic("Faulted in an unknown area");
 
+	elr_el2 = tv->elr_el2;
 	printk("EL2 MMU fault at far_el2 %lx, elr_el2 %lx\n",
 				tv->far_el2, tv->elr_el2);
 
-	if (tv->far_el2 != 0 && tv->far_el2 != tv->elr_el2)
-		mmu_map_vma(tv->far_el2,tv);
+	if (tv->far_el2 != 0 && tv->far_el2 != tv->elr_el2){
+		rc = mmu_map_vma(tv->far_el2, tv);
+		if (rc) {
+			printk("Truly: failed to map address far_el2");
+			elr_el2 -= 4;
+		}
+	}
 
-	if (tv->elr_el2 != 0)
-		mmu_map_vma(tv->elr_el2,tv);
+	if (tv->elr_el2 != 0 && tv->far_el2 != tv->elr_el2) {
+		rc = mmu_map_vma(tv->elr_el2, tv);
+		if (rc != 0 && elr_el2 == tv->elr_el2){
+			elr_el2 -= 4;
+			printk("Truly: failed to map address elr_el2");
+		}
+	}
+	tv->elr_el2 = elr_el2;
 //
 // go back to the hyp to restore back to hyp mode
 //
 	tp_call_hyp(el2_mmu_fault_bh);
-
 }
 
 int is_addr_mapped(long addr,struct truly_vm *tv)
@@ -319,11 +346,9 @@ unsigned long kvm_uaddr_to_pfn(unsigned long uaddr)
  * Called from execve context.
  * Map the user
  */
-void map_user_space_data(void *umem,int size,unsigned long vm_flags)
+void map_user_space_data(void *umem,int size)
 {
 	int err;
-	int i;
-	void *buf;
 	struct truly_vm *tv;
 	struct hyp_addr* addr;
 
@@ -336,27 +361,19 @@ void map_user_space_data(void *umem,int size,unsigned long vm_flags)
 		return;
 	}
 
-	buf = kmalloc(4096,GFP_USER);
-	for ( i = 0 ; i < size ; i += 4096)
-		if ( copy_from_user(buf, umem + i, PAGE_SIZE))
-			tp_err("fault error at offset %d\n",i);
-	kfree(buf);
-
 	err = create_hyp_user_mappings(umem, umem + size);
 	if (err){
 			tp_err(" failed to map ttbr0_el2\n");
 			return;
 	}
 
-	addr = kmalloc(sizeof(struct hyp_addr ),GFP_USER);
-
-
+	addr = kmalloc(sizeof(struct hyp_addr ), GFP_USER);
 	addr->addr = (unsigned long)umem & PAGE_MASK;
 	addr->size = PAGE_ALIGN((unsigned long)umem + size) - addr->addr;
 	list_add(&addr->lst, &tv->hyp_addr_lst);
 
-	tp_err("pid %d user mapped %p size=%d in %lx size=%d\n",
-			current->pid,umem ,size, addr->addr, addr->size );
+	tp_err("pid %d user mapped %p size=%d in [%lx,%lx] size=%d\n",
+			current->pid,umem ,size, addr->addr, addr->addr + addr->size ,addr->size );
 
 	mutex_unlock(&tv->sync);
 }
