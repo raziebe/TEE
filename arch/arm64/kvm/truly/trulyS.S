@@ -375,12 +375,30 @@ EL2_sync:
 	b.eq 2f
 	cmp x2, #ESR_ELx_EC_IABT_LOW
 	b.eq 2f
-
 	cmp x2, #ESR_ELx_EC_SVC64
 	b.ne 2f
+// svc
+	mrs x0, tpidr_el2
+	mrs x3, elr_el2
+	str x3, [x0, #TP_SAVE_CMD]
+	str x3, [x0, #TP_ELR_EL2]
+
+	ldr x1, =truly_pad
+	kern_hyp_va x1
+	blr x1
+	bl pad_invalidate
+
 	mrs x3, elr_el2
 	sub x3, x3, #4
 	msr elr_el2, x3
+// Prepare spsr_el2 to move to EL0h
+//
+    mrs x1,spsr_el2
+    and w1,w1,#0xFFFFFFF0
+    msr spsr_el2,x1
+
+	restore_registers
+	eret
 2:
 	mrs x0, tpidr_el2
 	mrs x3, elr_el2
@@ -408,6 +426,7 @@ EL2_sync:
 	// prepare argument
 	mrs x0,far_el2
 	eret
+
 ENDPROC(EL2_sync)
 
 /*
