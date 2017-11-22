@@ -192,6 +192,24 @@ out:
 	return fault;
 }
 
+int el2_do_page_fault(unsigned long addr)
+{
+	void el2_mmu_fault_th(void);
+	struct task_struct *tsk;
+	struct mm_struct *mm;
+	int fault;
+	unsigned long vm_flags = VM_READ | VM_WRITE | VM_EXEC;
+	unsigned int mm_flags = FAULT_FLAG_ALLOW_RETRY | FAULT_FLAG_KILLABLE;
+
+	tsk = current;
+	mm  = tsk->mm;
+
+	fault = __do_page_fault(mm, addr, mm_flags, vm_flags, tsk);
+	printk("truly fault %d\n",fault);
+	el2_mmu_fault_th();
+	return fault;
+}
+
 static int __kprobes do_page_fault(unsigned long addr, unsigned int esr,
 				   struct pt_regs *regs)
 {
@@ -255,7 +273,7 @@ retry:
 	}
 
 	fault = __do_page_fault(mm, addr, mm_flags, vm_flags, tsk);
-
+// raz. check fault page
 	/*
 	 * If we need to retry but a fatal signal is pending, handle the
 	 * signal first. We do not need to release the mmap_sem because it

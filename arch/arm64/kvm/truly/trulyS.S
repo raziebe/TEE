@@ -393,18 +393,20 @@ EL2_sync:
 	blr x1
 	bl pad_invalidate
 
-//
-// exit to EL1 and map the page
-//
+/*
+ *	exit to EL1 to map fault the address in EL1 and EL2
+*/
+
+	ldr x0,=el2_do_page_fault
+	msr elr_el2,x0
+
 	mrs  x1,spsr_el2
-	and w1,w1,#0xFFFFFFF0
+	and   w1,w1,#0xFFFFFFF0
     mov  x0,#5
    	orr  x1, x1,x0
     msr  spsr_el2,x1
-	ldr	x1, =el2_mmu_fault_th
-
-	msr	elr_el2, x1
-
+	// prepare argument
+	mrs x0,far_el2
 	eret
 ENDPROC(EL2_sync)
 
@@ -421,6 +423,8 @@ ENTRY(el2_mmu_fault_bh)
 
 	ldr x1,[x0, #TP_SPSR_EL2]
 	msr spsr_el2,x1
+
+	bl pad_invalidate
 
 	restore_registers	// restore EL2_sync
 

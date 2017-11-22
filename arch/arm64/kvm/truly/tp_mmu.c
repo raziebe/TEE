@@ -79,16 +79,7 @@ void vma_map_hyp(struct vm_area_struct* vma)
 		                       tv->enc->seg[0].size);
 		return;
 	}
-
-	/*
-	*  It is tempt-full to map the entire segment, but it harmful.
-	*  The reason is that the mapping might change in real time and vmas
-	*   rellocate. I get alot things like: ldr x17[x16,some offset] and x17 contains
-	*  an address zero. For this reason I rather allocate as small as possible at this phase
-	*  and map in real time
-	*/
-	map_user_space_data((void *)vma->vm_start , vma_size);
-
+	map_user_space_data((void *)vma->vm_start , PAGE_SIZE);
 }
 
 void unmap_user_space_data(unsigned long umem,int size)
@@ -136,7 +127,7 @@ int mmu_map_page(unsigned long addr, struct truly_vm *tv)
     	printk("%lx already mapped\n",addr);
     	return 0;
     }
-
+   // __do_page_fault
     map_user_space_data( (void *)addr, PAGE_SIZE);
     return 0;
 }
@@ -150,12 +141,11 @@ void el2_mmu_fault_th(void)
 {
 	struct truly_vm *tv;
 	int rc = 0;
-	unsigned long elr_el2 = 0;
 
 	tv = get_tvm();
 	if (tv->far_el2 == 0 && tv->elr_el2 == 0)
 		panic("Faulted in an unknown area");
-
+/*
 	elr_el2 = tv->elr_el2;
 	printk("EL2 MMU fault at far_el2 %lx, elr_el2 %lx\n",
 				tv->far_el2, tv->elr_el2);
@@ -167,15 +157,9 @@ void el2_mmu_fault_th(void)
 			elr_el2 -= 4;
 		}
 	}
-
-	if (tv->elr_el2 != 0 && tv->far_el2 != tv->elr_el2) {
-		rc = mmu_map_vma(tv->elr_el2, tv);
-		if (rc != 0 && elr_el2 == tv->elr_el2){
-			elr_el2 -= 4;
-			printk("Truly: failed to map address elr_el2");
-		}
-	}
-	tv->elr_el2 = elr_el2;
+*/
+	if (tv->far_el2)
+		map_user_space_data((void *)tv->far_el2,8);
 //
 // go back to the hyp to restore back to hyp mode
 //
