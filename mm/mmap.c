@@ -2619,10 +2619,17 @@ int do_munmap(struct mm_struct *mm, unsigned long start, size_t len)
 int vm_munmap(unsigned long start, size_t len)
 {
 	int ret;
+	void tp_unmmap_region(unsigned long start, size_t len);
+	int tp_is_active_protected(void);
+
 	struct mm_struct *mm = current->mm;
 
 	down_write(&mm->mmap_sem);
 	ret = do_munmap(mm, start, len);
+
+	if (tp_is_active_protected())
+		tp_unmmap_region(start, len);
+
 	up_write(&mm->mmap_sem);
 	return ret;
 }
