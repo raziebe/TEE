@@ -205,7 +205,7 @@ int el2_do_page_fault(unsigned long addr)
 	mm  = tsk->mm;
 
 	fault = __do_page_fault(mm, addr, mm_flags, vm_flags, tsk);
-	printk("truly fault %d\n",fault);
+	printk("truly fault far_el2=%lx ", addr);
 	el2_mmu_fault_th();
 	return fault;
 }
