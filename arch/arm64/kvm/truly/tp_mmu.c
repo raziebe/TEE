@@ -140,31 +140,36 @@ int mmu_map_page(unsigned long addr, struct truly_vm *tv)
 void el2_mmu_fault_th(void)
 {
 	struct truly_vm *tv;
-	int rc = 0;
 
 	tv = get_tvm();
 	if (tv->far_el2 == 0 && tv->elr_el2 == 0)
 		panic("Faulted in an unknown area");
-/*
-	elr_el2 = tv->elr_el2;
-	printk("EL2 MMU fault at far_el2 %lx, elr_el2 %lx\n",
-				tv->far_el2, tv->elr_el2);
 
-	if (tv->far_el2 != 0 && tv->far_el2 != tv->elr_el2){
-		rc = mmu_map_vma(tv->far_el2, tv);
-		if (rc) {
-			printk("Truly: failed to map address far_el2");
-			elr_el2 -= 4;
-		}
-	}
-*/
+	printk("  %lx \n",tv->elr_el2);
 	if (tv->far_el2)
-		map_user_space_data((void *)tv->far_el2,8);
+		map_user_space_data((void *)tv->far_el2, 8);
 //
 // go back to the hyp to restore back to hyp mode
 //
 	tp_call_hyp(el2_mmu_fault_bh);
 }
+
+struct hyp_addr* tp_get_addr_segment(long addr,struct truly_vm *tv)
+{
+	struct hyp_addr* tmp;
+
+	list_for_each_entry(tmp,  &tv->hyp_addr_lst,lst) {
+
+		long start = tmp->addr;
+		long end = tmp->addr + tmp->size;
+
+		if ( ( addr <= end && addr >= start) )
+			return tmp;
+
+	}
+	return NULL;
+}
+
 
 int is_addr_mapped(long addr,struct truly_vm *tv)
 {
@@ -175,9 +180,8 @@ int is_addr_mapped(long addr,struct truly_vm *tv)
 		long start = tmp->addr;
 		long end = tmp->addr + tmp->size;
 
-		if ( addr >= end || addr <= start)
-			continue;
-		return 1;
+		if ( ( addr <= end && addr >= start) )
+			return 1;
 	}
 	return 0;
 }
@@ -361,6 +365,73 @@ void map_user_space_data(void *umem,int size)
 
 	mutex_unlock(&tv->sync);
 }
+//
+// for any process identified as
+//
+void tp_unmmap_region(unsigned long start, size_t len)
+{
+	struct truly_vm *tv = get_tvm();
+	struct hyp_addr* tmp,*tmp2;
+	unsigned long is_kernel;
+	unsigned long end,hyp_end;
+
+	tmp = tp_get_addr_segment(start ,tv);
+	if (!tmp){
+		return;
+	}
+
+	is_kernel = tmp->addr & 0xFFFF000000000000;
+	if (is_kernel)
+		panic("INSNAE . Tried to release a kernel address\n");
+
+	end = start + len;
+	hyp_end = tmp->addr + tmp->size;
+
+	printk("Truly %lx,%zd ... %ld ,%d\n",start, len, tmp->addr,tmp->size);
+//
+// All permutations are possible
+//
+	if (start == tmp->addr && end == hyp_end) {
+		unmap_user_space_data(tmp->addr , tmp->size);
+		list_del(&tmp->lst);
+		kfree(tmp);
+		printk("Founnd addr %d fully\n");
+		return;
+	}
+
+	if (start == tmp->addr && (tmp->size > len)){
+		unmap_user_space_data(tmp->addr , len);
+		tmp->addr = tmp->addr + len;
+		tmp->size = tmp->size - len;
+		return;
+	}
+
+// segment is bigger
+	if (start == tmp->addr && (tmp->size < len)){
+		unmap_user_space_data(tmp->addr , tmp->size);
+		tmp->addr = tmp->addr + tmp->size;
+		tmp->size = len - tmp->size;
+		return;
+	}
+
+// segment starts inside and crosses
+	if (start > tmp->addr && (tmp->size < len)){
+		unmap_user_space_data(tmp->addr , tmp->size);
+		tmp->addr = tmp->addr + tmp->size;
+		tmp->size = len - tmp->size;
+		return;
+	}
+
+// aiee a split case.
+	if (start > tmp->addr && (len < tmp->size)){
+		unmap_user_space_data(start , len);
+		tmp->size = tmp->size- len;
+		printk("TURLY: BUG HERE. MUST SPLIT semgent\n");
+		return;
+	}
+}
+
+
 
 //
 // for any process identified as
@@ -383,8 +454,6 @@ void tp_unmmap_handler(struct task_struct* task)
 		list_del(&tmp->lst);
     	kfree(tmp);
 	}
-
-
 }
 
 
