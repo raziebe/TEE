@@ -318,6 +318,10 @@ void truly_reset_trap(void)
 	on_each_cpu(reset_mdcr_el2, NULL, 0);
 }
 
+int tp_is_active_protected(void)
+{
+	return  get_tvm()->protected_pgd == truly_get_ttbr0_el1();
+}
 
 int  __hyp_text  tp_hyp_memcpy(unsigned char *dst,unsigned char *src,int size)
 {
