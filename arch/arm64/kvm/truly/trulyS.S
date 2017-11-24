@@ -152,7 +152,6 @@ NOT_FIRST:
 	pop	x2, x3
 	pop	x0, x1
 
-
 	save_registers
 
 	mrs	x0,tpidr_el2
@@ -182,48 +181,14 @@ NOT_FIRST:
 
 	blr x30	// Execute decrypted in EL2
 
-	// User called ret.
-	// Return from the decrypted routine and then return to the
-	// reconstruced x30 as elr_el2
-
-	// pad back the code
-	save_registers
-	mrs	x0,tpidr_el2
-	mov x1,#0x0
-	str x1,[x0, #TP_SAVE_CMD]
-
-	ldr x1,=truly_pad
-	kern_hyp_va x1
-	blr x1
-	bl pad_invalidate
-
-	restore_registers
-	//
 	push x0, x1
-	mrs	x0,tpidr_el2
-	// reconstrcted caller
+	mrs	 x0, tpidr_el2
+	str xzr,[x0, #TP_SAVE_CMD]
 	ldr x30,[x0, #TP_FIRST_LR]
-	msr  elr_el2,x30 // we eret, so we must fix the pc in EL0
 	str xzr,[x0, #TP_FIRST_LR]
-
 	pop x0,x1
 
-	msr cntvoff_el2 ,x1   //<-- save x1
-
-// select EL0 stack
-	mrs x1, spsel
-	orr w1,w1,#0x1
-	msr spsel,x1
-	//	force stack back to EL2h
-
-	mrs  x1,spsr_el2
-	and w1,w1,#0xFFFFFFF0
-	msr spsr_el2,x1
-
-	mrs x1,cntvoff_el2 // <-- restore x1
-	msr cntvoff_el2,xzr
-
-	eret
+	ret
 ENDPROC(el1_trap)
 
 ENTRY(pad_invalidate)
