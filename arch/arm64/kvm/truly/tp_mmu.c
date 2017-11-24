@@ -149,7 +149,6 @@ void el2_mmu_fault_th(void)
 	if (tv->far_el2 == 0 && tv->elr_el2 == 0)
 		panic("Faulted in an unknown area");
 
-	tp_debug("  elr_el2=%lx \n",tv->elr_el2);
 	if (tv->far_el2)
 		map_user_space_data((void *)tv->far_el2, 8);
 //
@@ -355,7 +354,7 @@ void map_user_space_data(void *umem,int size)
 		goto map;
 //
 	if ( end_addr < ( tmp->addr + tmp->size ) ){
-		printk("%s Truly Found %lx in %lx size=%d\n",
+		tp_debug("%s Truly Found %lx in %lx Size=%d\n",
 				__func__,
 				end_addr, tmp->addr, tmp->size);
 		return;
@@ -413,7 +412,7 @@ void tp_unmmap_region(unsigned long start, size_t len)
 		unmap_user_space_data(tmp->addr , tmp->size);
 		list_del(&tmp->lst);
 		kfree(tmp);
-		tp_info("Found addr %ld fully\n", tmp->addr );
+		tp_debug("Found addr %ld fully\n", tmp->addr );
 		return;
 	}
 
