@@ -271,7 +271,6 @@ static int __init tp_init(void)
 {
     im_init(&image_manager, NULL, MemoryLayoutInit(TRUE));
     glob_mutexes_init();
-    printk("TP Init\n");
     return 0;
 }
 

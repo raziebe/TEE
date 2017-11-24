@@ -135,9 +135,9 @@ struct encrypt_tvm {
 };
 
 struct hyp_addr {
-	int size;
 	unsigned long addr;
 	struct list_head lst;
+	int size;
 };
 
 #define TVM_PROCESS_INIT		0x1

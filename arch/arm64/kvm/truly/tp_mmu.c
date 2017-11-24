@@ -43,17 +43,22 @@ void tp_map_vmas(struct _IMAGE_FILE* image_file)
 
         for (;vma ; vma = vma->vm_next) {
 
-      //  	int size = vma->vm_end  -vma->vm_start;
-
-        	if (is_addr_mapped(vma->vm_start, get_tvm()))
+        	if (is_addr_mapped(vma->vm_start, get_tvm())){
+        		printk("%s: %lx already mapped\n",
+        				__func__,vma->vm_start);
         		continue;
-
+        	}
         	if (vma->vm_flags & VM_EXEC) {
-                vma_map_hyp(vma);
+                printk("Truly mapping executable at %lx %lx\n",
+                			vma->vm_start,
+							vma->vm_flags);
+        		vma_map_hyp(vma);
                 continue;
         	}
 
         	if (vma->vm_flags == VM_STCK_FLAGS) {
+        		printk("Truly mapping executable at %lx %lx\n",
+        				vma->vm_start,vma->vm_flags);
         		map_user_space_data((void *)vma->vm_start, PAGE_SIZE);
         	}
         }
@@ -101,7 +106,7 @@ int mmu_map_vma(unsigned long addr, struct truly_vm *tv)
     vma = current->mm->mmap;
 
     if (is_addr_mapped(addr,tv)){
-    	printk("%lx already mapped\n",addr);
+    	printk("%s %lx already mapped\n",__func__,addr);
     	return 0;
     }
 
@@ -113,7 +118,6 @@ int mmu_map_vma(unsigned long addr, struct truly_vm *tv)
     	map_user_space_data( (void *)vma->vm_start, size);
     	return 0;
     }
-
     return (-1);
 }
 
@@ -124,7 +128,7 @@ int mmu_map_page(unsigned long addr, struct truly_vm *tv)
     vma = current->mm->mmap;
 
     if (is_addr_mapped(addr,tv)){
-    	printk("%lx already mapped\n",addr);
+    	printk("%s %lx already mapped\n",__func__,addr);
     	return 0;
     }
    // __do_page_fault
@@ -163,13 +167,12 @@ struct hyp_addr* tp_get_addr_segment(long addr,struct truly_vm *tv)
 		long start = tmp->addr;
 		long end = tmp->addr + tmp->size;
 
-		if ( ( addr <= end && addr >= start) )
+		if ( ( addr < end && addr >= start) )
 			return tmp;
 
 	}
 	return NULL;
 }
-
 
 int is_addr_mapped(long addr,struct truly_vm *tv)
 {
@@ -180,7 +183,7 @@ int is_addr_mapped(long addr,struct truly_vm *tv)
 		long start = tmp->addr;
 		long end = tmp->addr + tmp->size;
 
-		if ( ( addr <= end && addr >= start) )
+		if ( ( addr < end && addr >= start) )
 			return 1;
 	}
 	return 0;
@@ -337,18 +340,26 @@ unsigned long kvm_uaddr_to_pfn(unsigned long uaddr)
 void map_user_space_data(void *umem,int size)
 {
 	int err;
+	struct hyp_addr* tmp;
 	struct truly_vm *tv;
 	struct hyp_addr* addr;
+	unsigned long end_addr;
+	unsigned long aligned_addr;
 
+	aligned_addr = (unsigned long)umem & PAGE_MASK;
+	end_addr = (unsigned long)umem + size;
 	tv = get_tvm();
-
-	mutex_lock(&tv->sync);
-
-	if (is_addr_mapped((unsigned long)umem,tv)) {
-		mutex_unlock(&tv->sync);
+//
+	tmp  = tp_get_addr_segment(aligned_addr ,tv);
+	if (!tmp)
+		goto map;
+//
+	if ( end_addr <= ( tmp->addr + tmp->size ) )
 		return;
-	}
 
+	printk("XXXXXXXXXXXXXXXXXXXXXXXXX %lx\n",end_addr);
+
+map:
 	err = create_hyp_user_mappings(umem, umem + size);
 	if (err){
 			tp_err(" failed to map ttbr0_el2\n");
@@ -358,12 +369,15 @@ void map_user_space_data(void *umem,int size)
 	addr = kmalloc(sizeof(struct hyp_addr ), GFP_USER);
 	addr->addr = (unsigned long)umem & PAGE_MASK;
 	addr->size = PAGE_ALIGN((unsigned long)umem + size) - addr->addr;
-	list_add(&addr->lst, &tv->hyp_addr_lst);
 
-	tp_err("pid %d user mapped %p size=%d in [%lx,%lx] size=%d\n",
+	mutex_lock(&tv->sync);
+	list_add(&addr->lst, &tv->hyp_addr_lst);
+	mutex_unlock(&tv->sync);
+
+	tp_err("pid %d user mapped real (%p size=%d) in [%lx,%lx] size=%d\n",
 			current->pid,umem ,size, addr->addr, addr->addr + addr->size ,addr->size );
 
-	mutex_unlock(&tv->sync);
+
 }
 //
 // for any process identified as
@@ -371,7 +385,7 @@ void map_user_space_data(void *umem,int size)
 void tp_unmmap_region(unsigned long start, size_t len)
 {
 	struct truly_vm *tv = get_tvm();
-	struct hyp_addr* tmp,*tmp2;
+	struct hyp_addr *tmp;
 	unsigned long is_kernel;
 	unsigned long end,hyp_end;
 
@@ -395,7 +409,7 @@ void tp_unmmap_region(unsigned long start, size_t len)
 		unmap_user_space_data(tmp->addr , tmp->size);
 		list_del(&tmp->lst);
 		kfree(tmp);
-		printk("Founnd addr %d fully\n");
+		printk("Found addr %ld fully\n", tmp->addr );
 		return;
 	}
 
