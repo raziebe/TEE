@@ -344,7 +344,6 @@ ENTRY(truly_run_vm)
 	msr		vtcr_el2, x1
  
     ldr     x1, [x0, #TP_VTTBR_EL2]
-//    kern_hyp_va  x0	// grab tvm
     msr 	vttbr_el2, x1
 
     ldr		x1, [x0, #TP_MDCR_EL2]

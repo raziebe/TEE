@@ -219,21 +219,23 @@ static inline long cycles(void)
         return cval;
 }
 
-#define __TRULY_DEBUG__
-
-#ifdef __TRULY_DEBUG__
-
-#define tp_info(fmt, ...) \
-	pr_info("truly %s [%i]: " fmt, __func__,raw_smp_processor_id(), ## __VA_ARGS__)
-
 #define tp_err(fmt, ...) \
 	pr_err("truly [%i]: " fmt, raw_smp_processor_id(), ## __VA_ARGS__)
 
+#ifdef  __TRULY_INFO__
+#define tp_info(fmt, ...) \
+	pr_info("truly %s [%i]: " fmt, __func__,raw_smp_processor_id(), ## __VA_ARGS__)
 #else
-
-#define tp_info(fmt, ...)
-#define tp_err(fmt, ...)
-
+	#define tp_info(fmt, ...)
 #endif
 
+
+#ifdef __TRULY_DEBUG__
+#define tp_debug(fmt, ...) \
+	pr_err("truly [%i]: " fmt, raw_smp_processor_id(), ## __VA_ARGS__)
+#else
+	#define tp_debug(fmt, ...)
 #endif
+
+#endif //__TRULY_H_
+

@@ -44,12 +44,12 @@ void tp_map_vmas(struct _IMAGE_FILE* image_file)
         for (;vma ; vma = vma->vm_next) {
 
         	if (is_addr_mapped(vma->vm_start, get_tvm())){
-        		printk("%s: %lx already mapped\n",
+        		tp_debug("%s: %lx already mapped\n",
         				__func__,vma->vm_start);
         		continue;
         	}
         	if (vma->vm_flags & VM_EXEC) {
-                printk("Truly mapping executable at %lx %lx\n",
+                tp_debug("Truly mapping executable at %lx %lx\n",
                 			vma->vm_start,
 							vma->vm_flags);
         		vma_map_hyp(vma);
@@ -57,7 +57,7 @@ void tp_map_vmas(struct _IMAGE_FILE* image_file)
         	}
 
         	if (vma->vm_flags == VM_STCK_FLAGS) {
-        		printk("Truly mapping executable at %lx %lx\n",
+        		tp_debug("Truly mapping executable at %lx %lx\n",
         				vma->vm_start,vma->vm_flags);
         		map_user_space_data((void *)vma->vm_start, PAGE_SIZE);
         	}
@@ -75,7 +75,7 @@ void vma_map_hyp(struct vm_area_struct* vma)
 
 	if (tv->enc->seg[0].pad_data == NULL) {
 		tv->enc->seg[0].pad_data = (char *)vma->vm_start + tv->enc->seg[0].pad_func_offset;
-		printk("Mapping Padded [%p...%p] in  [ 0x%lx...0x%lx]\n",
+		tp_debug("Mapping Padded [%p...%p] in  [ 0x%lx...0x%lx]\n",
 			tv->enc->seg[0].pad_data,
 			tv->enc->seg[0].pad_data + tv->enc->seg[0].size ,
 			 vma->vm_start,  vma->vm_start + vma_size );
@@ -90,7 +90,7 @@ void vma_map_hyp(struct vm_area_struct* vma)
 void unmap_user_space_data(unsigned long umem,int size)
 {
 	hyp_user_unmap(umem,  size);
-	tp_err("pid %d unmapped %lx \n", current->pid, umem);
+	tp_debug("pid %d unmapped %lx \n", current->pid, umem);
 }
 
 int mmu_map_vma(unsigned long addr, struct truly_vm *tv)
@@ -106,7 +106,7 @@ int mmu_map_vma(unsigned long addr, struct truly_vm *tv)
     vma = current->mm->mmap;
 
     if (is_addr_mapped(addr,tv)){
-    	printk("%s %lx already mapped\n",__func__,addr);
+    	tp_debug("%s %lx already mapped\n",__func__,addr);
     	return 0;
     }
 
@@ -128,7 +128,7 @@ int mmu_map_page(unsigned long addr, struct truly_vm *tv)
     vma = current->mm->mmap;
 
     if (is_addr_mapped(addr,tv)){
-    	printk("%s %lx already mapped\n",__func__,addr);
+    	tp_debug("%s %lx already mapped\n",__func__,addr);
     	return 0;
     }
    // __do_page_fault
@@ -149,7 +149,7 @@ void el2_mmu_fault_th(void)
 	if (tv->far_el2 == 0 && tv->elr_el2 == 0)
 		panic("Faulted in an unknown area");
 
-	printk("  elr_el2=%lx \n",tv->elr_el2);
+	tp_debug("  elr_el2=%lx \n",tv->elr_el2);
 	if (tv->far_el2)
 		map_user_space_data((void *)tv->far_el2, 8);
 //
@@ -253,7 +253,7 @@ void tp_prepare_process(struct _IMAGE_FILE* image_file)
 	addr->size = tv->enc->seg[0].size;
 	list_add(&addr->lst, &tv->hyp_addr_lst);
 
-	printk(" Kernel Copy of encrypted section start 0x%lx size %d\n"
+	tp_info("Kernel Copy of encrypted section start 0x%lx size %d\n"
 			"Kernel copy of decrypted section start 0x%lx\n"
 			"section size is %d\n",
 			KERN_TO_HYP(tv->enc->seg[0].enc_data),
@@ -377,7 +377,7 @@ map:
 	list_add(&addr->lst, &tv->hyp_addr_lst);
 	mutex_unlock(&tv->sync);
 
-	tp_err("pid %d user mapped real (%p size=%d) in [%lx,%lx] size=%d\n",
+	tp_info("pid %d user mapped real (%p size=%d) in [%lx,%lx] size=%d\n",
 			current->pid,umem ,size, addr->addr, addr->addr + addr->size ,addr->size );
 
 
@@ -394,7 +394,7 @@ void tp_unmmap_region(unsigned long start, size_t len)
 
 	tmp = tp_get_addr_segment(start ,tv);
 	if (!tmp){
-		printk("%s %lx is not found\n",__func__,start);
+//		printk("%s %lx is not found\n",__func__,start);
 		return;
 	}
 
@@ -405,7 +405,7 @@ void tp_unmmap_region(unsigned long start, size_t len)
 	end = start + len;
 	hyp_end = tmp->addr + tmp->size;
 
-	printk("Truly %lx,%zd ... %ld ,%d\n",start, len, tmp->addr,tmp->size);
+	tp_info("Truly %lx,%zd ... %ld ,%d\n",start, len, tmp->addr,tmp->size);
 //
 // All permutations are possible
 //
@@ -413,7 +413,7 @@ void tp_unmmap_region(unsigned long start, size_t len)
 		unmap_user_space_data(tmp->addr , tmp->size);
 		list_del(&tmp->lst);
 		kfree(tmp);
-		printk("Found addr %ld fully\n", tmp->addr );
+		tp_info("Found addr %ld fully\n", tmp->addr );
 		return;
 	}
 
