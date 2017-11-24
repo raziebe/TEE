@@ -180,10 +180,10 @@ int main(void)
   DEFINE(TP_VTTBR_EL2 , offsetof(struct truly_vm,  vttbr_el2));
   DEFINE(TP_VTCR_EL2 , offsetof(struct truly_vm,  vtcr_el2));
   DEFINE(TP_MDCR_EL2 , offsetof(struct truly_vm,  mdcr_el2));
-  DEFINE(TP_BRK_COUNT_EL2 , offsetof(struct truly_vm,  brk_count_el2));
+//  DEFINE(TP_BRK_COUNT_EL2 , offsetof(struct truly_vm,  brk_count_el2));
   DEFINE(TP_PGD, offsetof(struct truly_vm, protected_pgd));
   DEFINE(TP_ENC, offsetof(struct truly_vm, enc));
-  DEFINE(TP_SP_EL2, offsetof(struct truly_vm, sp_el2));
+  DEFINE(TP_SCTLR_EL2, offsetof(struct truly_vm, sctlr_el2));
   DEFINE(TP_ENC_SIZE , offsetof(struct encrypted_segment, size));
   DEFINE(TP_PAD_DATA , offsetof(struct encrypted_segment, pad_data));
   return 0;

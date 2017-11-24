@@ -100,6 +100,21 @@ void make_mdcr_el2(struct truly_vm *tvm)
 {
 	tvm->mdcr_el2 = 0x00;
 }
+/*
+#define SCTLR_EL2_I_BIT_SHIFT		12
+#define SCTLR_EL2_C_BIT_SHIFT		2
+*/
+
+void make_sctlr_el2(struct truly_vm *tvm)
+{
+	unsigned long sctlr_el2;
+
+	// sctlr_el2 is been programmed by the initial vector.
+
+	sctlr_el2 = tp_call_hyp(read_sctlr_el2);
+	sctlr_el2 &= (~( (1 << SCTLR_EL2_A_BIT_SHIFT) | (1 << SCTLR_EL2_SA_BIT_SHIFT) ));
+	tvm->sctlr_el2 = sctlr_el2;
+}
 
 static struct proc_dir_entry *procfs = NULL;
 
@@ -194,6 +209,7 @@ int truly_init(void)
 	make_hcr_el2(_tvm);
 	make_mdcr_el2(_tvm);
 
+
 	_tvm->enc = kmalloc(sizeof(struct encrypt_tvm), GFP_ATOMIC);
 	encryptInit(_tvm->enc);
 
@@ -264,11 +280,16 @@ void tp_run_vm(void *x)
 		truly_set_vectors(vbar_el2);
 	}
 //	make_mair_el2(tvm);
+	make_sctlr_el2(tvm);
 	tp_call_hyp(truly_run_vm, tvm);
 	tp_info("RUN VM.....\n");
 
-	printk("TrulyProtect hcr_el2=%lX mair_el2=%lX vtcr_el2=%X  vttbr_el2=%lX sp_el2=%lx\n",
+	printk("TrulyProtect hcr_el2=%lX"
+				"sctlr_el2=%lx"
+				" mair_el2=%lX vtcr_el2=%X"
+				"  vttbr_el2=%lX sp_el2=%lx\n",
 				tvm->hcr_el2,
+				tvm->sctlr_el2,
 				tvm->mair_el2,
 				tvm->vtcr_el2,
 				tvm->vttbr_el2, tvm->sp_el2 );

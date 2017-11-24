@@ -299,6 +299,11 @@ ENTRY(read_mair_el2)
         ret
 ENDPROC(read_mair_el2)
 
+ENTRY(read_sctlr_el2)
+		mrs x0,sctlr_el2
+        ret
+ENDPROC(read_sctlr_el2)
+
 ENTRY(truly_get_hcr_el2)
     mrs     x0, hcr_el2
     ret
@@ -345,10 +350,8 @@ ENTRY(truly_run_vm)
     ldr		x1, [x0, #TP_MDCR_EL2]
 	msr		mdcr_el2, x1
 
-//	ldr	x1, [x0, #TP_MAIR_EL2]
-//	msr		mair_el2, x1
-	mov		x1,sp
-	str		x1, [x0, #TP_SP_EL2]
+	ldr		x1, [x0, #TP_SCTLR_EL2]
+	msr		sctlr_el2, x1
 
 	// Clear cntvoff for the host
 	msr	cntvoff_el2, xzr

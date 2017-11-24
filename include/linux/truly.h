@@ -170,6 +170,7 @@ struct truly_vm {
  	unsigned long tpidr_el2;
  	unsigned long mdcr_el2;
  	unsigned long mair_el2;
+ 	unsigned long sctlr_el2;
 
  	unsigned long id_aa64mmfr0_el1;
    	void* pg_lvl_one;
@@ -209,6 +210,7 @@ void truly_reset_trap(void);
 void truly_set_trap(void);
 unsigned long  truly_get_exception_level(void);
 int is_addr_mapped(long addr,struct truly_vm *tv);
+unsigned long read_sctlr_el2(void);
 
 static inline long cycles(void)
 {
