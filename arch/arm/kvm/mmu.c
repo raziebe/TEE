@@ -78,9 +78,6 @@ static void kvm_tlb_flush_vmid_ipa(struct kvm *kvm, phys_addr_t ipa)
 	 */
 	if (kvm)
 		kvm_call_hyp(__kvm_tlb_flush_vmid_ipa, kvm, ipa);
-	else {
-		tp_call_hyp(tp_flush_tlb,ipa);
-	}
 }
 
 /*
@@ -226,6 +223,7 @@ static void unmap_ptes(struct kvm *kvm, pmd_t *pmd,
 			if (!kvm_is_device_pfn(pte_pfn(old_pte)))
 				kvm_flush_dcache_pte(old_pte);
 
+			tp_clear_cache(pte, sizeof(pte_t));
 			put_page(virt_to_page(pte));
 		}
 	} while (pte++, addr += PAGE_SIZE, addr != end);
@@ -255,7 +253,6 @@ static void unmap_pmds(struct kvm *kvm, pud_t *pud,
 				put_page(virt_to_page(pmd));
 			} else {
 				pmd_t old_pmd = *pmd;
-				printk("pmd %lx %lx\n",(long )start_pmd,(long)pmd);
 				kvm_flush_dcache_pmd(old_pmd);
 				unmap_ptes(kvm, pmd, addr, next);
 			}
@@ -468,8 +465,6 @@ static void create_hyp_pte_mappings(pmd_t *pmd, unsigned long start,
 	do {
 		pte = pte_offset_kernel(pmd, addr);
 		kvm_set_pte(pte, pfn_pte(pfn, prot));
-//		pte_val(*pte) = pte_val(*pte) | HYP_PTE_WRITEBACK;
-//		printk("attr indx %zd\n", (pte_val(*pte) & 0b11100) >> 2);
 		get_page(virt_to_page(pte));
 		kvm_flush_dcache_to_poc(pte, sizeof(*pte));
 		pfn++;

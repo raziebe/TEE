@@ -471,7 +471,6 @@ void tp_unmmap_handler(struct task_struct* task)
 		list_del(&tmp->lst);
     	kfree(tmp);
 	}
-	tp_clear_cache();
 }
 
 

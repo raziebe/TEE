@@ -269,35 +269,30 @@ ENTRY(read_sctlr_el2)
         ret
 ENDPROC(read_sctlr_el2)
 
+// x0 address
+// x1 size
 ENTRY(tp_clear_cache)
-	 ic iallu
-	 ret
-ENDPROC(tp_clear_cache)
 
-// void __kvm_tlb_flush_vmid_ipa(struct kvm *kvm, phys_addr_t ipa);
-ENTRY(tp_flush_tlb)
-	dsb	ishst
-	isb
+	push x1,x0
+	push x2,x3
 
-	/*
-	 * We could do so much better if we had the VA as well.
-	 * Instead, we invalidate Stage-2 for this IPA, and the
-	 * whole of Stage-1. Weep...
-	 */
-	lsr	x0, x0, #12
-	tlbi	ipas2e1is, x1
-	/*
-	 * We have to ensure completion of the invalidation at Stage-2,
-	 * since a table walk on another CPU could refill a TLB with a
-	 * complete (S1 + S2) walk based on the old Stage-2 mapping if
-	 * the Stage-1 invalidation happened first.
-	 */
-	dsb	ish
-	tlbi	vmalle1is
-	dsb	ish
-	isb
+	mrs  x3,ctr_el0
+	ubfx x3,x3,#16,#4
+	mov x3,#4 // x2=word size
+	lsl x2,x2,x3 // x2 cache line size
+
+	add	x1, x0, x1 // end
+
+1:	dc	civac, x0			// clean & invalidate D line / unified line
+	add	x0, x0, x2
+	cmp	x0, x1
+	b.lo	1b
+
+	pop x2,x3
+	pop x1,x0
+
 	ret
-ENDPROC(tp_flush_tlb)
+ENDPROC(tp_clear_cache)
 
 ENTRY(truly_get_hcr_el2)
     mrs     x0, hcr_el2
