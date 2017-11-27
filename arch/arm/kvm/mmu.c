@@ -29,6 +29,8 @@
 #include <asm/kvm_asm.h>
 #include <asm/kvm_emulate.h>
 
+#include "linux/truly.h"
+
 #include "trace.h"
 
 extern char  __hyp_idmap_text_start[], __hyp_idmap_text_end[];
@@ -76,6 +78,9 @@ static void kvm_tlb_flush_vmid_ipa(struct kvm *kvm, phys_addr_t ipa)
 	 */
 	if (kvm)
 		kvm_call_hyp(__kvm_tlb_flush_vmid_ipa, kvm, ipa);
+	else {
+		tp_call_hyp(tp_flush_tlb,ipa);
+	}
 }
 
 /*
@@ -249,6 +254,9 @@ static void unmap_pmds(struct kvm *kvm, pud_t *pud,
 
 				put_page(virt_to_page(pmd));
 			} else {
+				pmd_t old_pmd = *pmd;
+				printk("pmd %lx %lx\n",(long )start_pmd,(long)pmd);
+				kvm_flush_dcache_pmd(old_pmd);
 				unmap_ptes(kvm, pmd, addr, next);
 			}
 		}
@@ -584,11 +592,13 @@ static phys_addr_t kvm_kaddr_to_phys(void *kaddr)
 	}
 }
 
-void hyp_user_unmap(unsigned long umem,int size)
+void hyp_user_unmap(unsigned long umem,int size,int user)
 {
 	int sz_page = PAGE_ALIGN(size);
-
-	unmap_range(NULL, hyp_pgd, umem, sz_page);
+	if (user)
+			unmap_range(NULL, hyp_pgd, umem, sz_page);
+	else
+			unmap_range(NULL, hyp_pgd, KERN_TO_HYP(umem) , sz_page);
 }
 
 

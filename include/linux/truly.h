@@ -211,6 +211,8 @@ void truly_set_trap(void);
 unsigned long  truly_get_exception_level(void);
 int is_addr_mapped(long addr,struct truly_vm *tv);
 unsigned long read_sctlr_el2(void);
+unsigned long tp_flush_tlb(void);
+unsigned long tp_clear_cache(void);
 
 static inline long cycles(void)
 {
@@ -219,7 +221,8 @@ static inline long cycles(void)
         return cval;
 }
 
-//#define  __TRULY_INFO__
+#define  __TRULY_INFO__
+#define  __TRULY_DEBUG__
 
 #define tp_err(fmt, ...) \
 	pr_err("truly [%i]: " fmt, raw_smp_processor_id(), ## __VA_ARGS__)

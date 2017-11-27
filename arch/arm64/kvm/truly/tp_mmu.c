@@ -89,7 +89,7 @@ void vma_map_hyp(struct vm_area_struct* vma)
 
 void unmap_user_space_data(unsigned long umem,int size)
 {
-	hyp_user_unmap(umem,  size);
+	hyp_user_unmap(umem,  size,1);
 	tp_debug("pid %d unmapped %lx \n", current->pid, umem);
 }
 
@@ -462,7 +462,7 @@ void tp_unmmap_handler(struct task_struct* task)
 	list_for_each_entry_safe(tmp, tmp2, &tv->hyp_addr_lst, lst) {
 		is_kernel = tmp->addr & 0xFFFF000000000000;
 		if (is_kernel){
-			hyp_user_unmap(tmp->addr, tmp->size);
+			hyp_user_unmap(tmp->addr, tmp->size, 0);
 			tp_info("unmapping tp section %lx\n",tmp->addr);
 			kfree((void*)tmp->addr);
 		} else {
@@ -471,6 +471,7 @@ void tp_unmmap_handler(struct task_struct* task)
 		list_del(&tmp->lst);
     	kfree(tmp);
 	}
+	tp_clear_cache();
 }
 
 
