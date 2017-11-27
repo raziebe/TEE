@@ -194,19 +194,17 @@ out:
 
 int el2_do_page_fault(unsigned long addr)
 {
-	void el2_mmu_fault_th(void);
-	struct task_struct *tsk;
-	struct mm_struct *mm;
-	int fault;
-	unsigned long vm_flags = VM_READ | VM_WRITE | VM_EXEC;
-	unsigned int mm_flags = FAULT_FLAG_ALLOW_RETRY | FAULT_FLAG_KILLABLE;
+	char buf[10];
 
-	tsk = current;
-	mm  = tsk->mm;
-
-	fault = __do_page_fault(mm, addr, mm_flags, vm_flags, tsk);
-	el2_mmu_fault_th();
-	return fault;
+	if ( !copy_from_user(buf, (void *)addr,10) ){
+		void el2_mmu_fault_th(void);
+		printk("Truly: faulted user address %lx\n",addr);
+		el2_mmu_fault_th();
+	}else{
+		printk("Truly: Failed to fault"
+				" user address %lx\n",addr);
+	}
+	return 0;
 }
 
 static int __kprobes do_page_fault(unsigned long addr, unsigned int esr,
