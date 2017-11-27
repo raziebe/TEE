@@ -255,9 +255,9 @@ void tp_handler_exit(struct task_struct *tsk)
 	im_remove_process(&image_manager,tsk->pid);
 
 	if (truly_is_protected(NULL)){
-		tp_reset_tvm();
 		tp_unmmap_handler(tsk);
 		truly_reset_trap();
+		tp_reset_tvm();
 	}
 
 }

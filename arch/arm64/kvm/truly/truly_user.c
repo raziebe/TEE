@@ -41,6 +41,8 @@ void tp_reset_tvm(void)
 			tv->esr_el2  = 0;
 			tv->spsr_el2  = 0;
 			tv->brk_count_el2 = 0;
+			memset(&tv->enc->seg[0], 0x00, sizeof(tv->enc->seg[0]));
+			mb();
 	}
 }
 
