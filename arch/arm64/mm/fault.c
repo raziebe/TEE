@@ -192,20 +192,6 @@ out:
 	return fault;
 }
 
-int el2_do_page_fault(unsigned long addr)
-{
-	char buf[10];
-
-	if ( !copy_from_user(buf, (void *)addr,10) ){
-		void el2_mmu_fault_th(void);
-	//	printk("Truly: faulted user address %lx\n",addr);
-		el2_mmu_fault_th();
-	}else{
-		printk("Truly: Failed to fault"
-				" user address %lx\n",addr);
-	}
-	return 0;
-}
 
 static int __kprobes do_page_fault(unsigned long addr, unsigned int esr,
 				   struct pt_regs *regs)

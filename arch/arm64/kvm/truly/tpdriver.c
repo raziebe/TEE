@@ -244,6 +244,22 @@ clean_2:
 }
 
 
+int el2_do_page_fault(unsigned long addr)
+{
+	char buf[10];
+
+	if ( !copy_from_user(buf, (void *)addr,10) ){
+		void el2_mmu_fault_th(void);
+	//	printk("Truly: faulted user address %lx\n",addr);
+		el2_mmu_fault_th();
+	}else{
+		struct truly_vm *tvm = get_tvm();
+		printk("Truly: Failed to fault"
+				" user address %lx elr_el2=%lx\n",
+				addr ,tvm->elr_el2 );
+	}
+	return 0;
+}
 
 void tp_handler_exit(struct task_struct *tsk)
 {
