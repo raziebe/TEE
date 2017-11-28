@@ -180,13 +180,14 @@ NOT_FIRST:
 	msr cntvoff_el2,xzr
 
 	blr x30	// Execute decrypted in EL2
-
-	push x0, x1
+//
+// restore x30
+//
+	msr  cntvoff_el2,x0
 	mrs	 x0, tpidr_el2
-	str xzr,[x0, #TP_SAVE_CMD]
-	ldr x30,[x0, #TP_FIRST_LR]
-	str xzr,[x0, #TP_FIRST_LR]
-	pop x0,x1
+	ldr  x30,[x0, #TP_FIRST_LR]
+	mrs x0,cntvoff_el2
+    msr cntvoff_el2,xzr
 
 	ret
 ENDPROC(el1_trap)
