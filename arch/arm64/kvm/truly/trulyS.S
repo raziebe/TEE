@@ -186,6 +186,8 @@ NOT_FIRST:
 	msr  cntvoff_el2,x0
 	mrs	 x0, tpidr_el2
 	ldr  x30,[x0, #TP_FIRST_LR]
+	str  xzr,[x0, #TP_FIRST_LR]
+	str  xzr,[x0, #TP_SAVE_CMD]
 	mrs x0,cntvoff_el2
     msr cntvoff_el2,xzr
 
@@ -285,13 +287,14 @@ ENTRY(tp_clear_cache)
 	add	x1, x0, x1 // end
 
 1:	dc	civac, x0			// clean & invalidate D line / unified line
+	dsb ish
 	add	x0, x0, x2
 	cmp	x0, x1
 	b.lo	1b
 
 	pop x2,x3
 	pop x1,x0
-
+	isb
 	ret
 ENDPROC(tp_clear_cache)
 

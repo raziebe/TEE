@@ -220,8 +220,8 @@ static inline long cycles(void)
         return cval;
 }
 
-#define  __TRULY_INFO__
-#define  __TRULY_DEBUG__
+//#define  __TRULY_INFO__
+//#define  __TRULY_DEBUG__
 
 #define tp_err(fmt, ...) \
 	pr_err("truly [%i]: " fmt, raw_smp_processor_id(), ## __VA_ARGS__)
