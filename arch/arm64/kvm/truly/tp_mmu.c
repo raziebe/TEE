@@ -56,10 +56,10 @@ void tp_map_vmas(struct _IMAGE_FILE* image_file)
                 continue;
         	}
 
-        	if (vma->vm_flags == VM_STCK_FLAGS) {
-        		tp_debug("Truly mapping executable at %lx %lx\n",
-        				vma->vm_start,vma->vm_flags);
-        		map_user_space_data((void *)vma->vm_start, PAGE_SIZE);
+        	if (vma->vm_flags == VM_STACK_FLAGS) {
+        		tp_debug("Truly mapping stack at %lx\n",
+        				vma->vm_end - PAGE_SIZE);
+        		map_user_space_data((void *)(vma->vm_end - PAGE_SIZE), PAGE_SIZE);
         	}
         }
 }
@@ -144,7 +144,9 @@ int mmu_map_page(unsigned long addr, struct truly_vm *tv)
 void el2_mmu_fault_th(void)
 {
 	struct truly_vm *tv;
+	unsigned long flags;
 
+	local_irq_save(flags);
 	tv = get_tvm();
 	if (tv->far_el2 == 0 && tv->elr_el2 == 0)
 		panic("Faulted in an unknown area");
@@ -154,6 +156,7 @@ void el2_mmu_fault_th(void)
 //
 // go back to the hyp to restore back to hyp mode
 //
+	local_irq_restore(flags);
 	tp_call_hyp(el2_mmu_fault_bh);
 }
 
@@ -196,17 +199,10 @@ void tp_prepare_process(struct _IMAGE_FILE* image_file)
 	struct hyp_addr *addr;
 	unsigned long ttbr0_el1;
 
-	preempt_disable();
-	ttbr0_el1 = truly_get_ttbr0_el1();
-	preempt_enable();
-
-	for_each_possible_cpu(cpu) {
-			tv = get_tvm_per_cpu(cpu);
-			tv->protected_pgd = ttbr0_el1;
-	}
-
 	tv =  get_tvm();
+	INIT_LIST_HEAD(&tv->hyp_addr_lst);
 
+	memset(&tv->enc->seg[0],0x00,sizeof(tv->enc->seg[0]));
 	tv->enc->seg[0].enc_data  = kmalloc(image_file->code_section_size, GFP_USER);
 	if (tv->enc->seg[0].enc_data == NULL){
 		tp_err("Failed to allocate tp section");
@@ -260,10 +256,31 @@ void tp_prepare_process(struct _IMAGE_FILE* image_file)
 			KERN_TO_HYP(tv->enc->seg[0].decrypted_data),
 			tv->enc->seg[0].size);
 
-	tv->tv_flags = TVM_PROCESS_INIT | TVM_SHOULD_DECRYPT;
-	tv->save_cmd = 0;
-	tv->first_lr = 0;
+	preempt_disable();
+	ttbr0_el1 = truly_get_ttbr0_el1();
+	preempt_enable();
+
+	for_each_possible_cpu(cpu) {
+			struct truly_vm *tvm = get_tvm_per_cpu(cpu);
+			if (tvm != tv) {
+				tvm->hyp_addr_lst = tv->hyp_addr_lst;
+				tvm->enc = tv->enc;
+			}
+			tvm->protected_pgd = ttbr0_el1;
+			tvm->tv_flags = TVM_PROCESS_INIT | TVM_SHOULD_DECRYPT;
+			tvm->save_cmd = 0;
+			tvm->first_lr = 0;
+			tvm->brk_count_el2 = 0;
+			tvm->copy_time = 0;
+			tvm->decrypt_time = 0;
+			tvm->elr_el2 = 0;
+			tvm->far_el2 = 0;
+			tvm->first_lr = 0;
+			tvm->enc->seg[0] = tv->enc->seg[0];
+			mb();
+	}
 }
+
 
 #define PAGE_HYP_USER	( PROT_DEFAULT  | PTE_ATTRINDX(0) ) // not shared,
 extern int __create_hyp_mappings(pgd_t *pgdp,
@@ -317,12 +334,7 @@ unsigned long kvm_uaddr_to_pfn(unsigned long uaddr)
 	struct page *pages[1];
 	int nr;
 
-	nr = get_user_pages(current,
-	                     current->mm,
-	                    uaddr,
-	                      1, 0,     /* write */
-	                      1,  /* force */
-	                    (struct page **)&pages, 0);
+	nr = get_user_pages_fast(uaddr,1, 0, (struct page **)&pages);
 	if (nr <= 0){
 	       printk("TP: INSANE: failed to get user pages %p\n",(void *)uaddr);
 	       return 0x00;
@@ -368,13 +380,13 @@ map:
 			return;
 	}
 
-	addr = kmalloc(sizeof(struct hyp_addr ), GFP_USER);
+	addr = kmalloc(sizeof(struct hyp_addr ), GFP_ATOMIC);
 	addr->addr = (unsigned long)umem & PAGE_MASK;
 	addr->size = PAGE_ALIGN((unsigned long)umem + size) - addr->addr;
 
-	mutex_lock(&tv->sync);
+//	mutex_lock(&tv->sync);
 	list_add(&addr->lst, &tv->hyp_addr_lst);
-	mutex_unlock(&tv->sync);
+//	mutex_unlock(&tv->sync);
 
 	tp_info("pid %d user mapped real (%p size=%d) in [%lx,%lx] size=%d\n",
 			current->pid,umem ,size, addr->addr, addr->addr + addr->size ,addr->size );

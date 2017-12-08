@@ -199,8 +199,8 @@ ENTRY(pad_invalidate)
         mrs x1,tpidr_el2
         ldr x0,[x1, #TP_ENC]
 
-		kern_hyp_va x0
-		mov x2,xzr
+	kern_hyp_va x0
+	mov x2, xzr
 
         ldr w2,[x0, #TP_ENC_SIZE] // size
         ldr x3,[x0, #TP_PAD_DATA] // pad_data
@@ -208,12 +208,11 @@ ENTRY(pad_invalidate)
         mov x0, x3        // start
       	add x1, x0,x2 // end
 
-start_inv:
-
+1:
         ic ivau, x0
         add x0,x0,#32
         cmp x0,x1
-        ble start_inv
+        ble 1b
 
         ret
 ENDPROC(pad_invalidate)
@@ -389,7 +388,7 @@ EL2_sync:
 	msr elr_el2, x3
 // Prepare spsr_el2 to move to EL0h
 //
-    mrs x1,spsr_el2
+	mrs x1,spsr_el2
     and w1,w1,#0xFFFFFFF0
     msr spsr_el2,x1
 
@@ -406,21 +405,19 @@ EL2_sync:
 	kern_hyp_va x1
 	blr x1
 	bl pad_invalidate
-
 /*
  *	exit to EL1 to map fault the address in EL1 and EL2
 */
-
 	ldr x0,=el2_do_page_fault
 	msr elr_el2,x0
 
-	mrs  x1,spsr_el2
-	and   w1,w1,#0xFFFFFFF0
-    mov  x0,#5
-   	orr  x1, x1,x0
-    msr  spsr_el2,x1
+	mrs x1,spsr_el2
+	and w1, w1, #0xFFFFFFF0
+	mov x0, #5
+   	orr x1, x1, x0
+	msr spsr_el2,x1
 	// prepare argument
-	mrs x0,far_el2
+	mrs  x0, far_el2
 	eret
 
 ENDPROC(EL2_sync)
@@ -442,16 +439,16 @@ ENTRY(el2_mmu_fault_bh)
 	bl pad_invalidate
 
 	restore_registers	// restore EL2_sync
-
+//
 // force EL0 stack
 //
 	msr cntvoff_el2 ,x1
 	mrs x1, spsel
 	and x1,x1,0xFFFFFFFE
 	msr spsel,x1
-
+//
 // just fix spsr_el2 to EL0 and eret
-
+//
 	mrs x1, spsr_el2
 	and w1,w1,#0xFFFFFFF0
 	msr spsr_el2,x1
