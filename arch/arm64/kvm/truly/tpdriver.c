@@ -243,14 +243,13 @@ clean_2:
       tp_free(path_to_free);
 }
 
-
 int el2_do_page_fault(unsigned long addr)
 {
 	char buf[10];
 
-	if ( !copy_from_user(buf, (void *)addr,10) ){
+	if ( !copy_from_user(buf, (void *)addr,sizeof(buf)) ){
 		void el2_mmu_fault_th(void);
-	//	printk("Truly: faulted user address %lx\n",addr);
+		printk("Truly: faulted user address %lx\n",addr);
 		el2_mmu_fault_th();
 	}else{
 		struct truly_vm *tvm = get_tvm();
