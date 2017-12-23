@@ -210,6 +210,7 @@ ENTRY(pad_invalidate)
 
 1:
         ic ivau, x0
+//	tlbi vaae1,x0
         add x0,x0,#32
         cmp x0,x1
         ble 1b
@@ -287,6 +288,7 @@ ENTRY(tp_clear_cache)
 
 1:	dc	civac, x0			// clean & invalidate D line / unified line
 	dsb ish
+	tlbi vaae1,x0
 	add	x0, x0, x2
 	cmp	x0, x1
 	b.lo	1b
