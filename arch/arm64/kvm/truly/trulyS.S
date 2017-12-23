@@ -299,6 +299,13 @@ ENTRY(tp_clear_cache)
 	ret
 ENDPROC(tp_clear_cache)
 
+// x0 has va
+ENTRY(truly_invld_tlb)
+    tlbi vaae1 ,x0
+    ret
+ENDPROC(truly_invld_tlb)
+
+
 ENTRY(truly_get_hcr_el2)
     mrs     x0, hcr_el2
     ret

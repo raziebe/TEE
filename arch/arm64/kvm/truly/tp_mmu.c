@@ -480,6 +480,7 @@ void tp_unmmap_handler(struct task_struct* task)
 		} else {
 			unmap_user_space_data(tmp->addr , tmp->size);
 		}
+		truly_invld_tlb(tmp->addr);
 		list_del(&tmp->lst);
     	kfree(tmp);
 	}
