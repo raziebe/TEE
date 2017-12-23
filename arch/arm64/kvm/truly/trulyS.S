@@ -210,7 +210,7 @@ ENTRY(pad_invalidate)
 
 1:
         ic ivau, x0
-//	tlbi vaae1,x0
+//	tlbi vaae2,x0
         add x0,x0,#32
         cmp x0,x1
         ble 1b
@@ -288,7 +288,7 @@ ENTRY(tp_clear_cache)
 
 1:	dc	civac, x0			// clean & invalidate D line / unified line
 	dsb ish
-	tlbi vaae1,x0
+	tlbi 	vae2,x0
 	add	x0, x0, x2
 	cmp	x0, x1
 	b.lo	1b
@@ -301,7 +301,7 @@ ENDPROC(tp_clear_cache)
 
 // x0 has va
 ENTRY(truly_invld_tlb)
-    tlbi vaae1 ,x0
+    tlbi vae2 ,x0
     ret
 ENDPROC(truly_invld_tlb)
 
