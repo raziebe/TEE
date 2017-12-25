@@ -213,6 +213,7 @@ int is_addr_mapped(long addr,struct truly_vm *tv);
 unsigned long read_sctlr_el2(void);
 unsigned long tp_clear_cache(pte_t* addr,long size);
 void truly_invld_tlb(long va);
+void truly_invld_all_tlb(void);
 
 static inline long cycles(void)
 {

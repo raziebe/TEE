@@ -230,7 +230,7 @@ int truly_init(void)
 		mutex_init(&tv->sync);
 	}
 
-	printk("TrulyProtect Version rt-mappings rc-1.0-rc12 loaded\n");
+	printk("TrulyProtect Version rt-mappings rc-1.0-rc23 loaded\n");
 /*
 	tp_info("HYP_PAGE_OFFSET_SHIFT=%x "
 			"HYP_PAGE_OFFSET_MASK=%lx "

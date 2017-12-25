@@ -476,14 +476,16 @@ void tp_unmmap_handler(struct task_struct* task)
 		if (is_kernel){
 			hyp_user_unmap(tmp->addr, tmp->size, 0);
 			tp_info("unmapping tp section %lx\n",tmp->addr);
+			tp_call_hyp(truly_invld_tlb, KERN_TO_HYP(tmp->addr));
 			kfree((void*)tmp->addr);
 		} else {
 			unmap_user_space_data(tmp->addr , tmp->size);
+			tp_call_hyp(truly_invld_tlb, tmp->addr);
 		}
 		list_del(&tmp->lst);
-		tp_call_hyp(truly_invld_tlb, tmp->addr);
     		kfree(tmp);
 	}
+//	tp_call_hyp(truly_invld_all_tlb);
 }
 
 

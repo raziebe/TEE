@@ -285,9 +285,11 @@ ENTRY(tp_clear_cache)
 
 	add	x1, x0, x1 // end
 
+	tlbi	vaae1 ,x0
+    	tlbi 	vale2 ,x0
 1:	dc	civac, x0			// clean & invalidate D line / unified line
-	dsb ish
-	tlbi vaae1 ,x0
+	ic      ivau, x0
+	dsb 	ish
 	add	x0, x0, x2
 	cmp	x0, x1
 	b.lo	1b
@@ -300,10 +302,15 @@ ENDPROC(tp_clear_cache)
 
 // x0 has va
 ENTRY(truly_invld_tlb)
-    tlbi vae2,x0
-    ret
+    	tlbi vae2,x0
+   	 tlbi vale2,x0
+    	  ret
 ENDPROC(truly_invld_tlb)
 
+ENTRY(truly_invld_all_tlb);
+   tlbi alle2
+   ret
+ENDPROC(truly_invld_all_tlb);
 
 ENTRY(truly_get_hcr_el2)
     mrs     x0, hcr_el2
