@@ -284,9 +284,8 @@ ENTRY(tp_clear_cache)
 	lsl x2,x2,x3 // x2 cache line size
 
 	add	x1, x0, x1 // end
-
 	tlbi	vaae1 ,x0
-    	tlbi 	vale2 ,x0
+
 1:	dc	civac, x0			// clean & invalidate D line / unified line
 	ic      ivau, x0
 	dsb 	ish
@@ -297,14 +296,16 @@ ENTRY(tp_clear_cache)
 	pop x2,x3
 	pop x1,x0
 	isb
+
 	ret
 ENDPROC(tp_clear_cache)
 
+
 // x0 has va
 ENTRY(truly_invld_tlb)
-    	tlbi vae2,x0
-   	 tlbi vale2,x0
-    	  ret
+    	tlbi vae2, x0
+ 	tlbi vale2, x0
+    	ret
 ENDPROC(truly_invld_tlb)
 
 ENTRY(truly_invld_all_tlb);
